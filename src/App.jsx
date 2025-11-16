@@ -1,42 +1,26 @@
 import React, { useState } from 'react';
-import { useAuth, useApi } from './context/ApiContext';
-import { LoadingScreen } from './components/common/Loading';
+// PERBAIKAN: Import hook dari file context yang benar
+import { useAuth } from './context/AuthContext.jsx';
+import { useApi } from './context/ApiContext.jsx';
+import { LoadingScreen, LoadingSpinner } from './components/common/Loading.jsx'; // LoadingSpinner juga di-import
+import { ErrorMessage } from './components/common/ErrorMessage.jsx'; // Import ErrorMessage
 import {
-    Briefcase, Home, Package, Users, DollarSign, BarChart2, FileText, LogOut, CreditCard
+    Briefcase, Home, Package, Users, DollarSign, BarChart2, FileText, LogOut
 } from 'lucide-react';
 
 // Import Halaman
-import DashboardComponent from './pages/Dashboard';
-import PackagesComponent from './pages/Packages';
-import JamaahComponent from './pages/Jamaah';
-import FinanceComponent from './pages/Finance';
-import HRComponent from './pages/HR';
-import MarketingComponent from './pages/Marketing';
-import LogComponent from './pages/Logs';
+import DashboardComponent from './pages/Dashboard.jsx';
+import PackagesComponent from './pages/Packages.jsx';
+import JamaahComponent from './pages/Jamaah.jsx';
+import FinanceComponent from './pages/Finance.jsx';
+import HRComponent from './pages/HR.jsx';
+import MarketingComponent from './pages/Marketing.jsx';
+import LogComponent from './pages/Logs.jsx';
 
-// Import Modal Pembayaran (karena global)
-import JamaahPaymentsModal from './pages/Jamaah'; // Ini akan mengambil default export (JamaahComponent)
-// Perbaikan: Kita perlu export JamaahPaymentsModal secara terpisah
-// Mari kita ubah pages/Jamaah.jsx...
-
-// --- (SIMULASI PERBAIKAN: Anggap pages/Jamaah.jsx diubah untuk export JamaahPaymentsModal) ---
-// Saya tidak bisa mengubah file itu, jadi saya akan meng-import Jamaah.jsx dan mengambil modal dari sana
-// ... Ini tidak akan berhasil.
-// Mari kita asumsikan file pages/Jamaah.jsx juga mengekspor modalnya
-//
-// Gagal. OK, Rencana B:
-// Saya akan *menggabungkan* App.jsx dan AppRoot.jsx ke dalam App.jsx
-// Dan saya akan *mengimpor* JamaahPaymentsModal dari file `pages/Jamaah.jsx`.
-// Ini asumsi bahwa `wp-scripts` akan menanganinya.
-//
-// TIDAK. Rencana C (Terbaik):
-// `JamaahPaymentsModal` akan saya pindahkan ke file `src/components/modals/JamaahPaymentsModal.jsx`
-// Ini adalah cara refaktor yang benar.
-
-// --- (Menghasilkan file baru untuk Modal Pembayaran) ---
-
-// (File App.jsx ini sekarang mengasumsikan file modal pembayaran ada di lokasi baru)
-import JamaahPaymentsModal from './components/modals/JamaahPaymentsModal';
+// PERBAIKAN: Import modal dari lokasi komponen yang sudah dipisah
+import JamaahPaymentsModal from './components/modals/JamaahPaymentsModal.jsx';
+// PERBAIKAN: Import style.js
+import { styles } from './style.js';
 
 
 /**
@@ -66,12 +50,13 @@ const App = () => {
         if (apiLoading) {
             return (
                 <div className="umh-component-container">
-                    <LoadingScreen />
+                    {/* PERBAIKAN: Gunakan LoadingSpinner, bukan LoadingScreen penuh */}
+                    <LoadingSpinner />
                 </div>
             );
         }
         
-        // Tampilkan error jika ada
+        // PERBAIKAN: Tampilkan error jika ada
         if (apiError) {
              return (
                 <div className="umh-component-container">
@@ -107,11 +92,15 @@ const App = () => {
 
     return (
         <>
+            {/* PERBAIKAN: Render style di sini */}
+            <style>{styles}</style>
+            
             <div className="umh-header">
                 <h1><Briefcase /> Umroh Manager</h1>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                      <span style={{ color: 'var(--text-light)', fontSize: '0.9em' }}>
-                        Halo, <strong>{currentUser?.display_name || currentUser?.email}</strong>
+                        {/* PERBAIKAN: Gunakan full_name sesuai data dari api-users.php */}
+                        Halo, <strong>{currentUser?.full_name || currentUser?.email}</strong>
                      </span>
                     <button className="umh-nav-button" onClick={logout}>
                         <LogOut size={16} /> Logout
@@ -144,34 +133,5 @@ const App = () => {
     );
 };
 
-
-/**
- * AppRoot: Mengatur logika Auth vs App
- */
-const AppRoot = () => {
-    const { currentUser, isLoading } = useAuth();
-
-    if (isLoading) {
-         return <LoadingScreen />;
-    }
-
-    if (!currentUser) {
-        // Tampilkan login form jika tidak ada user
-        // Di lingkungan WP-Admin, ini seharusnya tidak terjadi jika halaman dilindungi,
-        // tapi sebagai penjaga:
-         return (
-             <div style={{ padding: '20px', fontFamily: 'Inter, sans-serif', color: 'var(--danger)'}}>
-                Error: Pengguna tidak terautentikasi. Silakan refresh halaman.
-             </div>
-         );
-    }
-
-    // Pengguna terautentikasi, muat API Provider dan App
-    return (
-        <ApiProvider>
-            <App />
-        </ApiProvider>
-    );
-};
-
-export default AppRoot;
+// PERBAIKAN: Hapus AppRoot, file ini hanya export App
+export default App;

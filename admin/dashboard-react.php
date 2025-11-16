@@ -2,15 +2,7 @@
 // File: admin/dashboard-react.php
 // Ini adalah file "host" untuk aplikasi React Anda.
 
-// Exit jika diakses langsung
-if (!defined('ABSPATH')) {
-    exit;
-}
-
-/**
- * Fungsi ini adalah yang dipanggil oleh add_menu_page() 
- * di file umroh-manager-hybrid.php.
- */
+// ... existing code ...
 function umroh_manager_render_dashboard_react() {
 
     // Script dan style sudah di-enqueue dengan benar di class utama.
@@ -19,11 +11,11 @@ function umroh_manager_render_dashboard_react() {
     ?>
     <div class="wrap">
         <!-- 
-          PERBAIKAN: ID diubah menjadi 'umh-react-app-root' 
+          PERBAIKAN: ID diubah menjadi 'umh-admin-app' 
           agar sesuai dengan yang dicari oleh build/index.js 
           (dari src/index.jsx)
         -->
-        <div id="umh-react-app-root">
+        <div id="umh-admin-app">
             <!-- React akan menggantikan konten ini -->
             <p style="padding: 20px; text-align: center;">Memuat aplikasi manajemen...</p>
         </div>
