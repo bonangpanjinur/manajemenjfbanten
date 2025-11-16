@@ -1,7 +1,8 @@
 import React from 'react';
 
 export const ErrorMessage = ({ message }) => (
-    <div style={{ color: 'var(--danger)', padding: '20px', border: '1px solid var(--danger)', borderRadius: '6px' }}>
-        <strong>Error:</strong> {message}
+    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative my-4" role="alert">
+        <strong className="font-bold">Error: </strong>
+        <span className="block sm:inline">{message}</span>
     </div>
 );

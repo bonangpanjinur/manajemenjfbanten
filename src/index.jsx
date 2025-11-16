@@ -1,28 +1,22 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-// PERBAIKAN: Menambahkan ekstensi .jsx
-import { AuthProvider } from './context/AuthContext.jsx';
-import { ApiProvider } from './context/ApiContext.jsx';
-import App from './App.jsx'; // Import App.jsx yang sudah bersih
+import App from './App'; // .jsx dihapus
+import { AuthProvider } from './context/AuthContext'; // .jsx dihapus
+import { ApiProvider } from './context/ApiContext'; // .jsx dihapus
 
-// --- Render Aplikasi ---
+// Hapus import style.js, karena kita akan menggunakan Tailwind
+// import { GlobalStyle } from './style.js'; 
+
 document.addEventListener('DOMContentLoaded', () => {
-    // Target div dari admin/dashboard-react.php
-    // PERBAIKAN: ID disamakan menjadi 'umh-admin-app'
     const rootEl = document.getElementById('umh-admin-app');
     
     if (rootEl) {
-        // Muat Tailwind CSS
-        if (!document.getElementById('tailwind-css')) {
-            const tailwindScript = document.createElement('script');
-            tailwindScript.id = 'tailwind-css';
-            tailwindScript.src = 'https://cdn.tailwindcss.com';
-            document.head.appendChild(tailwindScript);
-        }
+        // (Pastikan Anda me-load Tailwind CSS melalui file PHP utama)
         
         const root = createRoot(rootEl);
         root.render(
             <React.StrictMode>
+                {/* <GlobalStyle /> Hapus ini */}
                 <AuthProvider>
                     <ApiProvider>
                         <App />

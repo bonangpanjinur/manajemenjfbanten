@@ -1,170 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { useApi } from '../context/ApiContext';
-import { formatCurrency, formatDate, formatDateForInput, getStatusBadge } from '../utils/helpers';
-import { Modal, ModalFooter } from '../components/common/Modal';
-import { LoadingSpinner } from '../components/common/Loading';
-import { ErrorMessage } from '../components/common/ErrorMessage';
+import React, { useState } from 'react';
+import { useApi } from '../context/ApiContext'; // .jsx dihapus
+import PackageForm from '../components/forms/PackageForm'; // .jsx dihapus
+import { Modal } from '../components/common/Modal'; // .jsx dihapus
+import { LoadingSpinner } from '../components/common/Loading'; // .jsx dihapus
+import { ErrorMessage } from '../components/common/ErrorMessage'; // .jsx dihapus
+import { Button } from '../components/common/FormUI'; // .jsx dihapus
+import { formatCurrency, formatDate, getStatusBadge } from '../utils/helpers'; // .js dihapus
 import { Plus, Edit2, Trash2 } from 'lucide-react';
 
-// Form ini hanya digunakan oleh halaman Packages, jadi kita biarkan di file ini.
-const PackageForm = ({ initialData, onSubmit, onCancel }) => {
-    const [formData, setFormData] = useState({
-        title: '',
-        slug: '',
-        status: 'draft',
-        promo: 0,
-        departure_city: '',
-        duration: 9,
-        departure_date: '',
-        slots_available: 50,
-        price_quad: '',
-        price_triple: '',
-        price_double: '',
-        short_description: '',
-        itinerary: '',
-        meta_title: '',
-        meta_description: '',
-        ...initialData,
-    });
-
-    useEffect(() => {
-        if (initialData) {
-             // Deserialisasi price_details
-            if (initialData.price_details) {
-                try {
-                    const prices = JSON.parse(initialData.price_details);
-                    setFormData(prev => ({
-                        ...prev,
-                        price_quad: prices.quad || '',
-                        price_triple: prices.triple || '',
-                        price_double: prices.double || '',
-                    }));
-                } catch (e) {
-                    console.error("Gagal parse price_details JSON:", e);
-                }
-            }
-            // Format tanggal untuk input
-            if (initialData.departure_date) {
-                setFormData(prev => ({
-                    ...prev,
-                    departure_date: formatDateForInput(initialData.departure_date)
-                }));
-            }
-        }
-    }, [initialData]);
-
-    const handleChange = (e) => {
-        const { name, value, type, checked } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: type === 'checkbox' ? (checked ? 1 : 0) : value,
-        }));
-    };
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        
-        const price_details = JSON.stringify({
-            quad: formData.price_quad || 0,
-            triple: formData.price_triple || 0,
-            double: formData.price_double || 0,
-        });
-
-        const dataToSubmit = { ...formData };
-        delete dataToSubmit.price_quad;
-        delete dataToSubmit.price_triple;
-        delete dataToSubmit.price_double;
-        
-        dataToSubmit.price_details = price_details;
-        
-        onSubmit(dataToSubmit);
-    };
-
-    return (
-        <form onSubmit={handleSubmit}>
-            <div className="form-grid">
-                <div className="form-group full-width">
-                    <label>Judul Paket</label>
-                    <input type="text" name="title" value={formData.title} onChange={handleChange} required />
-                </div>
-
-                <div className="form-group">
-                    <label>Status</label>
-                    <select name="status" value={formData.status} onChange={handleChange}>
-                        <option value="draft">Draft</option>
-                        <option value="published">Published</option>
-                        <option value="archived">Archived</option>
-                    </select>
-                </div>
-                <div className="form-group">
-                    <label>Slug (URL)</label>
-                    <input type="text" name="slug" value={formData.slug} onChange={handleChange} />
-                </div>
-                
-                 <div className="form-group">
-                    <label>Durasi (Hari)</label>
-                    <input type="number" name="duration" value={formData.duration} onChange={handleChange} required />
-                </div>
-                 <div className="form-group">
-                    <label>Kota Keberangkatan</label>
-                    <input type="text" name="departure_city" value={formData.departure_city} onChange={handleChange} />
-                </div>
-
-                <div className="form-group">
-                    <label>Tanggal Keberangkatan (Opsional)</label>
-                    <input type="date" name="departure_date" value={formData.departure_date} onChange={handleChange} />
-                </div>
-                <div className="form-group">
-                    <label>Jumlah Slot Tersedia</label>
-                    <input type="number" name="slots_available" value={formData.slots_available} onChange={handleChange} />
-                </div>
-
-                <div className="form-group checkbox-group full-width" style={{ marginTop: '10px' }}>
-                    <input type="checkbox" id="promo" name="promo" checked={!!formData.promo} onChange={handleChange} />
-                    <label htmlFor="promo">Tandai sebagai Promo</label>
-                </div>
-
-                <hr className="full-width" />
-                <h4 className="full-width" style={{ margin: 0 }}>Detail Harga</h4>
-                 <div className="form-group">
-                    <label>Harga Quad (Rp)</label>
-                    <input type="number" name="price_quad" value={formData.price_quad} onChange={handleChange} />
-                </div>
-                 <div className="form-group">
-                    <label>Harga Triple (Rp)</label>
-                    <input type="number" name="price_triple" value={formData.price_triple} onChange={handleChange} />
-                </div>
-                 <div className="form-group">
-                    <label>Harga Double (Rp)</label>
-                    <input type="number" name="price_double" value={formData.price_double} onChange={handleChange} />
-                </div>
-
-                <hr className="full-width" />
-                <h4 className="full-width" style={{ margin: 0 }}>Deskripsi & SEO</h4>
-                <div className="form-group full-width">
-                    <label>Deskripsi Singkat</label>
-                    <textarea name="short_description" value={formData.short_description} onChange={handleChange}></textarea>
-                </div>
-                <div className="form-group full-width">
-                    <label>Itinerary (JSON/Text)</label>
-                    <textarea name="itinerary" value={formData.itinerary} onChange={handleChange}></textarea>
-                </div>
-                 <div className="form-group">
-                    <label>Meta Title (SEO)</label>
-                    <input type="text" name="meta_title" value={formData.meta_title} onChange={handleChange} />
-                </div>
-                 <div className="form-group">
-                    <label>Meta Description (SEO)</label>
-                    <input type="text" name="meta_description" value={formData.meta_description} onChange={handleChange} />
-                </div>
-
-            </div>
-            <ModalFooter onCancel={onCancel} />
-        </form>
-    );
-};
-
-// Komponen Halaman Utama
 const PackagesComponent = () => {
     const { packages, savePackage, deletePackage, loading, error } = useApi();
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -190,7 +33,7 @@ const PackagesComponent = () => {
     };
 
     const handleDelete = async (id) => {
-        if (window.confirm('Yakin ingin menghapus paket ini?')) {
+        if (window.confirm && window.confirm('Yakin ingin menghapus paket ini?')) {
             try {
                 await deletePackage(id);
             } catch (error) {
@@ -203,53 +46,64 @@ const PackagesComponent = () => {
         if (!priceDetailsJson) return 0;
         try {
             const prices = JSON.parse(priceDetailsJson);
-            return prices.quad || prices.triple || prices.double || 0;
+            // Cari harga valid terendah
+            const validPrices = [prices.quad, prices.triple, prices.double].filter(p => p && parseFloat(p) > 0);
+            if (validPrices.length === 0) return 0;
+            return Math.min(...validPrices.map(p => parseFloat(p)));
         } catch(e) {
             return 0;
         }
     };
 
     return (
-        <div className="umh-component-container">
-            <div className="umh-table-toolbar">
-                <h2>Manajemen Paket</h2>
-                <button className="umh-button" onClick={() => handleOpenModal()}>
-                    <Plus size={16} /> Tambah Paket
-                </button>
+        <div className="bg-white shadow-lg rounded-lg p-6 relative min-h-[300px]">
+            <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                <h2 className="text-2xl font-semibold text-gray-800">Manajemen Paket</h2>
+                <Button variant="primary" onClick={() => handleOpenModal()}>
+                    <Plus size={18} /> Tambah Paket
+                </Button>
             </div>
             
             {error && <ErrorMessage message={error} />}
             {loading && <LoadingSpinner />}
 
             {!loading && !error && (
-                <div className="umh-table-wrapper">
-                    <table className="umh-table">
-                        <thead>
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
                             <tr>
-                                <th>Judul Paket</th>
-                                <th>Status</th>
-                                <th>Tgl Berangkat</th>
-                                <th>Durasi</th>
-                                <th>Kota</th>
-                                <th>Harga Mulai</th>
-                                <th>Slot</th>
-                                <th>Aksi</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Judul Paket</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tgl Berangkat</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Durasi</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kota</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga Mulai</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Slot</th>
+                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            {packages.length === 0 && <tr><td colSpan="8" style={{textAlign: 'center', padding: '16px'}}>Tidak ada paket.</td></tr>}
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {packages.length === 0 && (
+                                <tr>
+                                    <td colSpan="8" className="px-6 py-4 text-center text-gray-500">Tidak ada paket.</td>
+                                </tr>
+                            )}
                             {packages.map(pkg => (
-                                <tr key={pkg.id}>
-                                    <td>{pkg.title}</td>
-                                    <td>{getStatusBadge(pkg.status)}</td>
-                                    <td>{formatDate(pkg.departure_date)}</td>
-                                    <td>{pkg.duration} Hari</td>
-                                    <td>{pkg.departure_city}</td>
-                                    <td>{formatCurrency(getLowestPrice(pkg.price_details))}</td>
-                                    <td>{pkg.slots_filled || 0} / {pkg.slots_available || 0}</td>
-                                    <td className="actions">
-                                        <Edit2 size={18} className="action-icon" onClick={() => handleOpenModal(pkg)} title="Edit Paket" />
-                                        <Trash2 size={18} className="action-icon danger" onClick={() => handleDelete(pkg.id)} title="Hapus Paket" />
+                                <tr key={pkg.id} className="hover:bg-gray-50">
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{pkg.title}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(pkg.status)}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{formatDate(pkg.departure_date)}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{pkg.duration} Hari</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{pkg.departure_city}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{formatCurrency(getLowestPrice(pkg.price_details))}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{pkg.slots_filled || 0} / {pkg.slots_available || 0}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                                        <Button variant="icon" size="sm" onClick={() => handleOpenModal(pkg)} title="Edit Paket">
+                                            <Edit2 size={16} />
+                                        </Button>
+                                        <Button variant="icon" size="sm" className="text-red-600 hover:bg-red-100" onClick={() => handleDelete(pkg.id)} title="Hapus Paket">
+                                            <Trash2 size={16} />
+                                        </Button>
                                     </td>
                                 </tr>
                             ))}
@@ -262,6 +116,7 @@ const PackagesComponent = () => {
                 title={selectedPackage ? 'Edit Paket' : 'Tambah Paket Baru'}
                 isOpen={isModalOpen}
                 onClose={handleCloseModal}
+                size="4xl"
             >
                 <PackageForm
                     initialData={selectedPackage}

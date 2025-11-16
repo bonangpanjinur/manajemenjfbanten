@@ -1,215 +1,183 @@
-import React, { useState, useEffect, useMemo } from 'react';
-// PERBAIKAIKAN: Menambahkan ekstensi .jsx
-import { useApi } from '../context/ApiContext.jsx';
-// PERBAIKAN: Menambahkan ekstensi .js
-import { formatCurrency, formatDate } from '../utils/helpers.js';
-// PERBAIKAN: Menambahkan ekstensi .jsx
-import { Modal } from '../components/common/Modal.jsx';
-import { LoadingSpinner } from '../components/common/Loading.jsx';
-import { ErrorMessage } from '../components/common/ErrorMessage.jsx';
+import React, { useState, useMemo } from 'react';
+import { useApi } from '../context/ApiContext'; // .jsx dihapus
+import FinanceForm from '../components/forms/FinanceForm'; // .jsx dihapus
+import { Modal } from '../components/common/Modal'; // .jsx dihapus
+import { LoadingSpinner } from '../components/common/Loading'; // .jsx dihapus
+import { ErrorMessage } from '../components/common/ErrorMessage'; // .jsx dihapus
+import { Button, Select, FormLabel } from '../components/common/FormUI'; // .jsx dihapus
+import { formatCurrency, formatDate } from '../utils/helpers'; // .js dihapus
 import { Plus, Edit2, Trash2, CheckCircle, AlertCircle, DollarSign } from 'lucide-react';
-// PERBAIKAN: Import form dari file terpisah dan tambahkan ekstensi .jsx
-import FinanceForm from '../components/forms/FinanceForm.jsx';
 
+// -- STYLING HELPER (PENGGANTI clsx) --
+const cn = (...classes) => classes.filter(Boolean).join(' ');
 
-// Komponen Halaman Utama Keuangan
 const FinanceComponent = () => {
-    // ... existing code ...
     const { finance, financeAccounts, saveFinance, deleteFinance, loading, error } = useApi();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedTrx, setSelectedTrx] = useState(null);
     const [selectedAccountId, setSelectedAccountId] = useState(''); 
 
     const handleOpenModal = (trx = null) => {
-// ... existing code ...
         setSelectedTrx(trx);
         setIsModalOpen(true);
     };
-
     const handleCloseModal = () => {
-// ... existing code ...
         setIsModalOpen(false);
         setSelectedTrx(null);
     };
-// ... existing code ...
+
     const handleSave = async (trx) => {
         try {
             await saveFinance(trx);
-// ... existing code ...
             handleCloseModal();
-        } catch (error) {
-            alert(`Error: ${error.message}`);
-// ... existing code ...
+        } catch (e) {
+            alert(`Error: ${e.message}`);
         }
     };
 
     const handleDelete = async (id) => {
-// ... existing code ...
-        if (window.confirm('Yakin ingin menghapus transaksi ini?')) {
+        if (window.confirm && window.confirm('Yakin ingin menghapus transaksi ini?')) {
             try {
                 await deleteFinance(id);
-// ... existing code ...
-            } catch (error) {
-                alert(`Error: ${error.message}`);
+            } catch (e) {
+                alert(`Error: ${e.message}`);
             }
-// ... existing code ...
         }
     };
 
     const kasData = useMemo(() => {
-// ... existing code ...
         const filtered = finance
-            .filter(trx => selectedAccountId ? trx.account_id == selectedAccountId : true)
+            .filter(trx => !selectedAccountId || trx.account_id == selectedAccountId)
             .sort((a, b) => new Date(a.transaction_date) - new Date(b.transaction_date));
         
         let totalDebit = 0;
-// ... existing code ...
         let totalKredit = 0;
         let runningBalance = 0;
 
         const transactionsWithBalance = filtered.map(trx => {
-// ... existing code ...
             const amount = parseFloat(trx.amount) || 0;
             let debit = 0;
-// ... existing code ...
             let kredit = 0;
 
             if (trx.transaction_type === 'expense') {
                 debit = amount;
-// ... existing code ...
                 totalDebit += amount;
                 runningBalance -= amount;
             } else {
-// ... existing code ...
                 kredit = amount;
                 totalKredit += amount;
                 runningBalance += amount;
-// ... existing code ...
             }
             
             return { ...trx, debit, kredit, balance: runningBalance };
-// ... existing code ...
         });
 
         return {
             transactions: transactionsWithBalance.reverse(), // Tampilkan dari terbaru
-// ... existing code ...
             totalDebit,
             totalKredit,
             saldoAkhir: runningBalance,
-// ... existing code ...
         };
     }, [finance, selectedAccountId]);
 
     return (
-// ... existing code ...
-        <div className="umh-component-container">
-            <div className="umh-table-toolbar">
-                <h2>Buku Kas</h2>
-// ... existing code ...
-                <button className="umh-button" onClick={() => handleOpenModal()}>
-                    <Plus size={16} /> Catat Transaksi
-                </button>
+        <div className="bg-white shadow-lg rounded-lg p-6 relative min-h-[300px]">
+            <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                <h2 className="text-2xl font-semibold text-gray-800">Buku Kas</h2>
+                <Button variant="primary" onClick={() => handleOpenModal()}>
+                    <Plus size={18} /> Catat Transaksi
+                </Button>
             </div>
 
-            <div className="umh-sub-header">
-// ... existing code ...
-                <div className="filter-group">
-                    <label>Tampilkan Akun:</label>
-                    <select value={selectedAccountId} onChange={e => setSelectedAccountId(e.target.value)}>
-// ... existing code ...
+            <div className="p-4 bg-gray-50 rounded-lg mb-6 flex flex-col md:flex-row gap-4 items-center">
+                <div className="flex-1 w-full md:w-auto">
+                    <FormLabel htmlFor="filter-akun">Tampilkan Akun</FormLabel>
+                    <Select id="filter-akun" value={selectedAccountId} onChange={e => setSelectedAccountId(e.target.value)}>
                         <option value="">Semua Akun Kas</option>
                         {financeAccounts.map(acc => (
                             <option key={acc.id} value={acc.id}>{acc.name}</option>
-// ... existing code ...
                         ))}
-                    </select>
+                    </Select>
                 </div>
-// ... existing code ...
             </div>
             
-            <div className="finance-summary">
-                <div className="summary-card">
-// ... existing code ...
-                    <h4><CheckCircle size={16} /> Total Kredit (Masuk)</h4>
-                    <p className="kredit">{formatCurrency(kasData.totalKredit)}</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <h4 className="text-sm font-medium text-gray-500 flex items-center gap-2"><CheckCircle size={16} /> Total Kredit (Masuk)</h4>
+                    <p className="text-2xl font-bold text-green-600">{formatCurrency(kasData.totalKredit)}</p>
                 </div>
-// ... existing code ...
-                 <div className="summary-card">
-                    <h4><AlertCircle size={16} /> Total Debit (Keluar)</h4>
-                    <p className="debit">{formatCurrency(kasData.totalDebit)}</p>
-// ... existing code ...
+                 <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <h4 className="text-sm font-medium text-gray-500 flex items-center gap-2"><AlertCircle size={16} /> Total Debit (Keluar)</h4>
+                    <p className="text-2xl font-bold text-red-600">{formatCurrency(kasData.totalDebit)}</p>
                 </div>
-                 <div className="summary-card">
-                    <h4><DollarSign size={16} /> Saldo Akhir</h4>
-// ... existing code ...
-                    <p className="saldo">{formatCurrency(kasData.saldoAkhir)}</p>
+                 <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <h4 className="text-sm font-medium text-gray-500 flex items-center gap-2"><DollarSign size={16} /> Saldo Akhir</h4>
+                    <p className={cn(
+                        "text-2xl font-bold",
+                        kasData.saldoAkhir < 0 ? 'text-red-600' : 'text-gray-900'
+                    )}>
+                        {formatCurrency(kasData.saldoAkhir)}
+                    </p>
                 </div>
             </div>
-// ... existing code ...
             
             {error && <ErrorMessage message={error} />}
             {loading && <LoadingSpinner />}
 
             {!loading && !error && (
-                <div className="umh-table-wrapper">
-// ... existing code ...
-                    <table className="umh-table">
-                        <thead>
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
                             <tr>
-// ... existing code ...
-                                <th>Tanggal</th>
-                                <th>Deskripsi</th>
-                                <th>Akun</th>
-// ... existing code ...
-                                <th>Debit</th>
-                                <th>Kredit</th>
-                                <th>Saldo</th>
-// ... existing code ...
-                                <th>Aksi</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deskripsi</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Akun</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Debit</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kredit</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Saldo</th>
+                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                             </tr>
                         </thead>
-// ... existing code ...
-                        <tbody>
-                            {kasData.transactions.length === 0 && <tr><td colSpan="7" style={{textAlign: 'center', padding: '16px'}}>Tidak ada transaksi.</td></tr>}
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {kasData.transactions.length === 0 && (
+                                <tr>
+                                    <td colSpan="7" className="px-6 py-4 text-center text-gray-500">Tidak ada transaksi.</td>
+                                </tr>
+                            )}
                             {kasData.transactions.map(trx => {
-// ... existing code ...
                                 const account = financeAccounts.find(a => a.id == trx.account_id);
                                 return (
-                                    <tr key={trx.id}>
-                                        <td>{formatDate(trx.transaction_date)}</td>
-// ... existing code ...
-                                        <td>{trx.description}</td>
-                                        <td>{account ? account.name : 'N/A'}</td>
-                                        <td>{trx.debit ? formatCurrency(trx.debit) : '-'}</td>
-// ... existing code ...
-                                        <td>{trx.kredit ? formatCurrency(trx.kredit) : '-'}</td>
-                                        <td>{formatCurrency(trx.balance)}</td>
-                                        <td className="actions">
-// ... existing code ...
-                                            <Edit2 size={18} className="action-icon" onClick={() => handleOpenModal(trx)} title="Edit Transaksi" />
-                                            <Trash2 size={18} className="action-icon danger" onClick={() => handleDelete(trx.id)} title="Hapus Transaksi" />
+                                    <tr key={trx.id} className="hover:bg-gray-50">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{formatDate(trx.transaction_date)}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{trx.description}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{account ? account.name : 'N/A'}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600">{trx.debit ? formatCurrency(trx.debit) : '-'}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">{trx.kredit ? formatCurrency(trx.kredit) : '-'}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800">{formatCurrency(trx.balance)}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-1">
+                                            <Button variant="icon" size="sm" onClick={() => handleOpenModal(trx)} title="Edit Transaksi">
+                                                <Edit2 size={16} />
+                                            </Button>
+                                            <Button variant="icon" size="sm" className="text-red-600 hover:bg-red-100" onClick={() => handleDelete(trx.id)} title="Hapus Transaksi">
+                                                <Trash2 size={16} />
+                                            </Button>
                                         </td>
-// ... existing code ...
                                     </tr>
                                 );
                             })}
                         </tbody>
-// ... existing code ...
                     </table>
                 </div>
             )}
 
             <Modal
-// ... existing code ...
                 title={selectedTrx ? 'Edit Transaksi' : 'Catat Transaksi Baru'}
                 isOpen={isModalOpen}
                 onClose={handleCloseModal}
+                size="2xl"
             >
-                {/* PERBAIKAN: Gunakan komponen Form yang di-import */}
                 <FinanceForm
                     initialData={selectedTrx}
-// ... existing code ...
                     onSubmit={handleSave}
                     onCancel={handleCloseModal}
                     accounts={financeAccounts}

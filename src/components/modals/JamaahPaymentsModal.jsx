@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { useApi } from '../../context/ApiContext';
-import { formatCurrency, formatDate, formatDateForInput, getStatusBadge } from '../../utils/helpers';
-import { Modal } from '../common/Modal';
-import { Trash2, CheckCircle, XSquare, Plus } from 'lucide-react';
+import { useApi } from '../../context/ApiContext'; // .jsx dihapus
+import { Modal } from '../common/Modal'; // .jsx dihapus
+import { LoadingSpinner } from '../common/Loading'; // .jsx dihapus
+import { formatCurrency, formatDate, formatDateForInput, getStatusBadge } from '../../utils/helpers'; // .js dihapus
+import { Button, Input, FormGroup, FormLabel } from '../common/FormUI'; // .jsx dihapus
+import { CheckCircle, XCircle, Trash2, Plus } from 'lucide-react'; // XSquare diganti
 
-// Modal Pembayaran Jemaah (Dipisah)
+// -- STYLING HELPER (PENGGANTI clsx) --
+const cn = (...classes) => classes.filter(Boolean).join(' ');
+
 const JamaahPaymentsModal = ({ isOpen, onClose, jamaah }) => {
-    const api = useApi(); // Gunakan hook di dalam komponen
+    const api = useApi();
     const { 
         jamaahPayments, 
         loadingPayments, 
@@ -25,7 +29,8 @@ const JamaahPaymentsModal = ({ isOpen, onClose, jamaah }) => {
         if (isOpen && jamaah) {
             fetchJamaahPayments(jamaah.id);
         } else if (!isOpen) {
-            fetchJamaahPayments(null); // Clear payments saat modal ditutup
+            // Kosongkan state payments saat modal ditutup
+            fetchJamaahPayments(null); 
         }
     }, [isOpen, jamaah, fetchJamaahPayments]);
     
@@ -53,7 +58,7 @@ const JamaahPaymentsModal = ({ isOpen, onClose, jamaah }) => {
     };
 
     const handleVerifyPayment = async (payment) => {
-        if (!confirm("Anda yakin ingin MEMVERIFIKASI pembayaran ini?")) return;
+        if (window.confirm && !window.confirm("Anda yakin ingin MEMVERIFIKASI pembayaran ini?")) return;
         try {
             await saveJamaahPayment(jamaah.id, { ...payment, status: 'verified' });
         } catch (error) {
@@ -62,7 +67,7 @@ const JamaahPaymentsModal = ({ isOpen, onClose, jamaah }) => {
     };
     
     const handleRejectPayment = async (payment) => {
-         if (!confirm("Anda yakin ingin MENOLAK pembayaran ini?")) return;
+         if (window.confirm && !window.confirm("Anda yakin ingin MENOLAK pembayaran ini?")) return;
         try {
             await saveJamaahPayment(jamaah.id, { ...payment, status: 'rejected' });
         } catch (error) {
@@ -71,7 +76,7 @@ const JamaahPaymentsModal = ({ isOpen, onClose, jamaah }) => {
     };
 
     const handleDeletePayment = async (paymentId) => {
-        if (!confirm("Anda yakin ingin MENGHAPUS riwayat pembayaran ini? Ini tidak bisa dikembalikan.")) return;
+        if (window.confirm && !window.confirm("Anda yakin ingin MENGHAPUS riwayat pembayaran ini? Ini tidak bisa dikembalikan.")) return;
         try {
             await deleteJamaahPayment(jamaah.id, paymentId);
         } catch (error) {
@@ -91,101 +96,116 @@ const JamaahPaymentsModal = ({ isOpen, onClose, jamaah }) => {
             isOpen={isOpen} 
             onClose={onClose}
         >
-            {loadingPayments && <p>Memuat riwayat...</p>}
+            {loadingPayments && <LoadingSpinner />}
             
-            <div className="finance-summary" style={{ marginBottom: '20px' }}>
-                 <div className="summary-card">
-                    <h4>Total Tagihan</h4>
-                    <p>{formatCurrency(updatedJamaah.total_price)}</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                 <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <h4 className="text-sm font-medium text-gray-500">Total Tagihan</h4>
+                    <p className="text-2xl font-bold text-gray-900">{formatCurrency(updatedJamaah.total_price)}</p>
                 </div>
-                 <div className="summary-card">
-                    <h4>Total Terbayar (Verified)</h4>
-                    <p className="kredit">{formatCurrency(updatedJamaah.amount_paid)}</p>
+                 <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <h4 className="text-sm font-medium text-gray-500">Total Terbayar (Verified)</h4>
+                    <p className="text-2xl font-bold text-green-600">{formatCurrency(updatedJamaah.amount_paid)}</p>
                 </div>
-                 <div className="summary-card">
-                    <h4>Sisa Tagihan</h4>
-                    <p className="debit">{formatCurrency(sisaTagihan)}</p>
+                 <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <h4 className="text-sm font-medium text-gray-500">Sisa Tagihan</h4>
+                    <p className={cn(
+                        "text-2xl font-bold",
+                        sisaTagihan > 0 ? 'text-red-600' : 'text-green-600'
+                    )}>
+                        {formatCurrency(sisaTagihan)}
+                    </p>
                 </div>
             </div>
 
-            <h4 style={{ margin: '15px 0 10px 0' }}>Riwayat Transaksi</h4>
-            <ul className="payment-history-list">
-                {jamaahPayments.length === 0 && !loadingPayments && <li>Tidak ada riwayat pembayaran.</li>}
+            <h4 className="text-lg font-semibold text-gray-800 mb-3">Riwayat Transaksi</h4>
+            <ul className="divide-y divide-gray-200">
+                {jamaahPayments.length === 0 && !loadingPayments && (
+                    <li className="py-3 text-center text-gray-500">Tidak ada riwayat pembayaran.</li>
+                )}
                 {jamaahPayments.map(p => (
-                    <li key={p.id}>
-                        <div className="payment-info">
-                            <strong>{formatCurrency(p.amount)}</strong>
-                            <span>{p.description || 'Pembayaran'} - {formatDate(p.payment_date)}</span>
+                    <li key={p.id} className="py-3 flex items-center justify-between gap-4">
+                        <div className="flex-1">
+                            <strong className="text-base font-medium text-gray-900">{formatCurrency(p.amount)}</strong>
+                            <span className="block text-sm text-gray-500">{p.description || 'Pembayaran'} - {formatDate(p.payment_date)}</span>
                         </div>
-                        <div className="payment-actions">
+                        <div className="flex items-center gap-2 flex-shrink-0">
                             {getStatusBadge(p.status)}
                             {p.status === 'pending' && (
                                 <>
-                                <button 
-                                    className="umh-button" 
-                                    style={{ padding: '4px 8px', fontSize: '0.8em', background: 'var(--success)'}}
+                                <Button 
+                                    variant="icon" 
+                                    size="sm"
+                                    className="text-green-600 hover:bg-green-100"
                                     onClick={() => handleVerifyPayment(p)}
                                     title="Verifikasi"
                                 >
-                                    <CheckCircle size={14} />
-                                </button>
-                                <button 
-                                    className="umh-button secondary" 
-                                    style={{ padding: '4px 8px', fontSize: '0.8em', background: 'var(--warning)'}}
+                                    <CheckCircle size={18} />
+                                </Button>
+                                <Button 
+                                    variant="icon" 
+                                    size="sm"
+                                    className="text-yellow-600 hover:bg-yellow-100"
                                     onClick={() => handleRejectPayment(p)}
                                     title="Tolak"
                                 >
-                                    <XSquare size={14} />
-                                </button>
+                                    <XCircle size={18} />
+                                </Button>
                                 </>
                             )}
-                             <Trash2 
-                                size={18} 
-                                className="action-icon danger" 
+                             <Button 
+                                variant="icon"
+                                size="sm"
+                                className="text-red-600 hover:bg-red-100"
                                 onClick={() => handleDeletePayment(p.id)} 
                                 title="Hapus"
-                            />
+                            >
+                                <Trash2 size={18} />
+                            </Button>
                         </div>
                     </li>
                 ))}
             </ul>
 
-            <form onSubmit={handleAddNewPayment} className="payment-form">
-                <h4 style={{ margin: '0 0 15px 0' }}>Tambah Pembayaran Baru</h4>
-                <div className="form-grid">
-                    <div className="form-group">
-                        <label>Jumlah (Rp)</label>
-                        <input
+            <form onSubmit={handleAddNewPayment} className="mt-6 pt-4 border-t border-gray-200">
+                <h4 className="text-lg font-semibold text-gray-800 mb-3">Tambah Pembayaran Baru</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormGroup>
+                        <FormLabel htmlFor="pay-amount">Jumlah (Rp)</FormLabel>
+                        <Input
                             type="number"
                             name="amount"
+                            id="pay-amount"
                             value={newPayment.amount}
                             onChange={handleInputChange}
                             required
                         />
-                    </div>
-                     <div className="form-group">
-                        <label>Tanggal Bayar</label>
-                        <input
+                    </FormGroup>
+                     <FormGroup>
+                        <FormLabel htmlFor="pay-date">Tanggal Bayar</FormLabel>
+                        <Input
                             type="date"
                             name="payment_date"
+                            id="pay-date"
                             value={newPayment.payment_date}
                             onChange={handleInputChange}
                             required
                         />
-                    </div>
+                    </FormGroup>
                 </div>
-                <div className="form-group full-width">
-                    <label>Keterangan (Cth: DP, Cicilan 1, Pelunasan)</label>
-                    <input
+                <FormGroup>
+                    <FormLabel htmlFor="pay-desc">Keterangan (Cth: DP, Cicilan 1, Pelunasan)</FormLabel>
+                    <Input
                         type="text"
                         name="description"
+                        id="pay-desc"
                         value={newPayment.description}
                         onChange={handleInputChange}
                     />
-                </div>
-                <button type="submit" className="umh-button">
+                </FormGroup>
+                <Button type="submit" variant="primary">
                     <Plus size={16} /> Tambah
-                </button>
+                </Button>
             </form>
         </Modal>
     );

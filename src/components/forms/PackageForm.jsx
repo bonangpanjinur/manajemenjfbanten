@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
-// PERBAIKAN: Menambahkan ekstensi .js
-import { formatDateForInput } from '../../utils/helpers.js';
-// PERBAIKAN: Menambahkan ekstensi .jsx
-import { ModalFooter } from '../common/Modal.jsx';
+import { formatDateForInput } from '../../utils/helpers'; // .js dihapus
+import { ModalFooter } from '../common/Modal'; // .jsx dihapus
+import { Input, Select, Textarea, Checkbox, FormGroup, FormLabel } from '../common/FormUI'; // .jsx dihapus
 
-// Form ini hanya digunakan oleh halaman Packages
 const PackageForm = ({ initialData, onSubmit, onCancel }) => {
     const [formData, setFormData] = useState({
         title: '',
@@ -26,16 +24,15 @@ const PackageForm = ({ initialData, onSubmit, onCancel }) => {
 
     useEffect(() => {
         if (initialData) {
-             setFormData({
+            setFormData({
                 ...initialData,
                 promo: !!initialData.promo, // Pastikan boolean
                 departure_date: formatDateForInput(initialData.departure_date),
-                price_quad: '', // default
-                price_triple: '', // default
-                price_double: '', // default
+                price_quad: '',
+                price_triple: '',
+                price_double: '',
              });
              
-            // Deserialisasi price_details
             if (initialData.price_details) {
                 try {
                     const prices = JSON.parse(initialData.price_details);
@@ -50,23 +47,12 @@ const PackageForm = ({ initialData, onSubmit, onCancel }) => {
                 }
             }
         } else {
-            // Reset form
              setFormData({
-                title: '',
-                slug: '',
-                status: 'draft',
-                promo: 0,
-                departure_city: '',
-                duration: 9,
-                departure_date: '',
-                slots_available: 50,
-                price_quad: '',
-                price_triple: '',
-                price_double: '',
-                short_description: '',
-                itinerary: '',
-                meta_title: '',
-                meta_description: '',
+                title: '', slug: '', status: 'draft', promo: 0,
+                departure_city: '', duration: 9, departure_date: '',
+                slots_available: 50, price_quad: '', price_triple: '',
+                price_double: '', short_description: '', itinerary: '',
+                meta_title: '', meta_description: '',
             });
         }
     }, [initialData]);
@@ -81,101 +67,95 @@ const PackageForm = ({ initialData, onSubmit, onCancel }) => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-
         const price_details = JSON.stringify({
             quad: formData.price_quad || 0,
             triple: formData.price_triple || 0,
             double: formData.price_double || 0,
         });
-
         const dataToSubmit = { ...formData };
         delete dataToSubmit.price_quad;
         delete dataToSubmit.price_triple;
         delete dataToSubmit.price_double;
-
         dataToSubmit.price_details = price_details;
-
         onSubmit(dataToSubmit);
     };
 
     return (
         <form onSubmit={handleSubmit}>
-            <div className="form-grid">
-                <div className="form-group full-width">
-                    <label>Judul Paket</label>
-                    <input type="text" name="title" value={formData.title} onChange={handleChange} required />
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormGroup className="md:col-span-2">
+                    <FormLabel htmlFor="title">Judul Paket</FormLabel>
+                    <Input type="text" name="title" id="title" value={formData.title} onChange={handleChange} required />
+                </FormGroup>
 
-                <div className="form-group">
-                    <label>Status</label>
-                    <select name="status" value={formData.status} onChange={handleChange}>
+                <FormGroup>
+                    <FormLabel htmlFor="status">Status</FormLabel>
+                    <Select name="status" id="status" value={formData.status} onChange={handleChange}>
                         <option value="draft">Draft</option>
                         <option value="published">Published</option>
                         <option value="archived">Archived</option>
-                    </select>
-                </div>
-                <div className="form-group">
-                    <label>Slug (URL)</label>
-                    <input type="text" name="slug" value={formData.slug} onChange={handleChange} />
-                </div>
+                    </Select>
+                </FormGroup>
+                <FormGroup>
+                    <FormLabel htmlFor="slug">Slug (URL)</FormLabel>
+                    <Input type="text" name="slug" id="slug" value={formData.slug} onChange={handleChange} />
+                </FormGroup>
 
-                <div className="form-group">
-                    <label>Durasi (Hari)</label>
-                    <input type="number" name="duration" value={formData.duration} onChange={handleChange} required />
-                </div>
-                <div className="form-group">
-                    <label>Kota Keberangkatan</label>
-                    <input type="text" name="departure_city" value={formData.departure_city} onChange={handleChange} />
-                </div>
+                <FormGroup>
+                    <FormLabel htmlFor="duration">Durasi (Hari)</FormLabel>
+                    <Input type="number" name="duration" id="duration" value={formData.duration} onChange={handleChange} required />
+                </FormGroup>
+                <FormGroup>
+                    <FormLabel htmlFor="departure_city">Kota Keberangkatan</FormLabel>
+                    <Input type="text" name="departure_city" id="departure_city" value={formData.departure_city} onChange={handleChange} />
+                </FormGroup>
 
-                <div className="form-group">
-                    <label>Tanggal Keberangkatan (Opsional)</label>
-                    <input type="date" name="departure_date" value={formData.departure_date} onChange={handleChange} />
-                </div>
-                <div className="form-group">
-                    <label>Jumlah Slot Tersedia</label>
-                    <input type="number" name="slots_available" value={formData.slots_available} onChange={handleChange} />
-                </div>
+                <FormGroup>
+                    <FormLabel htmlFor="departure_date">Tanggal Keberangkatan (Opsional)</FormLabel>
+                    <Input type="date" name="departure_date" id="departure_date" value={formData.departure_date} onChange={handleChange} />
+                </FormGroup>
+                <FormGroup>
+                    <FormLabel htmlFor="slots_available">Jumlah Slot Tersedia</FormLabel>
+                    <Input type="number" name="slots_available" id="slots_available" value={formData.slots_available} onChange={handleChange} />
+                </FormGroup>
 
-                <div className="form-group checkbox-group full-width" style={{ marginTop: '10px' }}>
-                    <input type="checkbox" id="promo" name="promo" checked={!!formData.promo} onChange={handleChange} />
-                    <label htmlFor="promo">Tandai sebagai Promo</label>
-                </div>
+                <FormGroup className="md:col-span-2 mt-2">
+                    <Checkbox name="promo" id="promo" checked={!!formData.promo} onChange={handleChange} label="Tandai sebagai Promo" />
+                </FormGroup>
 
-                <hr className="full-width" />
-                <h4 className="full-width" style={{ margin: 0 }}>Detail Harga</h4>
-                <div className="form-group">
-                    <label>Harga Quad (Rp)</label>
-                    <input type="number" name="price_quad" value={formData.price_quad} onChange={handleChange} />
-                </div>
-                <div className="form-group">
-                    <label>Harga Triple (Rp)</label>
-                    <input type="number" name="price_triple" value={formData.price_triple} onChange={handleChange} />
-                </div>
-                <div className="form-group">
-                    <label>Harga Double (Rp)</label>
-                    <input type="number" name="price_double" value={formData.price_double} onChange={handleChange} />
-                </div>
+                <hr className="md:col-span-2" />
+                <h4 className="md:col-span-2 text-lg font-semibold text-gray-800 -mb-2">Detail Harga</h4>
+                <FormGroup>
+                    <FormLabel htmlFor="price_quad">Harga Quad (Rp)</FormLabel>
+                    <Input type="number" name="price_quad" id="price_quad" value={formData.price_quad} onChange={handleChange} />
+                </FormGroup>
+                <FormGroup>
+                    <FormLabel htmlFor="price_triple">Harga Triple (Rp)</FormLabel>
+                    <Input type="number" name="price_triple" id="price_triple" value={formData.price_triple} onChange={handleChange} />
+                </FormGroup>
+                <FormGroup>
+                    <FormLabel htmlFor="price_double">Harga Double (Rp)</FormLabel>
+                    <Input type="number" name="price_double" id="price_double" value={formData.price_double} onChange={handleChange} />
+                </FormGroup>
 
-                <hr className="full-width" />
-                <h4 className="full-width" style={{ margin: 0 }}>Deskripsi & SEO</h4>
-                <div className="form-group full-width">
-                    <label>Deskripsi Singkat</label>
-                    <textarea name="short_description" value={formData.short_description} onChange={handleChange}></textarea>
-                </div>
-                <div className="form-group full-width">
-                    <label>Itinerary (JSON/Text)</label>
-                    <textarea name="itinerary" value={formData.itinerary} onChange={handleChange}></textarea>
-                </div>
-                <div className="form-group">
-                    <label>Meta Title (SEO)</label>
-                    <input type="text" name="meta_title" value={formData.meta_title} onChange={handleChange} />
-                </div>
-                <div className="form-group">
-                    <label>Meta Description (SEO)</label>
-                    <input type="text" name="meta_description" value={formData.meta_description} onChange={handleChange} />
-                </div>
-
+                <hr className="md:col-span-2" />
+                <h4 className="md:col-span-2 text-lg font-semibold text-gray-800 -mb-2">Deskripsi & SEO</h4>
+                <FormGroup className="md:col-span-2">
+                    <FormLabel htmlFor="short_description">Deskripsi Singkat</FormLabel>
+                    <Textarea name="short_description" id="short_description" value={formData.short_description} onChange={handleChange}></Textarea>
+                </FormGroup>
+                <FormGroup className="md:col-span-2">
+                    <FormLabel htmlFor="itinerary">Itinerary (JSON/Text)</FormLabel>
+                    <Textarea name="itinerary" id="itinerary" value={formData.itinerary} onChange={handleChange}></Textarea>
+                </FormGroup>
+                <FormGroup>
+                    <FormLabel htmlFor="meta_title">Meta Title (SEO)</FormLabel>
+                    <Input type="text" name="meta_title" id="meta_title" value={formData.meta_title} onChange={handleChange} />
+                </FormGroup>
+                <FormGroup>
+                    <FormLabel htmlFor="meta_description">Meta Description (SEO)</FormLabel>
+                    <Input type="text" name="meta_description" id="meta_description" value={formData.meta_description} onChange={handleChange} />
+                </FormGroup>
             </div>
             <ModalFooter onCancel={onCancel} />
         </form>

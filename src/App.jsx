@@ -1,37 +1,31 @@
 import React, { useState } from 'react';
-// PERBAIKAN: Import hook dari file context yang benar
-import { useAuth } from './context/AuthContext.jsx';
-import { useApi } from './context/ApiContext.jsx';
-import { LoadingScreen, LoadingSpinner } from './components/common/Loading.jsx'; // LoadingSpinner juga di-import
-import { ErrorMessage } from './components/common/ErrorMessage.jsx'; // Import ErrorMessage
-import {
+import { useAuth } from './context/AuthContext'; // .jsx dihapus
+import { useApi } from './context/ApiContext'; // .jsx dihapus
+import { LoadingScreen, LoadingSpinner } from './components/common/Loading'; // .jsx dihapus
+import { ErrorMessage } from './components/common/ErrorMessage'; // .jsx dihapus
+import { Button } from './components/common/FormUI'; // .jsx dihapus
+import JamaahPaymentsModal from './components/modals/JamaahPaymentsModal'; // .jsx dihapus
+import { 
     Briefcase, Home, Package, Users, DollarSign, BarChart2, FileText, LogOut
 } from 'lucide-react';
 
-// Import Halaman
-import DashboardComponent from './pages/Dashboard.jsx';
-import PackagesComponent from './pages/Packages.jsx';
-import JamaahComponent from './pages/Jamaah.jsx';
-import FinanceComponent from './pages/Finance.jsx';
-import HRComponent from './pages/HR.jsx';
-import MarketingComponent from './pages/Marketing.jsx';
-import LogComponent from './pages/Logs.jsx';
+// Impor Halaman
+import DashboardComponent from './pages/Dashboard'; // .jsx dihapus
+import PackagesComponent from './pages/Packages'; // .jsx dihapus
+import JamaahComponent from './pages/Jamaah'; // .jsx dihapus
+import FinanceComponent from './pages/Finance'; // .jsx dihapus
+import HRComponent from './pages/HR'; // .jsx dihapus
+import MarketingComponent from './pages/Marketing'; // .jsx dihapus
+import LogComponent from './pages/Logs'; // .jsx dihapus
 
-// PERBAIKAN: Import modal dari lokasi komponen yang sudah dipisah
-import JamaahPaymentsModal from './components/modals/JamaahPaymentsModal.jsx';
-// PERBAIKAN: Import style.js
-import { styles } from './style.js';
+// -- STYLING HELPER (PENGGANTI clsx) --
+const cn = (...classes) => classes.filter(Boolean).join(' ');
 
-
-/**
- * Komponen App Utama (Layout dan Navigasi)
- */
 const App = () => {
-    const { currentUser, logout } = useAuth();
-    const { loading: apiLoading, error: apiError } = useApi(); // Ambil loading & error dari API
+    const { currentUser, logout, isLoading: authLoading } = useAuth();
+    const { loading: apiLoading, error: apiError } = useApi();
     const [activeView, setActiveView] = useState('dashboard');
     
-    // State untuk modal pembayaran
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const [selectedJamaahForPayments, setSelectedJamaahForPayments] = useState(null);
 
@@ -44,22 +38,31 @@ const App = () => {
         setSelectedJamaahForPayments(null);
         setIsPaymentModalOpen(false);
     };
+
+    // Menampilkan loading screen penuh saat auth pertama kali dimuat
+    if (authLoading) {
+        return <LoadingScreen />;
+    }
+
+    // (TODO: Tampilkan halaman login jika !currentUser dan bukan di wp-admin)
+    // if (!currentUser) {
+    //     return <LoginPage />;
+    // }
     
     const renderView = () => {
         // Tampilkan loading spinner jika API sedang memuat data awal
         if (apiLoading) {
             return (
-                <div className="umh-component-container">
-                    {/* PERBAIKAN: Gunakan LoadingSpinner, bukan LoadingScreen penuh */}
+                <div className="bg-white shadow-lg rounded-lg p-6 relative min-h-[300px]">
                     <LoadingSpinner />
                 </div>
             );
         }
         
-        // PERBAIKAN: Tampilkan error jika ada
+        // Tampilkan error jika ada
         if (apiError) {
              return (
-                <div className="umh-component-container">
+                <div className="bg-white shadow-lg rounded-lg p-6">
                     <ErrorMessage message={`Gagal memuat data: ${apiError}`} />
                 </div>
             );
@@ -80,35 +83,35 @@ const App = () => {
 
     const NavButton = ({ view, icon, label }) => (
         <button
-            className={`umh-nav-button ${activeView === view ? 'active' : ''}`}
+            className={cn(
+                'flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors',
+                'bg-white border border-gray-300 text-gray-600 hover:bg-gray-100',
+                activeView === view && 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
+            )}
             onClick={() => setActiveView(view)}
         >
             {icon} {label}
         </button>
     );
     
-    // (Izin akses bisa ditambahkan di sini jika diperlukan)
-    // const canAccess = (module) => { ... };
-
     return (
-        <>
-            {/* PERBAIKAN: Render style di sini */}
-            <style>{styles}</style>
-            
-            <div className="umh-header">
-                <h1><Briefcase /> Umroh Manager</h1>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                     <span style={{ color: 'var(--text-light)', fontSize: '0.9em' }}>
-                        {/* PERBAIKAN: Gunakan full_name sesuai data dari api-users.php */}
+        <div className="p-4 md:p-6 lg:p-8">
+            <header className="flex flex-col md:flex-row justify-between items-center mb-6 p-4 bg-white shadow-md rounded-lg gap-4">
+                <h1 className="text-2xl font-bold text-blue-700 flex items-center gap-3">
+                    <Briefcase /> 
+                    <span>Jannah Firdaus - Umroh Manager</span>
+                </h1>
+                <div className="flex items-center gap-4">
+                     <span className="text-sm text-gray-600 hidden md:block">
                         Halo, <strong>{currentUser?.full_name || currentUser?.email}</strong>
                      </span>
-                    <button className="umh-nav-button" onClick={logout}>
+                    <Button variant="secondary" size="md" onClick={logout}>
                         <LogOut size={16} /> Logout
-                    </button>
+                    </Button>
                 </div>
-            </div>
+            </header>
 
-            <nav className="umh-nav" style={{ marginBottom: '20px' }}>
+            <nav className="flex flex-wrap gap-2 mb-6">
                 <NavButton view="dashboard" icon={<Home size={16} />} label="Dashboard" />
                 <NavButton view="packages" icon={<Package size={16} />} label="Paket" />
                 <NavButton view="jamaah" icon={<Users size={16} />} label="Jemaah" />
@@ -119,9 +122,9 @@ const App = () => {
             </nav>
 
             {/* Konten Halaman */}
-            <div>
+            <main>
                 {renderView()}
-            </div>
+            </main>
             
             {/* Modal Pembayaran (Global) */}
             <JamaahPaymentsModal
@@ -129,9 +132,8 @@ const App = () => {
                 onClose={handleClosePayments}
                 jamaah={selectedJamaahForPayments}
             />
-        </>
+        </div>
     );
 };
 
-// PERBAIKAN: Hapus AppRoot, file ini hanya export App
 export default App;
