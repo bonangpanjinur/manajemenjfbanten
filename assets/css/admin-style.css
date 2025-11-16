@@ -1,0 +1,58 @@
+/* * File: assets/css/admin-style.css
+ */
+
+/* === BAGIAN 1: KUSTOMISASI HALAMAN LOGIN === */
+
+body.login {
+    /* Gunakan gambar background dari user */
+    background-image: url('../images/login-bg.jpg') !important;
+    background-position: center center !important;
+    background-size: cover !important;
+}
+
+body.login h1 a {
+    /* Gunakan logo dari user */
+    background-image: url('../images/logo-login.png'); 
+    background-size: contain;
+    background-position: center bottom;
+    width: 300px; /* Sesuaikan lebar */
+    height: 90px; /* Sesuaikan tinggi */
+    margin-bottom: 20px;
+}
+
+/* Membuat form login sedikit transparan agar menyatu */
+body.login #loginform {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+/* === BAGIAN 2: MODE IMERSIF (UNTUK ROLE NON-ADMIN) === */
+
+/* * Style ini HANYA akan aktif jika body memiliki class 'immersive-mode',
+ * yang kita tambahkan via hook PHP untuk user non-admin.
+ */
+
+body.immersive-mode #wpadminbar,       /* Sembunyikan Admin Bar (atas) */
+body.immersive-mode #adminmenumain,   /* Sembunyikan Menu Admin (kiri) */
+body.immersive-mode #wpfooter,        /* Sembunyikan Footer WP */
+body.immersive-mode #adminmenuwrap {  /* Sembunyikan wrapper menu */
+    display: none !important;
+}
+
+/*
+ * Paksa konten React (#wpcontent) untuk mengisi seluruh layar
+ */
+body.immersive-mode #wpcontent {
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+}
+
+body.immersive-mode #wpbody-content {
+    padding-bottom: 0 !important;
+}
+
+/* Hapus padding default di halaman plugin */
+body.immersive-mode .wrap {
+    margin: 0 !important;
+}
