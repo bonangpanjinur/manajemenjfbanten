@@ -57,7 +57,9 @@ function umh_get_current_user_context() {
  * @return bool|WP_Error True if allowed, WP_Error if denied.
  */
 function umh_check_api_permission($request, $required_roles) {
+    // --- PERBAIKAN: Panggil umh_get_current_user_context() tanpa argumen ---
     $user_context = umh_get_current_user_context();
+    // --- AKHIR PERBAIKAN ---
     $user_role = $user_context['role'];
 
     // Administrator WordPress selalu memiliki akses
@@ -69,6 +71,12 @@ function umh_check_api_permission($request, $required_roles) {
     if ('owner' === $user_role) {
         return true;
     }
+    
+    // --- PERBAIKAN: Izinkan jika array role yang dibutuhkan kosong (hanya cek login) ---
+    if (empty($required_roles) && $user_context['id'] > 0) {
+        return true;
+    }
+    // --- AKHIR PERBAIKAN ---
 
     if (in_array($user_role, $required_roles, true)) {
         return true;

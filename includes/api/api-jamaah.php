@@ -23,12 +23,20 @@ function umh_register_jamaah_routes() {
         [
             'methods' => WP_REST_Server::READABLE,
             'callback' => 'umh_get_all_jamaah',
-            'permission_callback' => umh_check_api_permission($read_permissions),
+            // --- PERBAIKAN: Bungkus panggilan dalam anonymous function ---
+            'permission_callback' => function($request) use ($read_permissions) {
+                return umh_check_api_permission($request, $read_permissions);
+            },
+            // --- AKHIR PERBAIKAN ---
         ],
         [
             'methods' => WP_REST_Server::CREATABLE,
             'callback' => 'umh_create_jamaah',
-            'permission_callback' => umh_check_api_permission($write_permissions),
+            // --- PERBAIKAN: Bungkus panggilan dalam anonymous function ---
+            'permission_callback' => function($request) use ($write_permissions) {
+                return umh_check_api_permission($request, $write_permissions);
+            },
+            // --- AKHIR PERBAIKAN ---
             'args' => umh_get_jamaah_schema(),
         ],
     ]);
@@ -38,18 +46,30 @@ function umh_register_jamaah_routes() {
         [
             'methods' => WP_REST_Server::READABLE,
             'callback' => 'umh_get_jamaah_by_id',
-            'permission_callback' => umh_check_api_permission($read_permissions),
+            // --- PERBAIKAN: Bungkus panggilan dalam anonymous function ---
+            'permission_callback' => function($request) use ($read_permissions) {
+                return umh_check_api_permission($request, $read_permissions);
+            },
+            // --- AKHIR PERBAIKAN ---
         ],
         [
             'methods' => WP_REST_Server::EDITABLE,
             'callback' => 'umh_update_jamaah',
-            'permission_callback' => umh_check_api_permission($write_permissions),
+            // --- PERBAIKAN: Bungkus panggilan dalam anonymous function ---
+            'permission_callback' => function($request) use ($write_permissions) {
+                return umh_check_api_permission($request, $write_permissions);
+            },
+            // --- AKHIR PERBAIKAN ---
             'args' => umh_get_jamaah_schema(true), // true for update
         ],
         [
             'methods' => WP_REST_Server::DELETABLE,
             'callback' => 'umh_delete_jamaah',
-            'permission_callback' => umh_check_api_permission($delete_permissions),
+            // --- PERBAIKAN: Bungkus panggilan dalam anonymous function ---
+            'permission_callback' => function($request) use ($delete_permissions) {
+                return umh_check_api_permission($request, $delete_permissions);
+            },
+            // --- AKHIR PERBAIKAN ---
         ],
     ]);
     
@@ -120,8 +140,9 @@ function umh_get_all_jamaah(WP_REST_Request $request) {
     $status = $request->get_param('status');
     $payment_status = $request->get_param('payment_status');
 
-    // Menggunakan `title` dari tabel paket yang baru
-    $query = "SELECT j.*, p.title as package_name FROM $table_name j LEFT JOIN $package_table p ON j.package_id = p.id WHERE 1=1";
+    // --- PERBAIKAN: Menggunakan 'name' dari tabel paket baru ---
+    $query = "SELECT j.*, p.name as package_name FROM $table_name j LEFT JOIN $package_table p ON j.package_id = p.id WHERE 1=1";
+    // --- AKHIR PERBAIKAN ---
 
     if (!empty($package_id)) {
         $query .= $wpdb->prepare(" AND j.package_id = %d", $package_id);
@@ -155,8 +176,15 @@ function umh_create_jamaah(WP_REST_Request $request) {
         // Ambil harga dari price_details JSON, misal 'quad'
         $price_details_json = $wpdb->get_var($wpdb->prepare("SELECT price_details FROM $package_table WHERE id = %d", $data['package_id']));
         $price_details = json_decode($price_details_json, true);
-        // Asumsi default ambil harga quad
-        $data['total_price'] = $price_details['quad'] ?? 0; 
+        
+        // --- PERBAIKAN: Asumsi default ambil harga 'quad' atau 'price' ---
+        $default_price = 0;
+        if(is_array($price_details) && !empty($price_details)) {
+             // Coba cari 'quad' atau ambil nilai pertama
+            $default_price = $price_details['quad'] ?? $price_details[0]['price'] ?? 0;
+        }
+        $data['total_price'] = $default_price; 
+        // --- AKHIR PERBAIKAN ---
     }
     
     $data['amount_paid'] = 0; // Selalu 0 saat baru dibuat
@@ -205,7 +233,9 @@ function umh_get_jamaah_by_id(WP_REST_Request $request) {
     $table_name = $wpdb->prefix . 'umh_jamaah';
     $package_table = $wpdb->prefix . 'umh_packages';
     
-    $query = $wpdb->prepare("SELECT j.*, p.title as package_name FROM $table_name j LEFT JOIN $package_table p ON j.package_id = p.id WHERE j.id = %d", $id);
+    // --- PERBAIKAN: Menggunakan 'name' dari tabel paket baru ---
+    $query = $wpdb->prepare("SELECT j.*, p.name as package_name FROM $table_name j LEFT JOIN $package_table p ON j.package_id = p.id WHERE j.id = %d", $id);
+    // --- AKHIR PERBAIKAN ---
     $jamaah = $wpdb->get_row($query, ARRAY_A);
 
     if (!$jamaah) {

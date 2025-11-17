@@ -12,14 +12,20 @@ function umh_register_export_routes() {
     $namespace = 'umh/v1'; // Namespace baru yang konsisten
 
     // PERBAIKAN: Tentukan izin (baca-saja)
-    $read_permissions = umh_check_api_permission(['owner', 'admin_staff', 'finance_staff', 'marketing_staff', 'hr_staff']);
+    // --- PERBAIKAN: Menyimpan array role, bukan memanggil fungsi ---
+    $read_permissions_roles = ['owner', 'admin_staff', 'finance_staff', 'marketing_staff', 'hr_staff'];
+    // --- AKHIR PERBAIKAN ---
 
     // Endpoint untuk ekspor data jemaah
     register_rest_route($namespace, '/export/jamaah', [
         [
             'methods' => WP_REST_Server::READABLE,
             'callback' => 'umh_export_jamaah_csv',
-            'permission_callback' => $read_permissions, // PERBAIKAN
+            // --- PERBAIKAN: Bungkus panggilan dalam anonymous function ---
+            'permission_callback' => function($request) use ($read_permissions_roles) {
+                return umh_check_api_permission($request, $read_permissions_roles);
+            },
+            // --- AKHIR PERBAIKAN ---
         ],
     ]);
 }
@@ -34,12 +40,14 @@ function umh_export_jamaah_csv(WP_REST_Request $request) {
     
     $package_id = $request->get_param('package_id');
 
+    // --- PERBAIKAN: Menggunakan 'name' dari tabel paket baru ---
     $query = "
-        SELECT j.*, p.package_name 
+        SELECT j.*, p.name as package_name 
         FROM $jamaah_table j 
         LEFT JOIN $packages_table p ON j.package_id = p.id
         WHERE 1=1
     ";
+    // --- AKHIR PERBAIKAN ---
 
     if (!empty($package_id)) {
         $query .= $wpdb->prepare(" AND j.package_id = %d", $package_id);
@@ -52,16 +60,18 @@ function umh_export_jamaah_csv(WP_REST_Request $request) {
     }
 
     if (empty($data)) {
+        // --- PERBAIKAN: Mengembalikan response error, jangan 'exit' ---
         return new WP_Error('not_found', __('No data to export.', 'umh'), ['status' => 404]);
     }
 
     // Generate CSV
     $filename = 'export_jamaah_' . date('Y-m-d') . '.csv';
     
-    header('Content-Type: text/csv');
-    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    // --- PERBAIKAN: Menggunakan WP_REST_Response untuk mengirim file ---
+    $response = new WP_REST_Response();
     
-    $output = fopen('php://output', 'w');
+    // Siapkan output CSV ke string
+    $output = fopen('php://temp', 'w');
     
     // Header
     fputcsv($output, array_keys($data[0]));
@@ -71,6 +81,15 @@ function umh_export_jamaah_csv(WP_REST_Request $request) {
         fputcsv($output, $row);
     }
     
+    rewind($output);
+    $csv_data = stream_get_contents($output);
     fclose($output);
-    exit;
+
+    $response->set_data($csv_data);
+    $response->set_status(200);
+    $response->header('Content-Type', 'text/csv');
+    $response->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
+    
+    return $response;
+    // --- AKHIR PERBAIKAN ---
 }

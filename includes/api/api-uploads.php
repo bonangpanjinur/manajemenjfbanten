@@ -12,14 +12,20 @@ function umh_register_uploads_routes() {
     $namespace = 'umh/v1'; // Namespace baru yang konsisten
 
     // PERBAIKAN: Izinkan semua role yang login untuk mengupload
-    $permissions = umh_check_api_permission(['owner', 'admin_staff', 'finance_staff', 'marketing_staff', 'hr_staff']);
+    // --- PERBAIKAN: Menyimpan array role, bukan memanggil fungsi ---
+    $permissions_roles = ['owner', 'admin_staff', 'finance_staff', 'marketing_staff', 'hr_staff'];
+    // --- AKHIR PERBAIKAN ---
 
     // Endpoint untuk meng-upload file
     register_rest_route($namespace, '/uploads', [
         [
             'methods' => WP_REST_Server::CREATABLE,
             'callback' => 'umh_handle_rest_upload',
-            'permission_callback' => $permissions, // PERBAIKAN
+            // --- PERBAIKAN: Bungkus panggilan dalam anonymous function ---
+            'permission_callback' => function($request) use ($permissions_roles) {
+                return umh_check_api_permission($request, $permissions_roles);
+            },
+            // --- AKHIR PERBAIKAN ---
             'args' => [
                 'file' => [
                     'type' => 'file',
@@ -59,11 +65,14 @@ function umh_handle_rest_upload(WP_REST_Request $request) {
     $file = $files['file'];
     
     // Dapatkan ID pengguna yang terautentikasi
-    $user_context = umh_get_current_user_context($request); // PERBAIKAN: Gunakan $request
+    // --- PERBAIKAN: Panggil umh_get_current_user_context() tanpa argumen ---
+    $user_context = umh_get_current_user_context(); 
     if (is_wp_error($user_context)) {
         return $user_context;
     }
-    $user_id = $user_context['user_id'];
+    // --- PERBAIKAN: Menggunakan 'id' dari konteks ---
+    $user_id = $user_context['id'];
+    // --- AKHIR PERBAIKAN ---
 
     // Menangani upload
     $upload_overrides = ['test_form' => false];
@@ -101,7 +110,9 @@ function umh_handle_rest_upload(WP_REST_Request $request) {
             $table_name = $wpdb->prefix . 'umh_jamaah';
             
             // Sanitasi upload_type agar hanya kolom yang valid
-            $allowed_columns = ['passport_scan', 'ktp_scan', 'profile_photo']; // Sesuaikan dengan kolom di db
+            // --- PERBAIKAN: Sesuaikan dengan skema DB baru ---
+            $allowed_columns = ['passport_scan', 'ktp_scan', 'kk_scan', 'meningitis_scan', 'profile_photo']; // Sesuaikan dengan kolom di db
+            // --- AKHIR PERBAIKAN ---
             
             if (in_array($upload_type, $allowed_columns)) {
                 $wpdb->update(
@@ -113,17 +124,17 @@ function umh_handle_rest_upload(WP_REST_Request $request) {
             }
         }
         
-        // Simpan ke tabel UMH Uploads
-        $uploads_table = $wpdb->prefix . 'umh_uploads';
-        $wpdb->insert($uploads_table, [
-            'user_id' => $user_id,
-            'jamaah_id' => $jamaah_id ? (int)$jamaah_id : null,
-            'attachment_id' => $attach_id,
-            'file_url' => $file_url,
-            'file_type' => $file_type,
-            'upload_type' => $upload_type,
-            'created_at' => current_time('mysql'),
-        ]);
+        // Simpan ke tabel UMH Uploads (jika ada)
+        // $uploads_table = $wpdb->prefix . 'umh_uploads';
+        // $wpdb->insert($uploads_table, [
+        //     'user_id' => $user_id,
+        //     'jamaah_id' => $jamaah_id ? (int)$jamaah_id : null,
+        //     'attachment_id' => $attach_id,
+        //     'file_url' => $file_url,
+        //     'file_type' => $file_type,
+        //     'upload_type' => $upload_type,
+        //     'created_at' => current_time('mysql'),
+        // ]);
 
         return new WP_REST_Response([
             'message' => 'File uploaded successfully.',

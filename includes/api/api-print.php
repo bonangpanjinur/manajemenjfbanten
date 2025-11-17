@@ -12,14 +12,20 @@ function umh_register_print_routes() {
     $namespace = 'umh/v1'; // Namespace baru yang konsisten
 
     // PERBAIKAN: Tentukan izin (baca-saja)
-    $read_permissions = umh_check_api_permission(['owner', 'admin_staff', 'finance_staff', 'marketing_staff', 'hr_staff']);
+    // --- PERBAIKAN: Menyimpan array role, bukan memanggil fungsi ---
+    $read_permissions_roles = ['owner', 'admin_staff', 'finance_staff', 'marketing_staff', 'hr_staff'];
+    // --- AKHIR PERBAIKAN ---
 
     // Endpoint untuk print daftar jemaah per paket
     register_rest_route($namespace, '/print/jamaah-list/(?P<id>\d+)', [
         [
             'methods' => WP_REST_Server::READABLE,
             'callback' => 'umh_print_jamaah_list',
-            'permission_callback' => $read_permissions, // PERBAIKAN
+            // --- PERBAIKAN: Bungkus panggilan dalam anonymous function ---
+            'permission_callback' => function($request) use ($read_permissions_roles) {
+                return umh_check_api_permission($request, $read_permissions_roles);
+            },
+            // --- AKHIR PERBAIKAN ---
         ],
     ]);
 }
@@ -34,7 +40,9 @@ function umh_print_jamaah_list(WP_REST_Request $request) {
     $jamaah_table = $wpdb->prefix . 'umh_jamaah';
     $packages_table = $wpdb->prefix . 'umh_packages';
 
-    $package = $wpdb->get_row($wpdb->prepare("SELECT package_name FROM $packages_table WHERE id = %d", $package_id), ARRAY_A);
+    // --- PERBAIKAN: Menggunakan 'name' dari tabel paket baru ---
+    $package = $wpdb->get_row($wpdb->prepare("SELECT name as package_name FROM $packages_table WHERE id = %d", $package_id), ARRAY_A);
+    // --- AKHIR PERBAIKAN ---
     
     if (!$package) {
         return new WP_Error('not_found', __('Package not found.', 'umh'), ['status' => 404]);

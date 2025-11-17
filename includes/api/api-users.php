@@ -32,7 +32,11 @@ function umh_register_user_api_routes() {
     register_rest_route($namespace, '/users/me', [
         'methods' => WP_REST_Server::READABLE,
         'callback' => 'umh_get_current_user_by_token',
-        'permission_callback' => umh_check_api_permission([]), // Cukup terautentikasi
+        // --- PERBAIKAN: Bungkus panggilan dalam anonymous function ---
+        'permission_callback' => function($request) { 
+            return umh_check_api_permission($request, []); // Cukup terautentikasi
+        },
+        // --- AKHIR PERBAIKAN ---
     ]);
 
     // (Aman) CRUD untuk mengelola pengguna headless
@@ -40,12 +44,20 @@ function umh_register_user_api_routes() {
         [
             'methods' => WP_REST_Server::READABLE,
             'callback' => 'umh_get_all_users',
-            'permission_callback' => umh_check_api_permission(['owner', 'admin_staff', 'hr_staff']), // Hanya peran tertentu
+            // --- PERBAIKAN: Bungkus panggilan dalam anonymous function ---
+            'permission_callback' => function($request) { 
+                return umh_check_api_permission($request, ['owner', 'admin_staff', 'hr_staff']); 
+            },
+            // --- AKHIR PERBAIKAN ---
         ],
         [
             'methods' => WP_REST_Server::CREATABLE,
             'callback' => 'umh_create_user',
-            'permission_callback' => umh_check_api_permission(['owner', 'admin_staff', 'hr_staff']), // Hanya peran tertentu
+            // --- PERBAIKAN: Bungkus panggilan dalam anonymous function ---
+            'permission_callback' => function($request) { 
+                return umh_check_api_permission($request, ['owner', 'admin_staff', 'hr_staff']); 
+            },
+            // --- AKHIR PERBAIKAN ---
         ],
     ]);
 
@@ -53,17 +65,29 @@ function umh_register_user_api_routes() {
         [
             'methods' => WP_REST_Server::READABLE,
             'callback' => 'umh_get_user_by_id',
-            'permission_callback' => umh_check_api_permission(['owner', 'admin_staff', 'hr_staff']),
+            // --- PERBAIKAN: Bungkus panggilan dalam anonymous function ---
+            'permission_callback' => function($request) { 
+                return umh_check_api_permission($request, ['owner', 'admin_staff', 'hr_staff']); 
+            },
+            // --- AKHIR PERBAIKAN ---
         ],
         [
             'methods' => WP_REST_Server::EDITABLE,
             'callback' => 'umh_update_user',
-            'permission_callback' => umh_check_api_permission(['owner', 'admin_staff', 'hr_staff']),
+            // --- PERBAIKAN: Bungkus panggilan dalam anonymous function ---
+            'permission_callback' => function($request) { 
+                return umh_check_api_permission($request, ['owner', 'admin_staff', 'hr_staff']); 
+            },
+            // --- AKHIR PERBAIKAN ---
         ],
         [
             'methods' => WP_REST_Server::DELETABLE,
             'callback' => 'umh_delete_user',
-            'permission_callback' => umh_check_api_permission(['owner']), // Hanya owner
+            // --- PERBAIKAN: Bungkus panggilan dalam anonymous function ---
+            'permission_callback' => function($request) { 
+                return umh_check_api_permission($request, ['owner']); 
+            },
+            // --- AKHIR PERBAIKAN ---
         ],
     ]);
 }
@@ -215,7 +239,9 @@ function umh_handle_wp_admin_login(WP_REST_Request $request) {
 function umh_get_current_user_by_token(WP_REST_Request $request) {
     // Fungsi umh_check_api_permission sudah memvalidasi token.
     // Kita panggil umh_get_current_user_context untuk mendapatkan data user.
-    $context = umh_get_current_user_context($request);
+    // --- PERBAIKAN: Panggil umh_get_current_user_context() tanpa argumen ---
+    $context = umh_get_current_user_context();
+    // --- AKHIR PERBAIKAN ---
 
     if (is_wp_error($context)) {
         return $context; // Token invalid, expired, dll.
@@ -237,7 +263,7 @@ function umh_get_current_user_by_token(WP_REST_Request $request) {
     $table_name = $wpdb->prefix . 'umh_users';
     $user = $wpdb->get_row($wpdb->prepare(
         "SELECT id, email, full_name, role, phone, status FROM $table_name WHERE id = %d", 
-        $context['user_id']
+        $context['id'] // --- PERBAIKAN: Menggunakan 'id' dari konteks ---
     ));
 
     if (!$user) {

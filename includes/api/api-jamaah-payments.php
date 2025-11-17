@@ -12,7 +12,9 @@ function umh_register_jamaah_payments_routes() {
     $namespace = 'umh/v1';
 
     // Izin: Staf Keuangan, Admin, dan Owner
-    $permissions = umh_check_api_permission(['owner', 'admin_staff', 'finance_staff']);
+    // --- PERBAIKAN: Menyimpan array role, bukan memanggil fungsi ---
+    $permissions_roles = ['owner', 'admin_staff', 'finance_staff'];
+    // --- AKHIR PERBAIKAN ---
 
     // Endpoint: GET /jamaah/{jamaah_id}/payments
     // Mendapatkan semua riwayat pembayaran untuk satu jemaah
@@ -20,12 +22,20 @@ function umh_register_jamaah_payments_routes() {
         [
             'methods' => WP_REST_Server::READABLE,
             'callback' => 'umh_get_jamaah_payments',
-            'permission_callback' => $permissions,
+            // --- PERBAIKAN: Bungkus panggilan dalam anonymous function ---
+            'permission_callback' => function($request) use ($permissions_roles) {
+                return umh_check_api_permission($request, $permissions_roles);
+            },
+            // --- AKHIR PERBAIKAN ---
         ],
         [
             'methods' => WP_REST_Server::CREATABLE,
             'callback' => 'umh_add_jamaah_payment',
-            'permission_callback' => $permissions,
+            // --- PERBAIKAN: Bungkus panggilan dalam anonymous function ---
+            'permission_callback' => function($request) use ($permissions_roles) {
+                return umh_check_api_permission($request, $permissions_roles);
+            },
+            // --- AKHIR PERBAIKAN ---
         ],
     ]);
 
@@ -35,12 +45,20 @@ function umh_register_jamaah_payments_routes() {
         [
             'methods' => WP_REST_Server::EDITABLE, // PUT/PATCH
             'callback' => 'umh_update_jamaah_payment_entry',
-            'permission_callback' => $permissions,
+            // --- PERBAIKAN: Bungkus panggilan dalam anonymous function ---
+            'permission_callback' => function($request) use ($permissions_roles) {
+                return umh_check_api_permission($request, $permissions_roles);
+            },
+            // --- AKHIR PERBAIKAN ---
         ],
         [
             'methods' => WP_REST_Server::DELETABLE,
             'callback' => 'umh_delete_jamaah_payment_entry',
-            'permission_callback' => $permissions,
+            // --- PERBAIKAN: Bungkus panggilan dalam anonymous function ---
+            'permission_callback' => function($request) use ($permissions_roles) {
+                return umh_check_api_permission($request, $permissions_roles);
+            },
+            // --- AKHIR PERBAIKAN ---
         ],
     ]);
 }
@@ -173,12 +191,14 @@ function umh_recalculate_jamaah_paid_amount($jamaah_id) {
     $jamaah_table = $wpdb->prefix . 'umh_jamaah';
 
     // Hitung total hanya dari pembayaran yang 'verified'
+    // --- PERBAIKAN: Menggunakan status 'paid' (bukan 'verified') ---
     $total_paid = (float) $wpdb->get_var(
         $wpdb->prepare(
-            "SELECT SUM(amount) FROM $payments_table WHERE jamaah_id = %d AND status = 'verified'",
+            "SELECT SUM(amount) FROM $payments_table WHERE jamaah_id = %d AND status = 'paid'",
             $jamaah_id
         )
     );
+    // --- AKHIR PERBAIKAN ---
 
     // Dapatkan total harga paket
     $total_price = (float) $wpdb->get_var(
@@ -186,17 +206,18 @@ function umh_recalculate_jamaah_paid_amount($jamaah_id) {
     );
 
     // Tentukan status pembayaran baru
+    // --- PERBAIKAN: Menggunakan 'payment_status' dari tabel jamaah ---
     $payment_status = 'pending';
     if ($total_paid > 0) {
-        $payment_status = 'cicil';
+        $payment_status = 'cicil'; // atau 'dp'
     }
-    if ($total_paid >= $total_price && $total_price > 0) {
+    if ($total_price > 0 && $total_paid >= $total_price) {
         $payment_status = 'lunas';
     }
      if ($total_paid == 0) {
         $payment_status = 'pending';
     }
-    // (Anda bisa tambahkan logika untuk 'dp' jika deskripsi 'DP' dan status 'verified')
+    // --- AKHIR PERBAIKAN ---
 
     // Update tabel jemaah
     $wpdb->update(
