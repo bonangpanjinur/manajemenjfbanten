@@ -1,5 +1,6 @@
 // ... (Kode React utuh, tidak ada perubahan) ...
 import React, { useState, useEffect } from 'react';
+// --- PERBAIKAN: Menambahkan ekstensi .jsx dan .js ---
 import { useApi } from '../../context/ApiContext.jsx';
 // PERBAIKAN: Impor bernama (named import)
 import { ErrorMessage } from '../common/ErrorMessage.jsx';
@@ -7,6 +8,7 @@ import { LoadingSpinner as Loading } from '../common/Loading.jsx';
 import { Input, Textarea, Button, Select, Checkbox } from '../common/FormUI.jsx';
 import { Plus, Trash2 } from 'lucide-react';
 import { formatCurrency, parseCurrency } from '../../utils/helpers.js';
+// --- AKHIR PERBAIKAN ---
 
 // --- PERBAIKAN: Seluruh logika dibungkus dalam komponen fungsi ---
 const PackageForm = ({ data, onClose }) => {
