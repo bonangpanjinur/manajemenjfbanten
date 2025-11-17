@@ -1,30 +1,31 @@
+// Lokasi: src/index.jsx
+
 import React from 'react';
-import { createRoot } from 'react-dom/client';
-import App from './App'; // .jsx dihapus
-import { AuthProvider } from './context/AuthContext'; // .jsx dihapus
-import { ApiProvider } from './context/ApiContext'; // .jsx dihapus
+import ReactDOM from 'react-dom';
+// --- PERBAIKAN: Path import absolut dari src/ ---
+import App from 'App';
+import { AuthProvider } from 'context/AuthContext';
+import { ApiProvider } from 'context/ApiContext';
+// --- AKHIR PERBAIKAN ---
 
-// Hapus import style.js, karena kita akan menggunakan Tailwind
-// import { GlobalStyle } from './style.js'; 
+// Hapus import style.js
+// import { GlobalStyle } from './style';
 
-document.addEventListener('DOMContentLoaded', () => {
-    const rootEl = document.getElementById('umh-admin-app');
-    
-    if (rootEl) {
-        // (Pastikan Anda me-load Tailwind CSS melalui file PHP utama)
-        
-        const root = createRoot(rootEl);
-        root.render(
-            <React.StrictMode>
-                {/* <GlobalStyle /> Hapus ini */}
-                <AuthProvider>
-                    <ApiProvider>
-                        <App />
-                    </ApiProvider>
-                </AuthProvider>
-            </React.StrictMode>
-        );
-    } else {
-        console.error('UMH Error: Target root element "umh-admin-app" not found in DOM.');
-    }
-});
+
+// Render aplikasi React ke dalam elemen #umh-admin-app
+const appElement = document.getElementById('umh-admin-app');
+if (appElement) {
+    ReactDOM.render(
+        <React.StrictMode>
+            <AuthProvider>
+                <ApiProvider>
+                    {/* <GlobalStyle /> */}
+                    <App />
+                </ApiProvider>
+            </AuthProvider>
+        </React.StrictMode>,
+        appElement
+    );
+} else {
+    console.error('Target element #umh-admin-app not found.');
+}

@@ -1,185 +1,201 @@
+// Lokasi: src/pages/Jamaah.jsx
+
 import React, { useState, useMemo } from 'react';
-import { useApi } from '../context/ApiContext'; // .jsx dihapus
-import JamaahForm from '../components/forms/JamaahForm'; // .jsx dihapus
-import { Modal } from '../components/common/Modal'; // .jsx dihapus
-import { LoadingSpinner } from '../components/common/Loading'; // .jsx dihapus
-import { ErrorMessage } from '../components/common/ErrorMessage'; // .jsx dihapus
-import { Button, Input, Select, FormLabel } from '../components/common/FormUI'; // .jsx dihapus
-import { formatCurrency, getStatusBadge, formatDate } from '../utils/helpers'; // .js dihapus (dan formatDate ditambahkan)
-import { User as UserIcon, CreditCard, Edit2, Trash2, Search } from 'lucide-react';
+// --- PERBAIKAN: Path import relatif ---
+import { useApi } from '../context/ApiContext';
+import Loading from '../components/common/Loading';
+import ErrorMessage from '../components/common/ErrorMessage';
+import Modal from '../components/common/Modal';
+import JamaahForm from '../components/forms/JamaahForm';
+import JamaahPaymentsModal from '../components/modals/JamaahPaymentsModal';
+import { formatDate, formatCurrency } from '../utils/helpers';
+// --- AKHIR PERBAIKAN ---
 
-// -- STYLING HELPER (PENGGANTI clsx) --
-const cn = (...classes) => classes.filter(Boolean).join(' ');
+const Jamaah = () => {
+    const api = useApi();
+    const { data, loading, error } = api;
+    const [filter, setFilter] = useState('');
+    const [modal, setModal] = useState({ isOpen: false, data: null });
+    const [paymentsModal, setPaymentsModal] = useState({ isOpen: false, jamaah: null });
 
-const JamaahComponent = ({ onOpenPayments }) => {
-    const { jamaah, packages, saveJamaah, deleteJamaah, loading, error } = useApi();
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [selectedJamaah, setSelectedJamaah] = useState(null);
-    const [filterPackage, setFilterPackage] = useState('');
-    const [searchTerm, setSearchTerm] = useState('');
+    const [confirmModal, setConfirmModal] = useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        onConfirm: () => {},
+    });
 
-    const handleOpenModal = (j = null) => {
-        setSelectedJamaah(j);
-        setIsModalOpen(true);
-    };
-    const handleCloseModal = () => {
-        setIsModalOpen(false);
-        setSelectedJamaah(null);
-    };
+    if (loading) return <Loading />;
+    if (error) return <ErrorMessage message={error} />;
 
-    const handleSave = async (j) => {
-        try {
-            await saveJamaah(j);
-            handleCloseModal();
-        } catch (e) {
-            alert(`Error: ${e.message}`);
-        }
-    };
-
-    const handleDelete = async (id) => {
-        if (window.confirm && window.confirm('Yakin ingin menghapus jemaah ini? Semua data pembayaran terkait akan ikut terhapus.')) {
-            try {
-                await deleteJamaah(id);
-            } catch (e) {
-                alert(`Error: ${e.message}`);
-            }
-        }
-    };
-
-    const getDocumentStatus = (j) => {
-        let count = 0;
-        if (j.is_passport_verified) count++;
-        if (j.is_ktp_verified) count++;
-        if (j.is_kk_verified) count++;
-        if (j.is_meningitis_verified) count++;
-        if (count === 4) return getStatusBadge('Lengkap');
-        if (count > 0) return getStatusBadge(`${count}/4`);
-        return getStatusBadge('Belum');
-    };
-
-    const filteredJamaah = useMemo(() => {
-        const s = searchTerm.toLowerCase();
-        return jamaah.filter(j => 
-            (!filterPackage || j.package_id == filterPackage) &&
-            (!s || 
-                j.full_name?.toLowerCase().includes(s) ||
-                j.id_number?.toLowerCase().includes(s) ||
-                j.phone?.toLowerCase().includes(s) ||
-                j.email?.toLowerCase().includes(s)
-            )
+    const filteredData = useMemo(() => {
+        return (data.jamaah || []).filter(item =>
+            item.full_name.toLowerCase().includes(filter.toLowerCase()) ||
+            (item.passport_number && item.passport_number.toLowerCase().includes(filter.toLowerCase())) ||
+            (item.phone_number && item.phone_number.toLowerCase().includes(filter.toLowerCase()))
         );
-    }, [jamaah, filterPackage, searchTerm]);
+    }, [data.jamaah, filter]);
+
+    const packagesMap = useMemo(() => {
+        return (data.packages || []).reduce((acc, pkg) => {
+            acc[pkg.id] = pkg;
+            return acc;
+        }, {});
+    }, [data.packages]);
+
+    const handleDelete = (id) => {
+        setConfirmModal({
+            isOpen: true,
+            title: 'Konfirmasi Hapus',
+            message: 'Apakah Anda yakin ingin menghapus data jemaah ini? Semua data terkait (pembayaran, dokumen) akan ikut terhapus.',
+            onConfirm: async () => {
+                try {
+                    await api.deleteItem('jamaah', id);
+                    api.refreshData('jamaah'); 
+                    setConfirmModal({ ...confirmModal, isOpen: false }); 
+                } catch (error) {
+                    console.error('Gagal menghapus jemaah:', error);
+                    setConfirmModal({ ...confirmModal, isOpen: false }); 
+                }
+            },
+        });
+    };
+
+    const handleEdit = (item) => {
+        setModal({ isOpen: true, data: item });
+    };
+
+    const handleOpenPayments = (item) => {
+        setPaymentsModal({ isOpen: true, jamaah: item });
+    };
+
+    const handleSuccess = () => {
+        setModal({ isOpen: false, data: null });
+        api.refreshData('jamaah');
+    };
 
     return (
-        <div className="bg-white shadow-lg rounded-lg p-6 relative min-h-[300px]">
-            <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                <h2 className="text-2xl font-semibold text-gray-800">Manajemen Jemaah</h2>
-                <Button variant="primary" onClick={() => handleOpenModal()}>
-                    <UserIcon size={18} /> Tambah Jemaah
-                </Button>
+        <div className="container mx-auto p-6">
+            <h1 className="text-3xl font-bold mb-6">Manajemen Jemaah</h1>
+            
+            <div className="flex justify-between items-center mb-6">
+                <input
+                    type="text"
+                    placeholder="Cari jemaah (nama, paspor, telepon)..."
+                    className="px-4 py-2 border rounded-lg w-1/3"
+                    value={filter}
+                    onChange={(e) => setFilter(e.target.value)}
+                />
+                <button
+                    onClick={() => setModal({ isOpen: true, data: null })}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700"
+                >
+                    + Tambah Jemaah Baru
+                </button>
             </div>
 
-            <div className="p-4 bg-gray-50 rounded-lg mb-6 flex flex-col md:flex-row gap-4 items-center">
-                <div className="flex-1 w-full md:w-auto">
-                    <FormLabel htmlFor="search-jemaah">Cari Jemaah</FormLabel>
-                    <div className="relative">
-                        <Input 
-                            id="search-jemaah" 
-                            type="text" 
-                            placeholder="Nama, NIK, HP, Email..." 
-                            value={searchTerm} 
-                            onChange={e => setSearchTerm(e.target.value)}
-                            className="pl-10"
-                        />
-                        <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    </div>
-                </div>
-                <div className="flex-1 w-full md:w-auto">
-                    <FormLabel htmlFor="filter-paket">Filter Paket</FormLabel>
-                    <Select id="filter-paket" value={filterPackage} onChange={e => setFilterPackage(e.target.value)}>
-                        <option value="">Semua Paket</option>
-                        {packages.map(pkg => (
-                            <option key={pkg.id} value={pkg.id}>{pkg.title} ({pkg.departure_date ? formatDate(pkg.departure_date) : 'N/A'})</option>
-                        ))}
-                    </Select>
-                </div>
-            </div>
-
-            {error && <ErrorMessage message={error} />}
-            {loading && <LoadingSpinner />}
-
-            {!loading && !error && (
-                <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Paket</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status Bayar</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sisa Tagihan</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dokumen</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Perlengkapan</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kontak</th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+            <div className="bg-white shadow-md rounded-lg overflow-hidden">
+                <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                        <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Lengkap</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kontak</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Paket</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pembayaran</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                        {filteredData.map(item => (
+                            <tr key={item.id} className="border-b hover:bg-gray-50">
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <div className="font-medium text-gray-900">{item.full_name}</div>
+                                    <div className="text-sm text-gray-500">{item.passport_number || 'No Paspor'}</div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <div className="text-sm text-gray-900">{item.phone_number}</div>
+                                    <div className="text-sm text-gray-500">{item.email}</div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                    {packagesMap[item.package_id]?.name || 'Belum ada paket'}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                    <div className="font-medium text-green-700">{formatCurrency(item.total_payment || 0)}</div>
+                                    <span className={`px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                        item.payment_status === 'paid' ? 'bg-green-100 text-green-800' :
+                                        item.payment_status === 'partial' ? 'bg-yellow-100 text-yellow-800' :
+                                        'bg-red-100 text-red-800'
+                                    }`}>
+                                        {item.payment_status}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <span className={`px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                        item.status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
+                                        'bg-gray-100 text-gray-800'
+                                    }`}>
+                                        {item.status}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <div className="flex items-center space-x-2">
+                                        <button onClick={() => handleOpenPayments(item)} className="text-green-600 hover:text-green-900">Bayar</button>
+                                        <button onClick={() => handleEdit(item)} className="text-blue-600 hover:text-blue-900">Edit</button>
+                                        <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:text-red-900">Hapus</button>
+                                    </div>
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {filteredJamaah.length === 0 && (
-                                <tr>
-                                    <td colSpan="8" className="px-6 py-4 text-center text-gray-500">Tidak ada jemaah yang cocok.</td>
-                                </tr>
-                            )}
-                            {filteredJamaah.map(j => {
-                                const sisa = (j.total_price || 0) - (j.amount_paid || 0);
-                                const pkg = packages.find(p => p.id == j.package_id);
-                                return (
-                                    <tr key={j.id} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{j.full_name}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{pkg?.title || 'N/A'}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(j.payment_status)}</td>
-                                        <td className={cn(
-                                            "px-6 py-4 whitespace-nowrap text-sm font-medium",
-                                            sisa > 0 ? 'text-red-600' : 'text-green-600'
-                                        )}>
-                                            {formatCurrency(sisa)}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">{getDocumentStatus(j)}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(j.equipment_status)}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{j.phone}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-1">
-                                            <Button variant="primary" size="sm" onClick={() => onOpenPayments(j)}>
-                                                <CreditCard size={14} /> Bayar
-                                            </Button>
-                                            <Button variant="icon" size="sm" onClick={() => handleOpenModal(j)} title="Edit Jemaah">
-                                                <Edit2 size={16} />
-                                            </Button>
-                                            <Button variant="icon" size="sm" className="text-red-600 hover:bg-red-100" onClick={() => handleDelete(j.id)} title="Hapus Jemaah">
-                                                <Trash2 size={16} />
-                                            </Button>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
+                        ))}
+                        {filteredData.length === 0 && (
+                            <tr>
+                                <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                                    Tidak ada data jemaah yang ditemukan.
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+            
+            {confirmModal.isOpen && (
+                <Modal
+                    title={confirmModal.title}
+                    onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                >
+                    <p className="mb-6">{confirmModal.message}</p>
+                    <div className="flex justify-end space-x-4">
+                        <button
+                            onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                            className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400"
+                        >
+                            Batal
+                        </button>
+                        <button
+                            onClick={confirmModal.onConfirm}
+                            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                        >
+                            Konfirmasi
+                        </button>
+                    </div>
+                </Modal>
             )}
 
-            <Modal
-                title={selectedJamaah ? 'Edit Jemaah' : 'Tambah Jemaah Baru'}
-                isOpen={isModalOpen}
-                onClose={handleCloseModal}
-                size="4xl"
-            >
-                <JamaahForm
-                    initialData={selectedJamaah}
-                    onSubmit={handleSave}
-                    onCancel={handleCloseModal}
-                    packages={packages}
+            {modal.isOpen && (
+                <Modal title={modal.data ? 'Edit Jemaah' : 'Tambah Jemaah Baru'} onClose={() => setModal({ isOpen: false, data: null })}>
+                    <JamaahForm data={modal.data} onSuccess={handleSuccess} />
+                </Modal>
+            )}
+
+            {paymentsModal.isOpen && (
+                <JamaahPaymentsModal 
+                    jamaah={paymentsModal.jamaah} 
+                    packageDetails={packagesMap[paymentsModal.jamaah.package_id]}
+                    onClose={() => setPaymentsModal({ isOpen: false, jamaah: null })} 
                 />
-            </Modal>
+            )}
         </div>
     );
 };
 
-export default JamaahComponent;
+export default Jamaah;

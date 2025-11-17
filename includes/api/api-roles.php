@@ -1,36 +1,35 @@
 <?php
-// Lokasi: includes/api/api-hr.php
+// Lokasi: includes/api/api-roles.php
 
 if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
 
 /**
- * Register API routes for HR.
+ * Register API routes for Roles (Divisi).
  *
  * @param string $namespace The API namespace.
  */
-function umh_register_hr_api_routes($namespace) {
+function umh_register_roles_api_routes($namespace) {
     global $wpdb;
-    $table_name = $wpdb->prefix . 'umh_hr';
-    $item_name = 'hr'; // 'hr'
+    $table_name = $wpdb->prefix . 'umh_roles';
+    $item_name = 'role'; // 'role'
 
-    // --- PERBAIKAN (Kategori 3, Poin 2): Tentukan Izin ---
-    // Dikelola oleh HR Staff, Admin, dan Owner
+    // Tentukan izin
+    // Hanya Owner dan Admin Staff yang bisa mengelola roles
     $permissions = array(
-        'get_items' => ['owner', 'admin_staff', 'hr_staff'],
-        'create_item' => ['owner', 'admin_staff', 'hr_staff'],
+        'get_items' => ['owner', 'admin_staff', 'hr_staff', 'finance_staff', 'marketing_staff'], // Semua staff bisa lihat
+        'create_item' => ['owner', 'admin_staff'],
         'get_item' => ['owner', 'admin_staff', 'hr_staff'],
-        'update_item' => ['owner', 'admin_staff', 'hr_staff'],
-        'delete_item' => ['owner', 'admin_staff'], // Hanya owner/admin yang bisa hapus
+        'update_item' => ['owner', 'admin_staff'],
+        'delete_item' => ['owner', 'admin_staff'],
     );
-    // --- AKHIR PERBAIKAN ---
 
     // Buat instance CRUD controller
     $crud_controller = new UMH_CRUD_Controller($table_name, $item_name, $permissions);
 
     // Register routes
-    register_rest_route($namespace, "/{$item_name}", array(
+    register_rest_route($namespace, "/{$item_name}s", array(
         array(
             'methods'             => WP_REST_Server::READABLE,
             'callback'            => array($crud_controller, 'get_items'),
@@ -48,7 +47,7 @@ function umh_register_hr_api_routes($namespace) {
         ),
     ));
 
-    register_rest_route($namespace, "/{$item_name}/(?P<id>\d+)", array(
+    register_rest_route($namespace, "/{$item_name}s/(?P<id>\d+)", array(
         array(
             'methods'             => WP_REST_Server::READABLE,
             'callback'            => array($crud_controller, 'get_item'),
@@ -76,5 +75,5 @@ function umh_register_hr_api_routes($namespace) {
 
 // Hook pendaftaran routes
 add_action('rest_api_init', function () {
-    umh_register_hr_api_routes('umh/v1');
+    umh_register_roles_api_routes('umh/v1');
 });

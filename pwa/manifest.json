@@ -1,22 +1,22 @@
 {
-  "name": "Umroh Manager",
-  "short_name": "UmrohMgr",
-  "description": "Aplikasi Manajemen Travel Umroh",
-  "start_url": "/wp-admin/admin.php?page=umroh-manager",
+  "name": "Umroh Manager Hybrid",
+  "short_name": "UMH",
+  "description": "Aplikasi Manajemen Travel Umroh Hybrid",
+  "start_url": "../wp-admin/admin.php?page=umroh-manager-hybrid",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#333333",
-  "scope": "/wp-admin/",
+  "theme_color": "#007cba",
   "icons": [
     {
-      "src": "icon-192x192.png",
+      "src": "../assets/images/login-bg.jpg.png",
+      "sizes": "192x192",
       "type": "image/png",
-      "sizes": "192x192"
+      "purpose": "any maskable"
     },
     {
-      "src": "icon-512x512.png",
-      "type": "image/png",
-      "sizes": "512x512"
+      "src": "../assets/images/login-bg.jpg.png",
+      "sizes": "512x512",
+      "type": "image/png"
     }
   ]
 }

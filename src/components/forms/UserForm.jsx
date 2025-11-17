@@ -1,95 +1,147 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { ModalFooter } from '../common/Modal';
-import { Input, Select, FormGroup, FormLabel } from '../common/FormUI';
+// Lokasi: src/components/forms/UserForm.jsx
 
-const UserForm = ({ initialData, onSubmit, onCancel }) => {
+import React, { useState, useEffect } from 'react';
+// --- PERBAIKAN: Path import absolut dari src/ ---
+import { useApi } from 'context/ApiContext'; 
+import { Input, Select } from 'components/common/FormUI'; 
+import Loading from 'components/common/Loading'; 
+import ErrorMessage from 'components/common/ErrorMessage';
+// --- AKHIR PERBAIKAN ---
+
+const UserForm = ({ data, onSuccess }) => {
+    const api = useApi(); 
     const [formData, setFormData] = useState({
+        user_email: '',
+        user_pass: '',
         full_name: '',
-        email: '',
-        role: 'hr_staff',
-        password: '',
-        phone: '',
-        status: 'active',
+        role: 'marketing_staff', // Default role
     });
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState(null);
 
-    const isEdit = useMemo(() => !!initialData, [initialData]);
+    const isEditMode = Boolean(data && data.id);
 
     useEffect(() => {
-        if (initialData) {
+        if (isEditMode) {
             setFormData({
-                full_name: initialData.full_name || '',
-                email: initialData.email || '',
-                role: initialData.role || 'hr_staff',
-                password: '', // Jangan pernah tampilkan hash
-                phone: initialData.phone || '',
-                status: initialData.status || 'active',
+                user_email: data.user_email || '',
+                user_pass: '', // Jangan tampilkan password lama
+                full_name: data.full_name || '',
+                role: data.role || 'marketing_staff',
             });
         } else {
-             setFormData({
-                full_name: '', email: '', role: 'hr_staff',
-                password: '', phone: '', status: 'active',
+            // Reset form untuk user baru
+            setFormData({
+                user_email: '',
+                user_pass: '',
+                full_name: '',
+                role: 'marketing_staff',
             });
         }
-    }, [initialData]);
+    }, [data, isEditMode]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        onSubmit(formData);
+        setIsSubmitting(true);
+        setError(null);
+
+        if (!isEditMode && !formData.user_pass) {
+            setError('Password wajib diisi untuk pengguna baru.');
+            setIsSubmitting(false);
+            return;
+        }
+
+        try {
+            const payload = { ...formData, id: data ? data.id : null };
+            await api.createOrUpdate('user', payload); // Menggunakan endpoint 'user'
+            onSuccess(); // Tutup modal dan refresh data
+        } catch (err) {
+            setError(err.message || 'Gagal menyimpan pengguna.');
+            console.error(err);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
+    const { data: apiData, loading: apiLoading } = api;
+    const roleOptions = apiData.roles || [];
+
     return (
-        <form onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormGroup>
-                    <FormLabel htmlFor="full_name">Nama Lengkap</FormLabel>
-                    <Input type="text" name="full_name" id="full_name" value={formData.full_name} onChange={handleChange} required />
-                </FormGroup>
-                <FormGroup>
-                    <FormLabel htmlFor="email">Email (untuk login)</FormLabel>
-                    <Input type="email" name="email" id="email" value={formData.email} onChange={handleChange} required />
-                </FormGroup>
-                
-                <FormGroup>
-                    <FormLabel htmlFor="role">Peran (Role)</FormLabel>
-                    <Select name="role" id="role" value={formData.role} onChange={handleChange} required>
+        <form onSubmit={handleSubmit} className="space-y-6">
+            {error && <ErrorMessage message={error} />}
+            
+            <Input
+                label="Email Pengguna"
+                name="user_email"
+                type="email"
+                value={formData.user_email}
+                onChange={handleChange}
+                required
+                disabled={isEditMode} // Email tidak bisa diubah
+            />
+            
+            <Input
+                label="Password"
+                name="user_pass"
+                type="password"
+                value={formData.user_pass}
+                onChange={handleChange}
+                placeholder={isEditMode ? 'Kosongkan jika tidak ingin mengubah password' : ''}
+                required={!isEditMode} // Wajib untuk user baru
+            />
+
+            <Input
+                label="Nama Lengkap"
+                name="full_name"
+                value={formData.full_name}
+                onChange={handleChange}
+                required
+            />
+
+            <Select
+                label="Role (Divisi)"
+                name="role"
+                value={formData.role}
+                onChange={handleChange}
+                required
+                disabled={apiLoading}
+            >
+                <option value="" disabled>Pilih Role...</option>
+                {apiLoading ? (
+                    <option value="" disabled>Memuat roles...</option>
+                ) : (
+                    roleOptions.map(role => (
+                        <option key={role.role_key} value={role.role_key}>
+                            {role.display_name}
+                        </option>
+                    ))
+                )}
+                {(!apiLoading && roleOptions.length === 0) && (
+                    <>
+                        <option value="owner">Owner</option>
                         <option value="admin_staff">Admin Staff</option>
                         <option value="finance_staff">Finance Staff</option>
-                        <option value="hr_staff">HR Staff</option>
                         <option value="marketing_staff">Marketing Staff</option>
-                        <option value="owner">Owner</option>
-                    </Select>
-                </FormGroup>
-                <FormGroup>
-                    <FormLabel htmlFor="phone">No. Telepon</FormLabel>
-                    <Input type="tel" name="phone" id="phone" value={formData.phone} onChange={handleChange} />
-                </FormGroup>
+                        <option value="hr_staff">HR Staff</option>
+                    </>
+                )}
+            </Select>
 
-                <FormGroup>
-                    <FormLabel htmlFor="password">Password</FormLabel>
-                    <Input 
-                        type="password" 
-                        name="password" 
-                        id="password" 
-                        value={formData.password} 
-                        onChange={handleChange} 
-                        placeholder={isEdit ? "Isi untuk mengubah" : ""}
-                        required={!isEdit} 
-                    />
-                </FormGroup>
-                <FormGroup>
-                    <FormLabel htmlFor="status">Status Akun</FormLabel>
-                    <Select name="status" id="status" value={formData.status} onChange={handleChange} required>
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                    </Select>
-                </FormGroup>
+
+            <div className="flex justify-end pt-6">
+                <button
+                    type="submit"
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+                    disabled={isSubmitting}
+                >
+                    {isSubmitting ? <Loading text="Menyimpan..." /> : (isEditMode ? 'Update Pengguna' : 'Simpan Pengguna')}
+                </button>
             </div>
-            <ModalFooter onCancel={onCancel} />
         </form>
     );
 };

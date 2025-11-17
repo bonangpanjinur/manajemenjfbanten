@@ -1,34 +1,81 @@
 <?php
-// File: includes/api/api-hotels.php
-// Menggunakan CRUD Controller untuk mengelola Hotel.
+// Lokasi: includes/api/api-hotels.php
 
 if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
 
-// 1. Definisikan Skema Data
-$hotels_schema = [
-    'name'    => ['type' => 'string', 'required' => true, 'sanitize_callback' => 'sanitize_text_field'],
-    'address' => ['type' => 'string', 'required' => false, 'sanitize_callback' => 'sanitize_textarea_field'],
-    'city'    => ['type' => 'string', 'required' => false, 'sanitize_callback' => 'sanitize_text_field'],
-    'country' => ['type' => 'string', 'required' => false, 'sanitize_callback' => 'sanitize_text_field'],
-    'phone'   => ['type' => 'string', 'required' => false, 'sanitize_callback' => 'sanitize_text_field'],
-    'email'   => ['type' => 'string', 'format' => 'email', 'required' => false, 'sanitize_callback' => 'sanitize_email'],
-    'rating'  => ['type' => 'integer', 'required' => false, 'sanitize_callback' => 'absint'],
-];
+/**
+ * Register API routes for Hotels.
+ *
+ * @param string $namespace The API namespace.
+ */
+function umh_register_hotels_api_routes($namespace) {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'umh_hotels';
+    $item_name = 'hotel'; // 'hotel'
 
-// 2. Definisikan Izin
-$hotels_permissions = [
-    'get_items'    => ['owner', 'admin_staff'],
-    'get_item'     => ['owner', 'admin_staff'],
-    'create_item'  => ['owner', 'admin_staff'],
-    'update_item'  => ['owner', 'admin_staff'],
-    'delete_item'  => ['owner'],
-];
+    // --- PERBAIKAN (Kategori 3, Poin 2): Tentukan Izin ---
+    // Hotel adalah master data, hanya dikelola Owner/Admin
+    // Role lain (cth: marketing) bisa melihatnya saat membuat paket
+    $permissions = array(
+        'get_items' => ['owner', 'admin_staff', 'marketing_staff', 'finance_staff'],
+        'create_item' => ['owner', 'admin_staff'],
+        'get_item' => ['owner', 'admin_staff', 'marketing_staff', 'finance_staff'],
+        'update_item' => ['owner', 'admin_staff'],
+        'delete_item' => ['owner', 'admin_staff'],
+    );
+    // --- AKHIR PERBAIKAN ---
 
-// 3. Inisialisasi Controller
-new UMH_CRUD_Controller('hotels', 'umh_hotels', $hotels_schema, $hotels_permissions);
+    // Buat instance CRUD controller
+    $crud_controller = new UMH_CRUD_Controller($table_name, $item_name, $permissions);
 
-// TODO: Anda perlu membuat endpoint kustom untuk Hotel Bookings
-// (tabel 'umh_hotel_bookings') karena ini adalah tabel relasi yang
-// lebih kompleks dan mungkin tidak cocok dengan CRUD sederhana.
+    // Register routes
+    register_rest_route($namespace, "/{$item_name}s", array(
+        array(
+            'methods'             => WP_REST_Server::READABLE,
+            'callback'            => array($crud_controller, 'get_items'),
+            'permission_callback' => function ($request) use ($permissions) {
+                return umh_check_api_permission($request, $permissions['get_items']);
+            },
+        ),
+        array(
+            'methods'             => WP_REST_Server::CREATABLE,
+            'callback'            => array($crud_controller, 'create_item'),
+            'permission_callback' => function ($request) use ($permissions) {
+                return umh_check_api_permission($request, $permissions['create_item']);
+            },
+            'args' => $crud_controller->get_endpoint_args_for_item_schema(WP_REST_Server::CREATABLE),
+        ),
+    ));
+
+    register_rest_route($namespace, "/{$item_name}s/(?P<id>\d+)", array(
+        array(
+            'methods'             => WP_REST_Server::READABLE,
+            'callback'            => array($crud_controller, 'get_item'),
+            'permission_callback' => function ($request) use ($permissions) {
+                return umh_check_api_permission($request, $permissions['get_item']);
+            },
+        ),
+        array(
+            'methods'             => WP_REST_Server::EDITABLE,
+            'callback'            => array($crud_controller, 'update_item'),
+            'permission_callback' => function ($request) use ($permissions) {
+                return umh_check_api_permission($request, $permissions['update_item']);
+            },
+            'args' => $crud_controller->get_endpoint_args_for_item_schema(WP_REST_Server::EDITABLE),
+        ),
+        array(
+            'methods'             => WP_REST_Server::DELETABLE,
+            'callback'            => array($crud_controller, 'delete_item'),
+            'permission_callback' => function ($request) use ($permissions) {
+                return umh_check_api_permission($request, $permissions['delete_item']);
+            },
+        ),
+    ));
+}
+
+// Hook pendaftaran routes
+add_action('rest_api_init', function () {
+    umh_register_hotels_api_routes('umh/v1');
+});

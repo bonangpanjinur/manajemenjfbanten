@@ -1,44 +1,80 @@
 <?php
-// File: includes/api/api-marketing.php
-// Menggunakan CRUD Controller untuk mengelola Leads dan Kampanye.
+// Lokasi: includes/api/api-marketing.php
 
 if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
 
-// --- 1. Controller untuk KAMPANYE (Endpoint: /marketing/campaigns) ---
+/**
+ * Register API routes for Marketing (Leads).
+ *
+ * @param string $namespace The API namespace.
+ */
+function umh_register_marketing_api_routes($namespace) {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'umh_marketing';
+    $item_name = 'marketing'; // 'marketing'
 
-$campaigns_schema = [
-    'name'       => ['type' => 'string', 'required' => true, 'sanitize_callback' => 'sanitize_text_field'],
-    'type'       => ['type' => 'string', 'required' => false, 'sanitize_callback' => 'sanitize_text_field'],
-    'start_date' => ['type' => 'string', 'format' => 'date', 'required' => false],
-    'end_date'   => ['type' => 'string', 'format' => 'date', 'required' => false],
-    'budget'     => ['type' => 'number', 'required' => false],
-    'status'     => ['type' => 'string', 'required' => false, 'default' => 'planned', 'enum' => ['planned', 'active', 'completed']],
-];
+    // --- PERBAIKAN (Kategori 3, Poin 2): Tentukan Izin ---
+    // Marketing staff bisa CRUD, role lain bisa melihat
+    $permissions = array(
+        'get_items' => ['owner', 'admin_staff', 'marketing_staff', 'finance_staff'],
+        'create_item' => ['owner', 'admin_staff', 'marketing_staff'],
+        'get_item' => ['owner', 'admin_staff', 'marketing_staff', 'finance_staff'],
+        'update_item' => ['owner', 'admin_staff', 'marketing_staff'],
+        'delete_item' => ['owner', 'admin_staff'], // Hanya owner/admin yang bisa hapus
+    );
+    // --- AKHIR PERBAIKAN ---
 
-$marketing_permissions = [
-    'get_items'    => ['owner', 'marketing_staff', 'admin_staff'],
-    'get_item'     => ['owner', 'marketing_staff', 'admin_staff'],
-    'create_item'  => ['owner', 'marketing_staff'],
-    'update_item'  => ['owner', 'marketing_staff'],
-    'delete_item'  => ['owner'],
-];
+    // Buat instance CRUD controller
+    $crud_controller = new UMH_CRUD_Controller($table_name, $item_name, $permissions);
 
-new UMH_CRUD_Controller('marketing/campaigns', 'umh_marketing_campaigns', $campaigns_schema, $marketing_permissions);
+    // Register routes
+    register_rest_route($namespace, "/{$item_name}", array(
+        array(
+            'methods'             => WP_REST_Server::READABLE,
+            'callback'            => array($crud_controller, 'get_items'),
+            'permission_callback' => function ($request) use ($permissions) {
+                return umh_check_api_permission($request, $permissions['get_items']);
+            },
+        ),
+        array(
+            'methods'             => WP_REST_Server::CREATABLE,
+            'callback'            => array($crud_controller, 'create_item'),
+            'permission_callback' => function ($request) use ($permissions) {
+                return umh_check_api_permission($request, $permissions['create_item']);
+            },
+            'args' => $crud_controller->get_endpoint_args_for_item_schema(WP_REST_Server::CREATABLE),
+        ),
+    ));
 
+    register_rest_route($namespace, "/{$item_name}/(?P<id>\d+)", array(
+        array(
+            'methods'             => WP_REST_Server::READABLE,
+            'callback'            => array($crud_controller, 'get_item'),
+            'permission_callback' => function ($request) use ($permissions) {
+                return umh_check_api_permission($request, $permissions['get_item']);
+            },
+        ),
+        array(
+            'methods'             => WP_REST_Server::EDITABLE,
+            'callback'            => array($crud_controller, 'update_item'),
+            'permission_callback' => function ($request) use ($permissions) {
+                return umh_check_api_permission($request, $permissions['update_item']);
+            },
+            'args' => $crud_controller->get_endpoint_args_for_item_schema(WP_REST_Server::EDITABLE),
+        ),
+        array(
+            'methods'             => WP_REST_Server::DELETABLE,
+            'callback'            => array($crud_controller, 'delete_item'),
+            'permission_callback' => function ($request) use ($permissions) {
+                return umh_check_api_permission($request, $permissions['delete_item']);
+            },
+        ),
+    ));
+}
 
-// --- 2. Controller untuk LEADS (Endpoint: /marketing/leads) ---
-
-$leads_schema = [
-    'campaign_id'         => ['type' => 'integer', 'required' => false, 'sanitize_callback' => 'absint'],
-    'full_name'           => ['type' => 'string', 'required' => true, 'sanitize_callback' => 'sanitize_text_field'],
-    'email'               => ['type' => 'string', 'format' => 'email', 'required' => false, 'sanitize_callback' => 'sanitize_email'],
-    'phone'               => ['type' => 'string', 'required' => false, 'sanitize_callback' => 'sanitize_text_field'],
-    'source'              => ['type' => 'string', 'required' => false, 'sanitize_callback' => 'sanitize_text_field'],
-    'status'              => ['type' => 'string', 'required' => false, 'default' => 'new', 'enum' => ['new', 'contacted', 'qualified', 'unqualified', 'converted']],
-    'assigned_to_user_id' => ['type' => 'integer', 'required' => false, 'sanitize_callback' => 'absint'],
-];
-
-// Izinnya sama dengan kampanye
-new UMH_CRUD_Controller('marketing/leads', 'umh_leads', $leads_schema, $marketing_permissions);
+// Hook pendaftaran routes
+add_action('rest_api_init', function () {
+    umh_register_marketing_api_routes('umh/v1');
+});

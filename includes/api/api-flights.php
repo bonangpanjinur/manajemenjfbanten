@@ -1,31 +1,81 @@
 <?php
-// File: includes/api/api-flights.php
-// PERBAIKAN: Menggunakan CRUD Controller untuk Penerbangan.
+// Lokasi: includes/api/api-flights.php
 
 if (!defined('ABSPATH')) {
-    exit; // Exit if accessed directly.
+    exit; // Exit if accessed directly
 }
 
-// 1. Definisikan Skema Data
-$flights_schema = [
-    'airline'                => ['type' => 'string', 'required' => true, 'sanitize_callback' => 'sanitize_text_field'],
-    'flight_number'          => ['type' => 'string', 'required' => true, 'sanitize_callback' => 'sanitize_text_field'],
-    'departure_airport_code' => ['type' => 'string', 'required' => true, 'sanitize_callback' => 'sanitize_text_field'],
-    'arrival_airport_code'   => ['type' => 'string', 'required' => true, 'sanitize_callback' => 'sanitize_text_field'],
-    'departure_time'         => ['type' => 'string', 'format' => 'date-time', 'required' => true],
-    'arrival_time'           => ['type' => 'string', 'format' => 'date-time', 'required' => true],
-    'cost_per_seat'          => ['type' => 'number', 'required' => false],
-    'total_seats'            => ['type' => 'integer', 'required' => false, 'sanitize_callback' => 'absint'],
-];
+/**
+ * Register API routes for Flights.
+ *
+ * @param string $namespace The API namespace.
+ */
+function umh_register_flights_api_routes($namespace) {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'umh_flights';
+    $item_name = 'flight'; // 'flight'
 
-// 2. Definisikan Izin
-$flights_permissions = [
-    'get_items'    => ['owner', 'admin_staff'],
-    'get_item'     => ['owner', 'admin_staff'],
-    'create_item'  => ['owner', 'admin_staff'],
-    'update_item'  => ['owner', 'admin_staff'],
-    'delete_item'  => ['owner'],
-];
+    // --- PERBAIKAN (Kategori 3, Poin 2): Tentukan Izin ---
+    // Flights adalah master data, hanya dikelola Owner/Admin
+    // Role lain (cth: marketing) bisa melihatnya saat membuat paket
+    $permissions = array(
+        'get_items' => ['owner', 'admin_staff', 'marketing_staff', 'finance_staff'],
+        'create_item' => ['owner', 'admin_staff'],
+        'get_item' => ['owner', 'admin_staff', 'marketing_staff', 'finance_staff'],
+        'update_item' => ['owner', 'admin_staff'],
+        'delete_item' => ['owner', 'admin_staff'],
+    );
+    // --- AKHIR PERBAIKAN ---
 
-// 3. Inisialisasi Controller
-new UMH_CRUD_Controller('flights', 'umh_flights', $flights_schema, $flights_permissions);
+    // Buat instance CRUD controller
+    $crud_controller = new UMH_CRUD_Controller($table_name, $item_name, $permissions);
+
+    // Register routes
+    register_rest_route($namespace, "/{$item_name}s", array(
+        array(
+            'methods'             => WP_REST_Server::READABLE,
+            'callback'            => array($crud_controller, 'get_items'),
+            'permission_callback' => function ($request) use ($permissions) {
+                return umh_check_api_permission($request, $permissions['get_items']);
+            },
+        ),
+        array(
+            'methods'             => WP_REST_Server::CREATABLE,
+            'callback'            => array($crud_controller, 'create_item'),
+            'permission_callback' => function ($request) use ($permissions) {
+                return umh_check_api_permission($request, $permissions['create_item']);
+            },
+            'args' => $crud_controller->get_endpoint_args_for_item_schema(WP_REST_Server::CREATABLE),
+        ),
+    ));
+
+    register_rest_route($namespace, "/{$item_name}s/(?P<id>\d+)", array(
+        array(
+            'methods'             => WP_REST_Server::READABLE,
+            'callback'            => array($crud_controller, 'get_item'),
+            'permission_callback' => function ($request) use ($permissions) {
+                return umh_check_api_permission($request, $permissions['get_item']);
+            },
+        ),
+        array(
+            'methods'             => WP_REST_Server::EDITABLE,
+            'callback'            => array($crud_controller, 'update_item'),
+            'permission_callback' => function ($request) use ($permissions) {
+                return umh_check_api_permission($request, $permissions['update_item']);
+            },
+            'args' => $crud_controller->get_endpoint_args_for_item_schema(WP_REST_Server::EDITABLE),
+        ),
+        array(
+            'methods'             => WP_REST_Server::DELETABLE,
+            'callback'            => array($crud_controller, 'delete_item'),
+            'permission_callback' => function ($request) use ($permissions) {
+                return umh_check_api_permission($request, $permissions['delete_item']);
+            },
+        ),
+    ));
+}
+
+// Hook pendaftaran routes
+add_action('rest_api_init', function () {
+    umh_register_flights_api_routes('umh/v1');
+});

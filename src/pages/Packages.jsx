@@ -1,131 +1,188 @@
-import React, { useState } from 'react';
-import { useApi } from '../context/ApiContext'; // .jsx dihapus
-import PackageForm from '../components/forms/PackageForm'; // .jsx dihapus
-import { Modal } from '../components/common/Modal'; // .jsx dihapus
-import { LoadingSpinner } from '../components/common/Loading'; // .jsx dihapus
-import { ErrorMessage } from '../components/common/ErrorMessage'; // .jsx dihapus
-import { Button } from '../components/common/FormUI'; // .jsx dihapus
-import { formatCurrency, formatDate, getStatusBadge } from '../utils/helpers'; // .js dihapus
-import { Plus, Edit2, Trash2 } from 'lucide-react';
+// Lokasi: src/pages/Packages.jsx
 
-const PackagesComponent = () => {
-    const { packages, savePackage, deletePackage, loading, error } = useApi();
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [selectedPackage, setSelectedPackage] = useState(null);
+import React, { useState, useMemo } from 'react';
+// --- PERBAIKAN: Path import relatif ---
+import { useApi } from '../context/ApiContext';
+import Loading from '../components/common/Loading';
+import ErrorMessage from '../components/common/ErrorMessage';
+import Modal from '../components/common/Modal';
+import PackageForm from '../components/forms/PackageForm';
+import { formatCurrency, formatDate } from '../utils/helpers';
+// --- AKHIR PERBAIKAN ---
 
-    const handleOpenModal = (pkg = null) => {
-        setSelectedPackage(pkg);
-        setIsModalOpen(true);
-    };
+const Packages = () => {
+    const api = useApi();
+    const { data, loading, error } = api;
+    const [filter, setFilter] = useState('');
+    const [modal, setModal] = useState({ isOpen: false, data: null });
 
-    const handleCloseModal = () => {
-        setIsModalOpen(false);
-        setSelectedPackage(null);
-    };
+    const [confirmModal, setConfirmModal] = useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        onConfirm: () => {},
+    });
 
-    const handleSave = async (pkg) => {
+    if (loading) return <Loading />;
+    if (error) return <ErrorMessage message={error} />;
+
+    const filteredData = useMemo(() => {
+        return (data.packages || []).filter(item =>
+            item.name.toLowerCase().includes(filter.toLowerCase()) ||
+            (item.description && item.description.toLowerCase().includes(filter.toLowerCase()))
+        );
+    }, [data.packages, filter]);
+
+    const getLowestPrice = (priceDetails) => {
+        if (!priceDetails) return 0;
         try {
-            await savePackage(pkg);
-            handleCloseModal();
-        } catch (error) {
-            alert(`Error: ${error.message}`);
-        }
-    };
-
-    const handleDelete = async (id) => {
-        if (window.confirm && window.confirm('Yakin ingin menghapus paket ini?')) {
-            try {
-                await deletePackage(id);
-            } catch (error) {
-                alert(`Error: ${error.message}`);
+            let details;
+            if (typeof priceDetails === 'string') {
+                details = JSON.parse(priceDetails);
+            } else {
+                details = priceDetails;
             }
-        }
-    };
-    
-    const getLowestPrice = (priceDetailsJson) => {
-        if (!priceDetailsJson) return 0;
-        try {
-            const prices = JSON.parse(priceDetailsJson);
-            // Cari harga valid terendah
-            const validPrices = [prices.quad, prices.triple, prices.double].filter(p => p && parseFloat(p) > 0);
-            if (validPrices.length === 0) return 0;
-            return Math.min(...validPrices.map(p => parseFloat(p)));
-        } catch(e) {
+            
+            const prices = Array.isArray(details)
+                ? details.map(d => parseFloat(d.price))
+                : Object.values(details).map(p => parseFloat(p));
+                
+            if (prices.length === 0) return 0;
+            return Math.min(...prices.filter(p => p > 0));
+        } catch (e) {
+            console.error('Gagal parse harga:', priceDetails, e);
             return 0;
         }
     };
 
+    const handleDelete = (id) => {
+        setConfirmModal({
+            isOpen: true,
+            title: 'Konfirmasi Hapus',
+            message: 'Apakah Anda yakin ingin menghapus paket ini?',
+            onConfirm: async () => {
+                try {
+                    await api.deleteItem('package', id);
+                    api.refreshData('packages'); 
+                    setConfirmModal({ ...confirmModal, isOpen: false });
+                } catch (error) {
+                    console.error('Gagal menghapus paket:', error);
+                    setConfirmModal({ ...confirmModal, isOpen: false });
+                }
+            },
+        });
+    };
+
+    const handleEdit = (item) => {
+        setModal({ isOpen: true, data: item });
+    };
+
+    const handleSuccess = () => {
+        setModal({ isOpen: false, data: null });
+        api.refreshData('packages');
+    };
+
     return (
-        <div className="bg-white shadow-lg rounded-lg p-6 relative min-h-[300px]">
-            <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                <h2 className="text-2xl font-semibold text-gray-800">Manajemen Paket</h2>
-                <Button variant="primary" onClick={() => handleOpenModal()}>
-                    <Plus size={18} /> Tambah Paket
-                </Button>
+        <div className="container mx-auto p-6">
+            <h1 className="text-3xl font-bold mb-6">Manajemen Paket Umroh</h1>
+            
+            <div className="flex justify-between items-center mb-6">
+                <input
+                    type="text"
+                    placeholder="Cari paket (nama, deskripsi)..."
+                    className="px-4 py-2 border rounded-lg w-1/3"
+                    value={filter}
+                    onChange={(e) => setFilter(e.target.value)}
+                />
+                <button
+                    onClick={() => setModal({ isOpen: true, data: null })}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700"
+                >
+                    + Tambah Paket Baru
+                </button>
+            </div>
+
+            <div className="bg-white shadow-md rounded-lg overflow-hidden">
+                <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                        <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Paket</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Durasi</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga Mulai</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                        {filteredData.map(item => (
+                            <tr key={item.id} className="border-b hover:bg-gray-50">
+                                <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{item.name}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{item.duration}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-green-700 font-semibold">
+                                    {formatCurrency(getLowestPrice(item.price_details))}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                    {item.start_date ? `${formatDate(item.start_date)} - ${formatDate(item.end_date)}` : 'Fleksibel'}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <span className={`px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                        item.status === 'published' ? 'bg-green-100 text-green-800' :
+                                        item.status === 'draft' ? 'bg-yellow-100 text-yellow-800' :
+                                        'bg-gray-100 text-gray-800'
+                                    }`}>
+                                        {item.status}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <div className="flex items-center space-x-2">
+                                        <button onClick={() => handleEdit(item)} className="text-blue-600 hover:text-blue-900">Edit</button>
+                                        <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:text-red-900">Hapus</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                        {filteredData.length === 0 && (
+                            <tr>
+                                <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                                    Tidak ada data paket yang ditemukan.
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
             </div>
             
-            {error && <ErrorMessage message={error} />}
-            {loading && <LoadingSpinner />}
-
-            {!loading && !error && (
-                <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Judul Paket</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tgl Berangkat</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Durasi</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kota</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga Mulai</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Slot</th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {packages.length === 0 && (
-                                <tr>
-                                    <td colSpan="8" className="px-6 py-4 text-center text-gray-500">Tidak ada paket.</td>
-                                </tr>
-                            )}
-                            {packages.map(pkg => (
-                                <tr key={pkg.id} className="hover:bg-gray-50">
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{pkg.title}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(pkg.status)}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{formatDate(pkg.departure_date)}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{pkg.duration} Hari</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{pkg.departure_city}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{formatCurrency(getLowestPrice(pkg.price_details))}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{pkg.slots_filled || 0} / {pkg.slots_available || 0}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                                        <Button variant="icon" size="sm" onClick={() => handleOpenModal(pkg)} title="Edit Paket">
-                                            <Edit2 size={16} />
-                                        </Button>
-                                        <Button variant="icon" size="sm" className="text-red-600 hover:bg-red-100" onClick={() => handleDelete(pkg.id)} title="Hapus Paket">
-                                            <Trash2 size={16} />
-                                        </Button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+            {confirmModal.isOpen && (
+                <Modal
+                    title={confirmModal.title}
+                    onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                >
+                    <p className="mb-6">{confirmModal.message}</p>
+                    <div className="flex justify-end space-x-4">
+                        <button
+                            onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                            className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400"
+                        >
+                            Batal
+                        </button>
+                        <button
+                            onClick={confirmModal.onConfirm}
+                            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                        >
+                            Konfirmasi
+                        </button>
+                    </div>
+                </Modal>
             )}
 
-            <Modal
-                title={selectedPackage ? 'Edit Paket' : 'Tambah Paket Baru'}
-                isOpen={isModalOpen}
-                onClose={handleCloseModal}
-                size="4xl"
-            >
-                <PackageForm
-                    initialData={selectedPackage}
-                    onSubmit={handleSave}
-                    onCancel={handleCloseModal}
-                />
-            </Modal>
+            {modal.isOpen && (
+                <Modal title={modal.data ? 'Edit Paket' : 'Tambah Paket Baru'} onClose={() => setModal({ isOpen: false, data: null })}>
+                    <PackageForm data={modal.data} onSuccess={handleSuccess} />
+                </Modal>
+            )}
         </div>
     );
 };
 
-export default PackagesComponent;
+export default Packages;

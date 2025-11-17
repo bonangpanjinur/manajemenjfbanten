@@ -1,30 +1,21 @@
 {
-  "name": "umroh-dashboard-react",
-  "version": "0.1.0",
-  "private": true,
+  "name": "umroh-manager-hybrid-src",
+  "version": "1.0.0",
+  "description": "Source files for Umroh Manager Hybrid React App",
+  "main": "src/index.jsx",
+  "scripts": {
+    "start": "wp-scripts start",
+    "build": "wp-scripts build"
+  },
   "dependencies": {
-    "lucide-react": "^0.309.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "recharts": "^2.10.3"
+    "recharts": "^2.1.14",
+    "react-select": "^5.8.0"
   },
   "devDependencies": {
-    "@wordpress/scripts": "^27.2.0"
+    "@wordpress/scripts": "latest"
   },
-  "scripts": {
-    "start": "wp-scripts start --webpack-src-dir=src --output-path=build",
-    "build": "wp-scripts build --webpack-src-dir=src --output-path=build"
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
-  }
+  "author": "Bonang Panji Nur",
+  "license": "GPL-2.0-or-later"
 }
