@@ -4,19 +4,20 @@
 /* === BAGIAN 1: KUSTOMISASI HALAMAN LOGIN === */
 
 body.login {
-    /* Gunakan gambar background dari user */
-    background-image: url('../images/login-bg.jpg') !important;
-    background-position: center center !important;
-    background-size: cover !important;
+    /* PERBAIKAN: Menggunakan warna solid agar lebih bersih */
+    background-color: #f0f2f5 !important;
+    /* background-image: url('../images/umh-logo.png') !important; */
+    /* background-position: center center !important; */
+    /* background-size: cover !important; */
 }
 
 body.login h1 a {
-    /* Gunakan logo dari user */
-    background-image: url('../images/logo-login.png'); 
+    /* PERBAIKAN: Menggunakan logo baru */
+    background-image: url('../images/umh-logo.png'); 
     background-size: contain;
     background-position: center bottom;
-    width: 300px; /* Sesuaikan lebar */
-    height: 90px; /* Sesuaikan tinggi */
+    width: 200px; /* Sesuaikan lebar */
+    height: 200px; /* Sesuaikan tinggi */
     margin-bottom: 20px;
 }
 

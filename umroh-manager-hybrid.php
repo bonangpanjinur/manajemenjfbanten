@@ -163,13 +163,14 @@ function umh_admin_enqueue_scripts($hook) {
     $primary_role = !empty($user_roles) ? $user_roles[0] : 'subscriber';
 
     // --- PERBAIKAN: Mengubah nama objek dan kunci agar sesuai dengan build/index.js ---
+    // --- PERBAIKAN: Logika 'is_wp_admin' diperbaiki ---
     wp_localize_script(
         'umh-admin-react-app',
         'umh_wp_data', // DIUBAH: dari 'umhApiSettings'
         array(
             'api_url' => esc_url_raw(rest_url('umh/v1')), // DIUBAH: dari 'apiUrl'
             'api_nonce' => wp_create_nonce('wp_rest'), // DIUBAH: dari 'nonce'
-            'is_wp_admin' => true, // DIUBAH: dari 'isWpAdmin'
+            'is_wp_admin' => !umh_is_staff_user(), // DIPERBAIKI: true jika BUKAN staff
             'current_user' => array( // DIUBAH: dari 'currentUser'
                 'id' => $current_user->ID,
                 'user_email' => $current_user->user_email,

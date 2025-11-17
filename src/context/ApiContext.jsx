@@ -1,12 +1,13 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { useAuth } from './AuthContext';
+import { useAuth } from './AuthContext.jsx'; // PERBAIKAN: Menambahkan ekstensi .jsx
 
 const ApiContext = createContext();
 
 export const useApi = () => useContext(ApiContext);
 
 export const ApiProvider = ({ children }) => {
-    const { nonce, user, capabilities } = useAuth();
+    // PERBAIKAN: Ambil 'apiUrl' dari AuthContext
+    const { nonce, user, capabilities, apiUrl } = useAuth();
     const [data, setData] = useState({
         packages: [],
         jamaah: [],
@@ -25,10 +26,12 @@ export const ApiProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    const apiUrl = window.umhApiSettings.apiUrl;
+    // PERBAIKAN: Hapus baris ini, karena 'apiUrl' sudah didapat dari 'useAuth()'
+    // const apiUrl = window.umhApiSettings.apiUrl;
 
     const fetchData = async (key) => {
         try {
+            // PERBAIKAN: 'apiUrl' sekarang berasal dari context
             const response = await fetch(`${apiUrl}/${key}`, {
                 headers: {
                     'X-WP-Nonce': nonce,
@@ -102,6 +105,7 @@ export const ApiProvider = ({ children }) => {
         setError(null);
         try {
             const isUpdate = itemData.id;
+            // PERBAIKAN: 'apiUrl' sekarang berasal dari context
             const url = isUpdate ? `${apiUrl}/${key}/${itemData.id}` : `${apiUrl}/${key}`;
             const method = isUpdate ? 'PUT' : 'POST';
 
@@ -136,6 +140,7 @@ export const ApiProvider = ({ children }) => {
         setLoading(true);
         setError(null);
         try {
+            // PERBAIKAN: 'apiUrl' sekarang berasal dari context
             const response = await fetch(`${apiUrl}/${key}/${id}`, {
                 method: 'DELETE',
                 headers: {
@@ -169,6 +174,7 @@ export const ApiProvider = ({ children }) => {
             // Endpoint PHP: PUT /jamaah/payments/(?P<payment_id>\d+)
             // Callback: update_payment_status (mengambil 'status' dari json_params)
 
+            // PERBAIKAN: 'apiUrl' sekarang berasal dari context
             const response = await fetch(`${apiUrl}/jamaah/payments/${paymentId}`, {
                 method: 'PUT', // <-- DIUBAH (sebelumnya POST)
                 headers: {
