@@ -13,10 +13,14 @@ if (!defined('ABSPATH')) {
 function umh_register_categories_api_routes($namespace) {
     global $wpdb;
     $table_name = $wpdb->prefix . 'umh_categories';
-    $item_name = 'category'; // 'category'
+    
+    // --- PERBAIKAN (No Route Found): ---
+    // Mengganti $item_name dari 'category' menjadi 'categories'
+    // agar route yang terdaftar adalah '/categories' BUKAN '/categorys'
+    $item_name = 'categories'; 
+    // --- AKHIR PERBAIKAN ---
 
-    // --- PERBAIKAN (Kategori 3, Poin 1): Tentukan Izin ---
-    // Kategori dikelola oleh Finance, Admin, dan Owner
+    // Tentukan Izin
     $permissions = array(
         'get_items' => ['owner', 'admin_staff', 'finance_staff'],
         'create_item' => ['owner', 'admin_staff', 'finance_staff'],
@@ -24,14 +28,12 @@ function umh_register_categories_api_routes($namespace) {
         'update_item' => ['owner', 'admin_staff', 'finance_staff'],
         'delete_item' => ['owner', 'admin_staff', 'finance_staff'],
     );
-    // --- AKHIR PERBAIKAN ---
 
-    // --- PERBAIKAN (Kategori 3, Poin 1): Gunakan UMH_CRUD_Controller ---
     // Buat instance CRUD controller
     $crud_controller = new UMH_CRUD_Controller($table_name, $item_name, $permissions);
 
     // Register routes
-    register_rest_route($namespace, "/{$item_name}s", array(
+    register_rest_route($namespace, "/{$item_name}", array( // Akan menjadi /categories
         array(
             'methods'             => WP_REST_Server::READABLE,
             'callback'            => array($crud_controller, 'get_items'),
@@ -49,7 +51,7 @@ function umh_register_categories_api_routes($namespace) {
         ),
     ));
 
-    register_rest_route($namespace, "/{$item_name}s/(?P<id>\d+)", array(
+    register_rest_route($namespace, "/{$item_name}/(?P<id>\d+)", array( // Akan menjadi /categories/(id)
         array(
             'methods'             => WP_REST_Server::READABLE,
             'callback'            => array($crud_controller, 'get_item'),
@@ -73,7 +75,6 @@ function umh_register_categories_api_routes($namespace) {
             },
         ),
     ));
-    // --- AKHIR PERBAIKAN ---
 }
 
 // Hook pendaftaran routes

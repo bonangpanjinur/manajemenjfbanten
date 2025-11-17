@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-// PERBAIKAN: Menghapus ekstensi .jsx dari path impor
+import React, { useState } from 'react';
+// PERBAIKAN: Menghapus ekstensi .jsx agar sesuai build WordPress
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ApiProvider } from './context/ApiContext';
 import Dashboard from './pages/Dashboard';
@@ -11,27 +11,37 @@ import PackagesComponent from './pages/Packages';
 import LogsComponent from './pages/Logs';
 import { Modal } from './components/common/Modal';
 import { LoadingScreen } from './components/common/Loading';
+// AKHIR PERBAIKAN
 import { FaTachometerAlt, FaMoneyBillWave, FaBullhorn, FaUsers, FaUserFriends, FaBoxOpen, FaClipboardList } from 'react-icons/fa';
 
 const App = () => {
-    const { user, loading, login } = useAuth();
+    // --- PERBAIKAN (Loading): ---
+    // Mengganti { user, loading, login } menjadi { currentUser }
+    // Ini adalah perbaikan untuk masalah layar loading yang tidak berhenti
+    const { currentUser } = useAuth();
+    // --- AKHIR PERBAIKAN (Loading) ---
+
     const [activePage, setActivePage] = useState('dashboard');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalTitle, setModalTitle] = useState('');
     const [modalContent, setModalContent] = useState(null);
 
-    useEffect(() => {
-        // Cek kredensial dari global var (diset oleh PHP)
-        if (window.umhGlobal && window.umhGlobal.username && window.umhGlobal.password) {
-            login(window.umhGlobal.username, window.umhGlobal.password);
-        }
-    }, [login]);
+    // --- PERBAIKAN (Loading): Menghapus useEffect login() ---
+    // useEffect(() => {
+    //     ...
+    // }, [login]);
+    // --- AKHIR PERBAIKAN (Loading) ---
 
     const openModal = (title, content) => {
         setModalTitle(title);
         setModalContent(
             React.cloneElement(content, {
-                closeModal: () => setIsModalOpen(false)
+                // Modifikasi: Mengirim fungsi 'onClose' dan 'onSubmit' ke form
+                onClose: () => setIsModalOpen(false),
+                onSubmit: (data) => {
+                    console.log('Form submitted', data);
+                    setIsModalOpen(false);
+                }
             })
         );
         setIsModalOpen(true);
@@ -43,27 +53,35 @@ const App = () => {
         setModalContent(null);
     };
 
-    if (loading || !user) {
+    // --- PERBAIKAN (Loading): ---
+    // Mengganti kondisi loading dari (loading || !user) menjadi (!currentUser)
+    if (!currentUser) {
         return <LoadingScreen />;
     }
+    // --- AKHIR PERBAIKAN (Loading) ---
 
     const navItems = [
-        { id: 'dashboard', label: 'Dashboard', icon: <FaTachometerAlt className="mr-3" />, roles: ['admin', 'finance', 'marketing', 'hr', 'jamaah'] },
-        { id: 'finance', label: 'Finance', icon: <FaMoneyBillWave className="mr-3" />, roles: ['admin', 'finance'] },
-        { id: 'marketing', label: 'Marketing', icon: <FaBullhorn className="mr-3" />, roles: ['admin', 'marketing'] },
-        { id: 'hr', label: 'HR', icon: <FaUsers className="mr-3" />, roles: ['admin', 'hr'] },
-        { id: 'jamaah', label: 'Jamaah', icon: <FaUserFriends className="mr-3" />, roles: ['admin', 'jamaah', 'marketing', 'finance'] },
-        { id: 'packages', label: 'Packages', icon: <FaBoxOpen className="mr-3" />, roles: ['admin', 'marketing'] },
-        { id: 'logs', label: 'Logs', icon: <FaClipboardList className="mr-3" />, roles: ['admin'] },
+        { id: 'dashboard', label: 'Dashboard', icon: <FaTachometerAlt className="mr-3" />, roles: ['admin', 'finance', 'marketing', 'hr', 'jamaah', 'owner', 'super_admin', 'administrator'] },
+        { id: 'finance', label: 'Finance', icon: <FaMoneyBillWave className="mr-3" />, roles: ['admin', 'finance', 'owner', 'super_admin', 'administrator', 'admin_staff', 'finance_staff'] },
+        { id: 'marketing', label: 'Marketing', icon: <FaBullhorn className="mr-3" />, roles: ['admin', 'marketing', 'owner', 'super_admin', 'administrator', 'admin_staff', 'marketing_staff'] },
+        { id: 'hr', label: 'HR', icon: <FaUsers className="mr-3" />, roles: ['admin', 'hr', 'owner', 'super_admin', 'administrator', 'admin_staff', 'hr_staff'] },
+        { id: 'jamaah', label: 'Jamaah', icon: <FaUserFriends className="mr-3" />, roles: ['admin', 'jamaah', 'marketing', 'finance', 'owner', 'super_admin', 'administrator', 'admin_staff', 'finance_staff', 'marketing_staff'] },
+        { id: 'packages', label: 'Packages', icon: <FaBoxOpen className="mr-3" />, roles: ['admin', 'marketing', 'owner', 'super_admin', 'administrator', 'admin_staff', 'marketing_staff'] },
+        { id: 'logs', label: 'Logs', icon: <FaClipboardList className="mr-3" />, roles: ['admin', 'owner', 'super_admin', 'administrator', 'admin_staff'] },
     ];
 
-    const allowedNavItems = navItems.filter(item => item.roles.includes(user.role));
+    // --- PERBAIKAN (Loading): ---
+    // Mengganti 'user.role' menjadi 'currentUser.role' dan menambah cek role
+    const allowedNavItems = navItems.filter(item => 
+        item.roles.includes(currentUser.role)
+    );
+    // --- AKHIR PERBAIKAN (Loading) ---
 
     return (
         <ApiProvider>
             <div className="flex h-screen bg-gray-100">
                 {/* Sidebar */}
-                <aside className="w-64 bg-white text-gray-800 p-4 shadow-lg">
+                <aside className="w-64 bg-white text-gray-800 p-4 shadow-lg overflow-y-auto">
                     <h1 className="text-2xl font-bold mb-6 text-indigo-600">Manajemen Umroh</h1>
                     <nav>
                         <ul>
@@ -85,18 +103,22 @@ const App = () => {
 
                 {/* Main Content */}
                 <main className="flex-1 overflow-y-auto">
-                    {/* Top Bar (Jika Diperlukan) */}
-                    <header className="bg-white shadow-sm p-4 flex justify-between items-center">
+                    {/* Top Bar */}
+                    <header className="bg-white shadow-sm p-4 flex justify-between items-center sticky top-0 z-50">
                         <h2 className="text-xl font-semibold text-gray-700 capitalize">{activePage}</h2>
                         <div className="text-right">
-                            <span className="font-medium text-gray-800">{user.display_name}</span>
-                            <span className="ml-2 text-sm text-gray-500 capitalize">({user.role})</span>
+                            {/* --- PERBAIKAN (Loading): --- */}
+                            {/* Mengganti 'user.display_name' menjadi 'currentUser.full_name' */}
+                            <span className="font-medium text-gray-800">{currentUser.full_name}</span>
+                            <span className="ml-2 text-sm text-gray-500 capitalize">({currentUser.role})</span>
+                            {/* --- AKHIR PERBAIKAN (Loading) --- */}
                         </div>
                     </header>
 
                     {/* Page Content */}
                     <div className="p-6">
-                        {activePage === 'dashboard' && <Dashboard />}
+                        {/* PERBAIKAN: Mengirim 'openModal' ke setiap komponen halaman. */}
+                        {activePage === 'dashboard' && <Dashboard openModal={openModal} />}
                         {activePage === 'finance' && <FinanceComponent openModal={openModal} />}
                         {activePage === 'marketing' && <MarketingComponent openModal={openModal} />}
                         {activePage === 'hr' && <HRComponent openModal={openModal} />}
@@ -109,7 +131,14 @@ const App = () => {
                 {/* Global Modal */}
                 {isModalOpen && (
                     <Modal isOpen={isModalOpen} onClose={closeModal} title={modalTitle}>
-                        {modalContent}
+                        {/* PERBAIKAN: Mengganti 'closeModal' dengan 'onClose' */}
+                        {modalContent && React.cloneElement(modalContent, {
+                            onClose: closeModal,
+                            onSubmit: () => {
+                                // Aksi submit default, form akan menangani API call
+                                closeModal();
+                            }
+                        })}
                     </Modal>
                 )}
             </div>

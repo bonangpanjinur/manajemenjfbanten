@@ -6,6 +6,41 @@ const ApiContext = createContext();
 
 export const useApi = () => useContext(ApiContext);
 
+// --- PERBAIKAN (No Route Found): ---
+// Daftar endpoint yang TIDAK menggunakan 's' di akhir
+// Ini harus cocok dengan $item_name di file PHP
+const nonPluralEndpoints = ['hr', 'marketing', 'finance', 'jamaah'];
+
+// Fungsi helper untuk mendapatkan URL endpoint yang benar
+const getEndpointUrl = (apiUrl, key, id = null) => {
+    const baseKey = key.replace(/s$/, ''); // Hapus 's' jika ada
+    let endpoint = key;
+
+    // Jika key ada di daftar non-plural, gunakan key tersebut apa adanya
+    if (nonPluralEndpoints.includes(baseKey)) {
+        endpoint = baseKey;
+    } else if (!key.endsWith('s')) {
+        // Jika tidak ada di daftar dan tidak diakhiri 's', tambahkan 's'
+        // (Contoh: 'package' -> 'packages', 'role' -> 'roles')
+        endpoint = `${key}s`;
+    }
+    
+    // 'stats/totals' adalah kasus khusus
+    if (key === 'stats/totals') {
+        endpoint = 'stats/totals';
+    }
+
+    // PERBAIKAN: Kasus khusus untuk 'finance_accounts'
+    if (key === 'finance_accounts') {
+        endpoint = 'finance_accounts';
+    }
+    // --- AKHIR PERBAIKAN ---
+
+    return id ? `${apiUrl}/${endpoint}/${id}` : `${apiUrl}/${endpoint}`;
+};
+// --- AKHIR PERBAIKAN ---
+
+
 export const ApiProvider = ({ children }) => {
     // PERBAIKAN: Ambil 'apiUrl', 'nonce', 'user' dari AuthContext
     const { nonce, currentUser, capabilities, apiUrl } = useAuth(); // DIUBAH ke currentUser
@@ -17,6 +52,8 @@ export const ApiProvider = ({ children }) => {
         flights: [],
         hotels: [],
         finance: [],
+        // PERBAIKAN: Tambahkan state untuk finance_accounts
+        finance_accounts: [],
         hr: [],
         roles: [],
         marketing: [],
@@ -32,8 +69,10 @@ export const ApiProvider = ({ children }) => {
 
     const fetchData = async (key) => {
         try {
-            // PERBAIKAN: 'apiUrl' sekarang berasal dari context
-            const response = await fetch(`${apiUrl}/${key}`, {
+            // --- PERBAIKAN (No Route Found): Gunakan helper getEndpointUrl ---
+            const url = getEndpointUrl(apiUrl, key);
+            // --- AKHIR PERBAIKAN ---
+            const response = await fetch(url, {
                 headers: {
                     'X-WP-Nonce': nonce,
                 },
@@ -54,9 +93,12 @@ export const ApiProvider = ({ children }) => {
         setError(null);
         try {
             // PERBAIKAN: 'stats/totals' adalah endpoint yang benar, bukan 'stats'
+            // PERBAIKAN: 'categories' adalah endpoint yang benar, bukan 'categorys'
+            // PERBAIKAN: Tambahkan 'finance_accounts'
             const keys = [
                 'packages', 'jamaah', 'departures', 'categories', 'flights',
-                'hotels', 'finance', 'hr', 'roles', 'marketing', 'logs', 'tasks', 'stats/totals'
+                'hotels', 'finance', 'hr', 'roles', 'marketing', 'logs', 'tasks', 'stats/totals',
+                'finance_accounts'
             ];
             
             const promises = keys.map(key => fetchData(key));
@@ -78,6 +120,7 @@ export const ApiProvider = ({ children }) => {
                     // Handle specific errors, e.g., based on capabilities
                     const capMap = {
                         'finance': 'manage_finance',
+                        'finance_accounts': 'manage_finance', // Asumsi staf finance bisa lihat
                         'hr': 'manage_hr',
                         'marketing': 'manage_marketing',
                         'logs': 'manage_logs',
@@ -95,7 +138,8 @@ export const ApiProvider = ({ children }) => {
             setData(newData);
 
             if (hasError) {
-                throw new Error(errorMessages.join(', '));
+                // Tampilkan hanya error pertama agar tidak terlalu ramai
+                throw new Error(errorMessages[0] || 'Gagal memuat sebagian data');
             }
 
         } catch (error) {
@@ -111,8 +155,11 @@ export const ApiProvider = ({ children }) => {
         setError(null);
         try {
             const isUpdate = itemData.id;
-            // PERBAIKAN: 'apiUrl' sekarang berasal dari context
-            const url = isUpdate ? `${apiUrl}/${key}s/${itemData.id}` : `${apiUrl}/${key}s`; // Tambahkan 's'
+            
+            // --- PERBAIKAN (No Route Found): Gunakan helper getEndpointUrl ---
+            const url = getEndpointUrl(apiUrl, key, isUpdate ? itemData.id : null);
+            // --- AKHIR PERBAIKAN ---
+
             const method = isUpdate ? 'PUT' : 'POST';
 
             const response = await fetch(url, {
@@ -146,8 +193,11 @@ export const ApiProvider = ({ children }) => {
         setLoading(true); // Set loading saat menghapus
         setError(null);
         try {
-            // PERBAIKAN: 'apiUrl' sekarang berasal dari context dan tambahkan 's'
-            const response = await fetch(`${apiUrl}/${key}s/${id}`, {
+            // --- PERBAIKAN (No Route Found): Gunakan helper getEndpointUrl ---
+            const url = getEndpointUrl(apiUrl, key, id);
+            // --- AKHIR PERBAIKAN ---
+
+            const response = await fetch(url, {
                 method: 'DELETE',
                 headers: {
                     'X-WP-Nonce': nonce,
@@ -217,7 +267,7 @@ export const ApiProvider = ({ children }) => {
             // Jika user logout, bersihkan data
             setData({
                 packages: [], jamaah: [], departures: [], categories: [],
-                flights: [], hotels: [], finance: [], hr: [], roles: [],
+                flights: [], hotels: [], finance: [], finance_accounts: [], hr: [], roles: [],
                 marketing: [], logs: [], tasks: [], stats: {},
             });
             setLoading(false);

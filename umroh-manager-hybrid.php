@@ -1,15 +1,15 @@
 <?php
 /**
- * Plugin Name: Umroh Manager Hybrid
- * Plugin URI: https://bonang.dev/
- * Description: Plugin hybrid untuk manajemen travel umroh, menggabungkan WP Admin dengan React App.
- * Version: 1.0.2
- * Author: Bonang Panji Nur
- * Author URI: https://bonang.dev/
- * License: GPL-2.0+
- * License URI: http://www.gnu.org/licenses/gpl-2.0.txt
- * Text Domain: umroh-manager-hybrid
- * Domain Path: /languages
+ * Plugin Name:       Umroh Manager Hybrid
+ * Plugin URI:        https://bonang.dev/
+ * Description:       Plugin hybrid untuk manajemen travel umroh, menggabungkan WP Admin dengan React App.
+ * Version:           1.0.3 
+ * Author:            Bonang Panji Nur
+ * Author URI:        https://bonang.dev/
+ * License:           GPL-2.0+
+ * License URI:       http://www.gnu.org/licenses/gpl-2.0.txt
+ * Text Domain:       umroh-manager-hybrid
+ * Domain Path:       /languages
  */
 
 // Lokasi: umroh-manager-hybrid.php (file utama plugin)
@@ -18,11 +18,18 @@ if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
 
-// Definisikan konstanta plugin
-define('UMH_VERSION', '1.0.2'); // Versi dinaikkan
+// --- PERBAIKAN: Definisikan konstanta versi & path ---
+if (!function_exists('get_file_data')) {
+    require_once(ABSPATH . 'wp-admin/includes/file.php');
+}
+$plugin_data = get_file_data(__FILE__, ['Version' => 'Version'], false);
+
+define('UMH_VERSION', $plugin_data['Version']);
 define('UMH_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('UMH_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('UMH_PLUGIN_FILE', __FILE__);
+define('UMH_VERSION_OPTION', 'umh_plugin_version'); // Opsi database
+// --- AKHIR PERBAIKAN ---
 
 // Include file-file utama
 require_once UMH_PLUGIN_DIR . 'includes/db-schema.php';
@@ -42,15 +49,26 @@ foreach (glob(UMH_PLUGIN_DIR . 'includes/api/*.php') as $filename) {
  * Fungsi yang dijalankan saat aktivasi plugin.
  */
 function umh_activate_plugin() {
-    // Buat tabel database
-    umh_create_tables();
-    
-    // Tambahkan role kustom jika belum ada
-    add_role('owner', 'Owner', get_role('administrator')->capabilities);
-    add_role('admin_staff', 'Admin Staff', get_role('editor')->capabilities);
-    add_role('finance_staff', 'Finance Staff', get_role('author')->capabilities);
-    add_role('marketing_staff', 'Marketing Staff', get_role('contributor')->capabilities);
-    add_role('hr_staff', 'HR Staff', get_role('contributor')->capabilities);
+    // --- PERBAIKAN: Tambahkan Pengecekan Versi (Fix 'Duplicate key') ---
+    $current_version = get_option(UMH_VERSION_OPTION);
+
+    // Hanya jalankan jika versi baru atau instalasi pertama
+    if ($current_version != UMH_VERSION) {
+        // Buat tabel database
+        umh_create_tables();
+        
+        // Tambahkan role kustom jika belum ada
+        // Aman dijalankan ulang
+        add_role('owner', 'Owner', get_role('administrator')->capabilities);
+        add_role('admin_staff', 'Admin Staff', get_role('editor')->capabilities);
+        add_role('finance_staff', 'Finance Staff', get_role('author')->capabilities);
+        add_role('marketing_staff', 'Marketing Staff', get_role('contributor')->capabilities);
+        add_role('hr_staff', 'HR Staff', get_role('contributor')->capabilities);
+
+        // Update versi di database
+        update_option(UMH_VERSION_OPTION, UMH_VERSION);
+    }
+    // --- AKHIR PERBAIKAN ---
 }
 register_activation_hook(UMH_PLUGIN_FILE, 'umh_activate_plugin');
 
@@ -58,14 +76,17 @@ register_activation_hook(UMH_PLUGIN_FILE, 'umh_activate_plugin');
  * Fungsi yang dijalankan saat deaktivasi plugin.
  */
 function umh_deactivate_plugin() {
-    // Hapus role kustom
-    remove_role('owner');
-    remove_role('admin_staff');
-    remove_role('finance_staff');
-    remove_role('marketing_staff');
-    remove_role('hr_staff');
+    // --- PERBAIKAN: JANGAN hapus role saat deaktivasi ---
+    // Ini agar role pengguna tidak hilang jika plugin dinonaktifkan sementara.
+    // remove_role('owner');
+    // remove_role('admin_staff');
+    // remove_role('finance_staff');
+    // remove_role('marketing_staff');
+    // remove_role('hr_staff');
+    // --- AKHIR PERBAIKAN ---
 }
 register_deactivation_hook(UMH_PLUGIN_FILE, 'umh_deactivate_plugin');
+
 
 /**
  * Mendaftarkan menu admin.
@@ -152,32 +173,30 @@ function umh_admin_enqueue_scripts($hook) {
         );
     }
 
-    // --- PERBAIKAN (Dashboard UI): Tambahkan script Tailwind CSS CDN ---
-    // Ini akan memperbaiki masalah UI yang rusak di dalam dashboard React Anda.
+    // Tambahkan script Tailwind CSS CDN
     wp_enqueue_script('umh-tailwind-cdn', 'https://cdn.tailwindcss.com', array(), null, false);
-    // --- AKHIR PERBAIKAN ---
 
     // Pass data dari PHP ke React
     $current_user = wp_get_current_user();
     $user_roles = (array) $current_user->roles;
     $primary_role = !empty($user_roles) ? $user_roles[0] : 'subscriber';
 
-    // --- PERBAIKAN (Kategori 1): Mengubah nama objek dan kunci agar sesuai dengan React (AuthContext.jsx) ---
+    // --- PERBAIKAN: Sesuaikan objek data agar cocok dengan AuthContext.jsx ---
     wp_localize_script(
         'umh-admin-react-app',
-        'umh_wp_data', // DIUBAH: dari 'umhApiSettings'
+        'umh_wp_data', // Nama objek global
         array(
-            'api_url' => esc_url_raw(rest_url('umh/v1')), // DIUBAH: dari 'apiUrl'
-            'api_nonce' => wp_create_nonce('wp_rest'), // DIUBAH: dari 'nonce'
-            'is_wp_admin' => !umh_is_staff_user(), // DIPERBAIKI: true jika BUKAN staff (misal: Super Admin)
-            'current_user' => array( // DIUBAH: dari 'currentUser'
+            'api_url' => esc_url_raw(rest_url('umh/v1')),
+            'api_nonce' => wp_create_nonce('wp_rest'),
+            'is_wp_admin' => !umh_is_staff_user(), // true jika BUKAN staff (misal: Super Admin)
+            'current_user' => array( // Objek pengguna
                 'id' => $current_user->ID,
-                'email' => $current_user->user_email, // DIUBAH: dari 'user_email'
-                'full_name' => $current_user->display_name, // DIUBAH: dari 'display_name'
+                'email' => $current_user->user_email,
+                'full_name' => $current_user->display_name,
                 'role' => $primary_role, 
             ),
-            'adminUrl' => admin_url(), // Tetap
-            'printUrl' => admin_url('admin.php?page=umh-print-registration'), // Tetap
+            'adminUrl' => admin_url(),
+            'printUrl' => admin_url('admin.php?page=umh-print-registration'),
         )
     );
     // --- AKHIR PERBAIKAN ---
@@ -198,7 +217,7 @@ add_action('admin_head', 'umh_pwa_manifest_link');
 
 
 // ==================================================================
-// PERBAIKAN MENYELURUH (HYBRID UI, LOGIN, & KEAMANAN API)
+// FUNGSI UI & KEAMANAN
 // ==================================================================
 
 /**
@@ -239,7 +258,7 @@ function umh_is_staff_user() {
 }
 
 /**
- * PERBAIKAN (Hybrid UI): Mengatur UI Admin berdasarkan Role Pengguna.
+ * Mengatur UI Admin berdasarkan Role Pengguna.
  */
 function umh_manage_admin_ui_by_role() {
     // Jangan jalankan logika ini untuk request AJAX
@@ -255,9 +274,7 @@ function umh_manage_admin_ui_by_role() {
         add_filter('show_admin_bar', '__return_false');
         
         // 2. Sembunyikan semua menu admin
-        // Kita gunakan prioritas tinggi (999) agar berjalan setelah menu utama dibuat
         add_action('admin_menu', function() {
-            // Hapus semua menu default
             remove_menu_page('index.php'); // Dashboard
             remove_menu_page('edit.php'); // Posts
             remove_menu_page('upload.php'); // Media
@@ -270,12 +287,10 @@ function umh_manage_admin_ui_by_role() {
             remove_menu_page('options-general.php'); // Settings
             remove_menu_page('profile.php'); // Profile
             
-            // Hapus menu Pengaturan bawaan plugin kita, karena staff harusnya tidak lihat
             remove_submenu_page('umroh-manager-hybrid', 'umh-settings');
         }, 999);
         
         // 3. Alihkan (redirect) jika mereka mencoba mengakses halaman admin lain
-        // Kecuali halaman utama plugin kita
         $allowed_pages = array('admin.php');
         $allowed_query_page = 'umroh-manager-hybrid'; // Halaman React utama
         $is_allowed_page = false;
@@ -284,8 +299,6 @@ function umh_manage_admin_ui_by_role() {
              $is_allowed_page = true;
         }
         
-        // Jika mereka ada di halaman admin TAPI BUKAN halaman React kita,
-        // dan BUKAN halaman logout, alihkan mereka.
         $logout_url_check = 'wp-login.php?action=logout';
         if ( !$is_allowed_page && 
              $pagenow !== 'wp-login.php' && 
@@ -301,18 +314,15 @@ add_action('admin_init', 'umh_manage_admin_ui_by_role');
 
 
 /**
- * PERBAIKAN (Login Logo): Mengganti logo di halaman login dengan Site Icon.
+ * Mengganti logo di halaman login.
  */
 function umh_custom_login_logo() {
-    // --- PERBAIKAN: Menggunakan file CSS kustom untuk logo, bukan site icon
-    // Ini agar sesuai dengan file admin-style.css
-    // $site_icon_url = get_site_icon_url();
-    // (Tidak ada PHP yang diperlukan di sini, CSS di admin-style.css akan menanganinya)
+    // Style untuk logo di-handle oleh admin-style.css
 }
 add_action('login_enqueue_scripts', 'umh_custom_login_logo');
 
 /**
- * PERBAIKAN (Login Logo): Mengganti URL tautan logo di halaman login ke 'home_url'.
+ * Mengganti URL tautan logo di halaman login ke 'home_url'.
  */
 function umh_custom_login_logo_url($url) {
     return home_url('/');
@@ -320,7 +330,7 @@ function umh_custom_login_logo_url($url) {
 add_filter('login_headerurl', 'umh_custom_login_logo_url');
 
 /**
- * PERBAIKAN (Login Logo): Mengganti teks 'title' logo di halaman login dengan nama situs.
+ * Mengganti teks 'title' logo di halaman login dengan nama situs.
  */
 function umh_custom_login_logo_title() {
     return get_bloginfo('name');
@@ -329,12 +339,7 @@ add_filter('login_headertext', 'umh_custom_login_logo_title');
 
 
 /**
- * PERBAIKAN (Keamanan CRUD): Fungsi Pengecekan Izin API yang spesifik berdasarkan Role.
- * Menghasilkan fungsi 'permission_callback' yang dapat digunakan ulang.
- *
- * @param array $allowed_roles Role-role staff yang diizinkan (misal: ['finance_staff', 'admin_staff']).
- * 'administrator' dan 'owner' selalu diizinkan secara default.
- * @return callable Fungsi yang akan digunakan oleh 'permission_callback'.
+ * Pengecekan Izin API berdasarkan Role.
  */
 function umh_api_check_role($allowed_roles = array()) {
     /**
@@ -350,34 +355,24 @@ function umh_api_check_role($allowed_roles = array()) {
         
         $user_roles = (array) $user->roles;
 
-        // 1. Super Admin (administrator) selalu punya akses penuh.
         if (in_array('administrator', $user_roles)) {
             return true;
         }
-
-        // 2. Owner selalu punya akses penuh.
         if (in_array('owner', $user_roles)) {
             return true;
         }
-
-        // 3. Periksa role staff yang diizinkan
         foreach ($user_roles as $role) {
             if (in_array($role, $allowed_roles)) {
                 return true;
             }
         }
         
-        // Jika tidak ada role yang cocok
         return new WP_Error('rest_forbidden_role', __('Role Anda tidak memiliki izin untuk mengakses sumber daya ini.', 'umroh-manager-hybrid'), array('status' => 403));
     };
 }
 
 /**
- * PERBAIKAN (Keamanan CRUD): Pengecekan izin yang lebih ketat, khusus untuk Super Admin.
- * (Contoh: untuk endpoint pengaturan plugin, manajemen role, dll.)
- *
- * @param WP_REST_Request $request
- * @return bool|WP_Error
+ * Pengecekan izin khusus untuk Super Admin.
  */
 function umh_api_admin_permission_check(WP_REST_Request $request) {
     if (!current_user_can('manage_options')) {
