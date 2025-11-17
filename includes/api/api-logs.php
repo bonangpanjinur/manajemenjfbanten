@@ -5,7 +5,7 @@ if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
 
-// <!-- PERBAIKAN (Kategori 1, Poin 4): Hapus fungsi ini -->
+// <!-- PERBAIKAN (Kategori 3): Hapus fungsi ini -->
 // Fungsi umh_create_log_entry() telah dipindahkan ke includes/utils.php
 // agar bisa diakses secara global oleh UMH_CRUD_Controller.
 // Fungsi ini tidak perlu didefinisikan ulang di sini.
@@ -46,9 +46,11 @@ function umh_register_logs_api_routes($namespace) {
                 );
                 return new WP_REST_Response($logs, 200);
             },
+            // --- PERBAIKAN: Bungkus panggilan dalam anonymous function ---
             'permission_callback' => function ($request) use ($permissions) {
                 return umh_check_api_permission($request, $permissions);
             },
+            // --- AKHIR PERBAIKAN ---
         ),
     ));
 }

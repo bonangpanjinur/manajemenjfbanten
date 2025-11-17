@@ -88,7 +88,10 @@ function umh_add_jamaah_payment(WP_REST_Request $request) {
         'jamaah_id' => $jamaah_id,
         'payment_date' => sanitize_text_field($params['payment_date']),
         'amount' => (float) $params['amount'],
-        'description' => sanitize_text_field($params['description']),
+        // --- PERBAIKAN: Gunakan 'description' atau 'payment_method' dari params ---
+        'description' => sanitize_text_field($params['description'] ?? $params['notes'] ?? ''),
+        'payment_method' => sanitize_text_field($params['payment_method'] ?? 'transfer'),
+        // --- AKHIR PERBAIKAN ---
         'proof_of_payment_url' => esc_url_raw($params['proof_of_payment_url'] ?? null),
         'status' => 'pending', // Pembayaran baru selalu pending menunggu verifikasi
         'created_at' => current_time('mysql'),
@@ -103,7 +106,8 @@ function umh_add_jamaah_payment(WP_REST_Request $request) {
 
     $new_id = $wpdb->insert_id;
     
-    // Jangan update total amount_paid di sini. Tunggu sampai status 'verified'.
+    // (PENTING) Update total amount_paid di tabel jemaah
+    umh_recalculate_jamaah_paid_amount($jamaah_id);
     
     $new_payment = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table_name WHERE id = %d", $new_id));
     return new WP_REST_Response($new_payment, 201);
@@ -137,6 +141,17 @@ function umh_update_jamaah_payment_entry(WP_REST_Request $request) {
         $data['amount'] = (float) $params['amount'];
         $formats[] = '%f';
     }
+    // --- PERBAIKAN: Izinkan update method dan date ---
+    if (isset($params['payment_method'])) {
+        $data['payment_method'] = sanitize_text_field($params['payment_method']);
+        $formats[] = '%s';
+    }
+    if (isset($params['payment_date'])) {
+        $data['payment_date'] = sanitize_text_field($params['payment_date']);
+        $formats[] = '%s';
+    }
+    // --- AKHIR PERBAIKAN ---
+
 
     if (empty($data)) {
         return new WP_Error('bad_request', 'Tidak ada data untuk diupdate.', ['status' => 400]);
@@ -190,7 +205,7 @@ function umh_recalculate_jamaah_paid_amount($jamaah_id) {
     $payments_table = $wpdb->prefix . 'umh_jamaah_payments';
     $jamaah_table = $wpdb->prefix . 'umh_jamaah';
 
-    // Hitung total hanya dari pembayaran yang 'verified'
+    // Hitung total hanya dari pembayaran yang 'paid'
     // --- PERBAIKAN: Menggunakan status 'paid' (bukan 'verified') ---
     $total_paid = (float) $wpdb->get_var(
         $wpdb->prepare(
@@ -206,13 +221,16 @@ function umh_recalculate_jamaah_paid_amount($jamaah_id) {
     );
 
     // Tentukan status pembayaran baru
-    // --- PERBAIKAN: Menggunakan 'payment_status' dari tabel jamaah ---
+    // --- PERBAIKAN: Logika status pembayaran disesuaikan ---
     $payment_status = 'pending';
     if ($total_paid > 0) {
-        $payment_status = 'cicil'; // atau 'dp'
-    }
-    if ($total_price > 0 && $total_paid >= $total_price) {
-        $payment_status = 'lunas';
+        if ($total_price > 0 && $total_paid >= $total_price) {
+            $payment_status = 'lunas';
+        } else {
+            // Jika sudah bayar tapi belum lunas, anggap 'cicil' atau 'dp'
+            // Kita gunakan 'cicil' sebagai status umum untuk "sebagian terbayar"
+            $payment_status = 'cicil'; 
+        }
     }
      if ($total_paid == 0) {
         $payment_status = 'pending';

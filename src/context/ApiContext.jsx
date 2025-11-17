@@ -1,13 +1,14 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { useAuth } from './AuthContext.jsx'; // PERBAIKAN: Menambahkan ekstensi .jsx
+// PERBAIKAN: Menambahkan ekstensi .jsx
+import { useAuth } from './AuthContext.jsx'; 
 
 const ApiContext = createContext();
 
 export const useApi = () => useContext(ApiContext);
 
 export const ApiProvider = ({ children }) => {
-    // PERBAIKAN: Ambil 'apiUrl' dari AuthContext
-    const { nonce, user, capabilities, apiUrl } = useAuth();
+    // PERBAIKAN: Ambil 'apiUrl', 'nonce', 'user' dari AuthContext
+    const { nonce, currentUser, capabilities, apiUrl } = useAuth(); // DIUBAH ke currentUser
     const [data, setData] = useState({
         packages: [],
         jamaah: [],
@@ -52,9 +53,10 @@ export const ApiProvider = ({ children }) => {
         setLoading(true);
         setError(null);
         try {
+            // PERBAIKAN: 'stats/totals' adalah endpoint yang benar, bukan 'stats'
             const keys = [
                 'packages', 'jamaah', 'departures', 'categories', 'flights',
-                'hotels', 'finance', 'hr', 'roles', 'marketing', 'logs', 'tasks', 'stats'
+                'hotels', 'finance', 'hr', 'roles', 'marketing', 'logs', 'tasks', 'stats/totals'
             ];
             
             const promises = keys.map(key => fetchData(key));
@@ -65,7 +67,11 @@ export const ApiProvider = ({ children }) => {
             let errorMessages = [];
 
             results.forEach((result, index) => {
-                const key = keys[index];
+                let key = keys[index];
+                if (key === 'stats/totals') {
+                    key = 'stats'; // Simpan hasil 'stats/totals' ke dalam data.stats
+                }
+
                 if (result.status === 'fulfilled') {
                     newData[key] = result.value;
                 } else {
@@ -83,7 +89,6 @@ export const ApiProvider = ({ children }) => {
                         errorMessages.push(result.reason.message || `Failed to load ${key}`);
                     }
                     // If failed, retain old data for that key instead of wiping it
-                    // newData[key] = []; // or {} for stats
                 }
             });
 
@@ -101,12 +106,13 @@ export const ApiProvider = ({ children }) => {
     };
 
     const createOrUpdate = async (key, itemData) => {
-        setLoading(true);
+        // PERBAIKAN: Jangan setLoading(true) di sini, biarkan form yang atur
+        // setLoading(true);
         setError(null);
         try {
             const isUpdate = itemData.id;
             // PERBAIKAN: 'apiUrl' sekarang berasal dari context
-            const url = isUpdate ? `${apiUrl}/${key}/${itemData.id}` : `${apiUrl}/${key}`;
+            const url = isUpdate ? `${apiUrl}/${key}s/${itemData.id}` : `${apiUrl}/${key}s`; // Tambahkan 's'
             const method = isUpdate ? 'PUT' : 'POST';
 
             const response = await fetch(url, {
@@ -124,7 +130,7 @@ export const ApiProvider = ({ children }) => {
                 throw new Error(data.message || `Gagal ${isUpdate ? 'memperbarui' : 'membuat'} data`);
             }
             
-            // Full refresh (as discussed, potential performance bottleneck)
+            // Full refresh (seperti pola yang ada)
             await refreshData();
             return data;
         } catch (error) {
@@ -132,16 +138,16 @@ export const ApiProvider = ({ children }) => {
             setError(error.message);
             throw error; // Rethrow so the form can catch it
         } finally {
-            setLoading(false);
+            // setLoading(false);
         }
     };
 
     const deleteItem = async (key, id) => {
-        setLoading(true);
+        setLoading(true); // Set loading saat menghapus
         setError(null);
         try {
-            // PERBAIKAN: 'apiUrl' sekarang berasal dari context
-            const response = await fetch(`${apiUrl}/${key}/${id}`, {
+            // PERBAIKAN: 'apiUrl' sekarang berasal dari context dan tambahkan 's'
+            const response = await fetch(`${apiUrl}/${key}s/${id}`, {
                 method: 'DELETE',
                 headers: {
                     'X-WP-Nonce': nonce,
@@ -166,10 +172,10 @@ export const ApiProvider = ({ children }) => {
     };
 
     const updatePaymentStatus = async (paymentId, newStatus) => {
-        setLoading(true);
+        setLoading(true); // Set loading spesifik untuk aksi ini
         setError(null); // Membersihkan error sebelumnya
         try {
-            // --- PERBAIKAN BUG ---
+            // --- PERBAIKAN BUG (Kategori 4) ---
             // URL, Method, dan Body disesuaikan dengan endpoint PHP
             // Endpoint PHP: PUT /jamaah/payments/(?P<payment_id>\d+)
             // Callback: update_payment_status (mengambil 'status' dari json_params)
@@ -190,8 +196,7 @@ export const ApiProvider = ({ children }) => {
                 throw new Error(data.message || 'Gagal memperbarui status pembayaran.');
             }
 
-            // Performa: Idealnya, ini hanya me-refresh 'jamaah' atau memperbarui state secara lokal
-            // Tapi untuk saat ini, kita ikuti pola yang ada (full refresh) untuk memperbaiki bug.
+            // Full refresh untuk mengambil data jamaah yang sudah di-recalculate
             await refreshData(); 
             
             return data;
@@ -200,15 +205,15 @@ export const ApiProvider = ({ children }) => {
             setError(error.message);
             throw error; // Dilempar lagi agar modal bisa menangkapnya
         } finally {
-            setLoading(false); // <-- Perbaikan typo (sebelumnya False)
+            setLoading(false); // <-- PERBAIKAN: Typo (sebelumnya False)
         }
     };
 
     // Initial data load on auth ready
     useEffect(() => {
-        if (nonce && user) {
+        if (nonce && currentUser) { // DIUBAH ke currentUser
             refreshData();
-        } else if (!user) {
+        } else if (!currentUser) { // DIUBAH ke currentUser
             // Jika user logout, bersihkan data
             setData({
                 packages: [], jamaah: [], departures: [], categories: [],
@@ -217,7 +222,7 @@ export const ApiProvider = ({ children }) => {
             });
             setLoading(false);
         }
-    }, [nonce, user]); // Hanya bergantung pada status auth
+    }, [nonce, currentUser]); // DIUBAH ke currentUser
 
     return (
         <ApiContext.Provider value={{

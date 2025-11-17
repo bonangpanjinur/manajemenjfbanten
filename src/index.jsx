@@ -4,11 +4,14 @@ import React from 'react';
 // --- PERBAIKAN: Gunakan createRoot dari 'react-dom/client' untuk React 18 ---
 import { createRoot } from 'react-dom/client';
 // --- AKHIR PERBAIKAN ---
+
+// --- PERBAIKAN: Menambahkan ekstensi .jsx ---
 import App from './App.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { ApiProvider } from './context/ApiContext.jsx';
+// --- AKHIR PERBAIKAN ---
 
-// Hapus import style.js
+// Hapus import style.js (tidak digunakan)
 // import { GlobalStyle } from './style';
 
 

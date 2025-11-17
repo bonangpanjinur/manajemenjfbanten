@@ -33,16 +33,20 @@ function umh_register_roles_api_routes($namespace) {
         array(
             'methods'             => WP_REST_Server::READABLE,
             'callback'            => array($crud_controller, 'get_items'),
+            // --- PERBAIKAN: Bungkus panggilan dalam anonymous function ---
             'permission_callback' => function ($request) use ($permissions) {
                 return umh_check_api_permission($request, $permissions['get_items']);
             },
+            // --- AKHIR PERBAIKAN ---
         ),
         array(
             'methods'             => WP_REST_Server::CREATABLE,
             'callback'            => array($crud_controller, 'create_item'),
+            // --- PERBAIKAN: Bungkus panggilan dalam anonymous function ---
             'permission_callback' => function ($request) use ($permissions) {
                 return umh_check_api_permission($request, $permissions['create_item']);
             },
+            // --- AKHIR PERBAIKAN ---
             'args' => $crud_controller->get_endpoint_args_for_item_schema(WP_REST_Server::CREATABLE),
         ),
     ));
@@ -51,24 +55,30 @@ function umh_register_roles_api_routes($namespace) {
         array(
             'methods'             => WP_REST_Server::READABLE,
             'callback'            => array($crud_controller, 'get_item'),
+            // --- PERBAIKAN: Bungkus panggilan dalam anonymous function ---
             'permission_callback' => function ($request) use ($permissions) {
                 return umh_check_api_permission($request, $permissions['get_item']);
             },
+            // --- AKHIR PERBAIKAN ---
         ),
         array(
             'methods'             => WP_REST_Server::EDITABLE,
             'callback'            => array($crud_controller, 'update_item'),
+            // --- PERBAIKAN: Bungkus panggilan dalam anonymous function ---
             'permission_callback' => function ($request) use ($permissions) {
                 return umh_check_api_permission($request, $permissions['update_item']);
             },
+            // --- AKHIR PERBAIKAN ---
             'args' => $crud_controller->get_endpoint_args_for_item_schema(WP_REST_Server::EDITABLE),
         ),
         array(
             'methods'             => WP_REST_Server::DELETABLE,
             'callback'            => array($crud_controller, 'delete_item'),
+            // --- PERBAIKAN: Bungkus panggilan dalam anonymous function ---
             'permission_callback' => function ($request) use ($permissions) {
                 return umh_check_api_permission($request, $permissions['delete_item']);
             },
+            // --- AKHIR PERBAIKAN ---
         ),
     ));
 }

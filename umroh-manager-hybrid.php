@@ -3,7 +3,7 @@
  * Plugin Name: Umroh Manager Hybrid
  * Plugin URI: https://bonang.dev/
  * Description: Plugin hybrid untuk manajemen travel umroh, menggabungkan WP Admin dengan React App.
- * Version: 1.0.1
+ * Version: 1.0.2
  * Author: Bonang Panji Nur
  * Author URI: https://bonang.dev/
  * License: GPL-2.0+
@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Definisikan konstanta plugin
-define('UMH_VERSION', '1.0.1');
+define('UMH_VERSION', '1.0.2'); // Versi dinaikkan
 define('UMH_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('UMH_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('UMH_PLUGIN_FILE', __FILE__);
@@ -162,23 +162,22 @@ function umh_admin_enqueue_scripts($hook) {
     $user_roles = (array) $current_user->roles;
     $primary_role = !empty($user_roles) ? $user_roles[0] : 'subscriber';
 
-    // --- PERBAIKAN: Mengubah nama objek dan kunci agar sesuai dengan build/index.js ---
-    // --- PERBAIKAN: Logika 'is_wp_admin' diperbaiki ---
+    // --- PERBAIKAN (Kategori 1): Mengubah nama objek dan kunci agar sesuai dengan React (AuthContext.jsx) ---
     wp_localize_script(
         'umh-admin-react-app',
         'umh_wp_data', // DIUBAH: dari 'umhApiSettings'
         array(
             'api_url' => esc_url_raw(rest_url('umh/v1')), // DIUBAH: dari 'apiUrl'
             'api_nonce' => wp_create_nonce('wp_rest'), // DIUBAH: dari 'nonce'
-            'is_wp_admin' => !umh_is_staff_user(), // DIPERBAIKI: true jika BUKAN staff
+            'is_wp_admin' => !umh_is_staff_user(), // DIPERBAIKI: true jika BUKAN staff (misal: Super Admin)
             'current_user' => array( // DIUBAH: dari 'currentUser'
                 'id' => $current_user->ID,
-                'user_email' => $current_user->user_email,
-                'full_name' => $current_user->display_name,
+                'email' => $current_user->user_email, // DIUBAH: dari 'user_email'
+                'full_name' => $current_user->display_name, // DIUBAH: dari 'display_name'
                 'role' => $primary_role, 
             ),
-            'adminUrl' => admin_url(),
-            'printUrl' => admin_url('admin.php?page=umh-print-registration'),
+            'adminUrl' => admin_url(), // Tetap
+            'printUrl' => admin_url('admin.php?page=umh-print-registration'), // Tetap
         )
     );
     // --- AKHIR PERBAIKAN ---
@@ -305,22 +304,10 @@ add_action('admin_init', 'umh_manage_admin_ui_by_role');
  * PERBAIKAN (Login Logo): Mengganti logo di halaman login dengan Site Icon.
  */
 function umh_custom_login_logo() {
-    $site_icon_url = get_site_icon_url();
-    if ($site_icon_url) {
-        ?>
-        <style type"text/css">
-            #login h1 a, .login h1 a {
-                background-image: url(<?php echo esc_url($site_icon_url); ?>);
-                height: 84px; /* Default logo WP */
-                width: 84px; /* Default logo WP */
-                background-size: 84px 84px;
-                background-repeat: no-repeat;
-                padding-bottom: 30px;
-                width: 100%; /* Agar center */
-            }
-        </style>
-        <?php
-    }
+    // --- PERBAIKAN: Menggunakan file CSS kustom untuk logo, bukan site icon
+    // Ini agar sesuai dengan file admin-style.css
+    // $site_icon_url = get_site_icon_url();
+    // (Tidak ada PHP yang diperlukan di sini, CSS di admin-style.css akan menanganinya)
 }
 add_action('login_enqueue_scripts', 'umh_custom_login_logo');
 

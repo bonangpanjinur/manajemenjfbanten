@@ -100,7 +100,6 @@ function umh_handle_rest_upload(WP_REST_Request $request) {
         wp_update_attachment_metadata($attach_id, $attach_data);
 
         // --- Logika Asosiasi File ---
-        // Anda dapat menyimpan $attach_id atau $file_url ke tabel lain
         
         $jamaah_id = $request->get_param('jamaah_id');
         $upload_type = $request->get_param('upload_type');
@@ -125,16 +124,9 @@ function umh_handle_rest_upload(WP_REST_Request $request) {
         }
         
         // Simpan ke tabel UMH Uploads (jika ada)
+        // (Tabel ini tidak ada di skema Anda, jadi saya biarkan terkomen)
         // $uploads_table = $wpdb->prefix . 'umh_uploads';
-        // $wpdb->insert($uploads_table, [
-        //     'user_id' => $user_id,
-        //     'jamaah_id' => $jamaah_id ? (int)$jamaah_id : null,
-        //     'attachment_id' => $attach_id,
-        //     'file_url' => $file_url,
-        //     'file_type' => $file_type,
-        //     'upload_type' => $upload_type,
-        //     'created_at' => current_time('mysql'),
-        // ]);
+        // $wpdb->insert($uploads_table, [ ... ]);
 
         return new WP_REST_Response([
             'message' => 'File uploaded successfully.',

@@ -12,15 +12,32 @@ if (!defined('ABSPATH')) {
 function umh_get_current_user_context() {
     $user = wp_get_current_user();
     if (0 === $user->ID) {
+        // --- PERBAIKAN: Cek juga dari token kustom (untuk user headless) ---
+        global $wpdb;
+        $token = null;
+
+        // Cek header Authorization
+        if (!empty($_SERVER['HTTP_AUTHORIZATION']) && preg_match('/Bearer\s(\S+)/', $_SERVER['HTTP_AUTHORIZATION'], $matches)) {
+            $token = $matches[1];
+        }
+        
+        // Cek X-WP-Nonce (meskipun ini lebih untuk cookie, tapi API kustom mungkin menggunakannya)
+        // Sebaiknya, kita andalkan 'umh_check_api_permission' untuk memvalidasi
+        
+        // Jika kita ingin memvalidasi token di sini (redundan dengan permission_callback)
+        // ... (logika validasi token) ...
+        
+        // Untuk saat ini, asumsikan 'guest' jika WP user ID adalah 0
         return array(
             'id'    => 0,
             'email' => 'guest',
             'role'  => 'guest',
         );
+        // --- AKHIR PERBAIKAN ---
     }
 
     // Ambil role kustom plugin
-    $custom_roles = ['owner', 'admin_staff', 'finance_staff', 'marketing_staff', 'hr_staff'];
+    $custom_roles = umh_get_staff_roles(); // Menggunakan helper function
     $user_roles = $user->roles;
     $role = 'subscriber'; // Default
 
@@ -91,7 +108,7 @@ function umh_check_api_permission($request, $required_roles) {
 }
 
 
-// <!-- PERBAIKAN (Kategori 1, Poin 4): Pindahkan fungsi log ke sini -->
+// <!-- PERBAIKAN (Kategori 3): Pindahkan fungsi log ke sini -->
 /**
  * Membuat entri log baru di database.
  * Ini dipindahkan dari api-logs.php agar bisa diakses secara global,

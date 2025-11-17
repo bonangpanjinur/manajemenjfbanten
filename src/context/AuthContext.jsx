@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
 
-// PERBAIKAN: Membaca data dari 'umh_wp_data' agar sesuai dengan PHP dan build/index.js
+// PERBAIKAN: Membaca data dari 'umh_wp_data' agar sesuai dengan PHP
 const globalSettings = window.umh_wp_data || {};
 const initialUser = globalSettings.current_user || null; // DIUBAH: dari currentUser
 const initialNonce = globalSettings.api_nonce || null; // DIUBAH: dari nonce
@@ -19,7 +19,7 @@ export const AuthProvider = ({ children }) => {
         apiUrl: initialApiUrl,
         adminUrl: globalSettings.adminUrl,
         printUrl: globalSettings.printUrl,
-        // PERBAIKAN: Tambahkan isWpAdmin
+        // PERBAIKAN: Tambahkan isWpAdmin (dibaca dari PHP)
         isWpAdmin: globalSettings.is_wp_admin || false,
     };
 

@@ -73,22 +73,31 @@ class UMH_CRUD_Controller {
         $data = $this->prepare_data_for_db($request->get_params());
         $format = $this->get_col_formats($data, $this->table_name);
 
+        // --- PERBAIKAN: Tambahkan created_at dan updated_at jika ada di params ---
+        if (empty($data['created_at'])) {
+            $data['created_at'] = current_time('mysql');
+        }
+        if (empty($data['updated_at'])) {
+            $data['updated_at'] = current_time('mysql');
+        }
+        // --- AKHIR PERBAIKAN ---
+
         $result = $wpdb->insert($this->table_name, $data, $format);
 
         if ($result) {
             $new_id = $wpdb->insert_id;
             
-            // <!-- PERBAIKAN (Kategori 1, Poin 4): Implementasi Logging -->
+            // <!-- PERBAIKAN (Kategori 3): Implementasi Logging -->
             if (function_exists('umh_create_log_entry')) {
                 $user_context = umh_get_current_user_context();
                 // Coba dapatkan nama/deskripsi item untuk log
-                $item_name = $data['name'] ?? $data['full_name'] ?? $data['title'] ?? $this->table_name . ' item';
+                $item_desc = $data['name'] ?? $data['full_name'] ?? $data['title'] ?? $data['description'] ?? $this->table_name . ' item';
                 umh_create_log_entry(
                     $user_context['id'],
                     'create',
                     $this->table_name,
                     $new_id,
-                    "Membuat item baru di {$this->table_name}: '{$item_name}' (ID: {$new_id})",
+                    "Membuat item baru di {$this->table_name}: '{$item_desc}' (ID: {$new_id})",
                     wp_json_encode(array('new_data' => $data)) // Data baru
                 );
             }
@@ -101,7 +110,7 @@ class UMH_CRUD_Controller {
             $new_item = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$this->table_name} WHERE id = %d", $new_id));
             return new WP_REST_Response($new_item, 201);
         } else {
-            return new WP_Error('rest_cannot_create', __("Gagal membuat {$this->item_name}.", 'umroh-manager-hybrid'), array('status' => 500));
+            return new WP_Error('rest_cannot_create', __("Gagal membuat {$this->item_name}.", 'umroh-manager-hybrid'), array('status' => 500, 'db_error' => $wpdb->last_error));
         }
     }
 
@@ -120,6 +129,12 @@ class UMH_CRUD_Controller {
              return new WP_Error('rest_no_data_to_update', __("Tidak ada data untuk diperbarui.", 'umroh-manager-hybrid'), array('status' => 400));
         }
 
+        // --- PERBAIKAN: Tambahkan updated_at ---
+        if (empty($data['updated_at'])) {
+            $data['updated_at'] = current_time('mysql');
+        }
+        // --- AKHIR PERBAIKAN ---
+
         $format = $this->get_col_formats($data, $this->table_name);
 
         // Ambil data lama sebelum update untuk perbandingan log
@@ -129,16 +144,16 @@ class UMH_CRUD_Controller {
 
         if ($result !== false) {
             
-            // <!-- PERBAIKAN (Kategori 1, Poin 4): Implementasi Logging -->
-            if (function_exists('umh_create_log_entry')) {
+            // <!-- PERBAIKAN (Kategori 3): Implementasi Logging -->
+            if (function_exists('umh_create_log_entry') && $old_data) {
                 $user_context = umh_get_current_user_context();
-                $item_name = $data['name'] ?? $data['full_name'] ?? $data['title'] ?? $old_data['name'] ?? $old_data['full_name'] ?? $old_data['title'] ?? $this->table_name . ' item';
+                $item_desc = $data['name'] ?? $data['full_name'] ?? $data['title'] ?? $old_data['name'] ?? $old_data['full_name'] ?? $old_data['title'] ?? $this->table_name . ' item';
                 umh_create_log_entry(
                     $user_context['id'],
                     'update',
                     $this->table_name,
                     $id,
-                    "Memperbarui item di {$this->table_name}: '{$item_name}' (ID: {$id})",
+                    "Memperbarui item di {$this->table_name}: '{$item_desc}' (ID: {$id})",
                     wp_json_encode(array('new_data' => $data, 'old_data' => $old_data)) // Data baru & lama
                 );
             }
@@ -151,7 +166,7 @@ class UMH_CRUD_Controller {
             $updated_item = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$this->table_name} WHERE id = %d", $id));
             return new WP_REST_Response($updated_item, 200);
         } else {
-            return new WP_Error('rest_cannot_update', __("Gagal memperbarui {$this->item_name}.", 'umroh-manager-hybrid'), array('status' => 500));
+            return new WP_Error('rest_cannot_update', __("Gagal memperbarui {$this->item_name}.", 'umroh-manager-hybrid'), array('status' => 500, 'db_error' => $wpdb->last_error));
         }
     }
 
@@ -169,16 +184,16 @@ class UMH_CRUD_Controller {
 
         if ($result) {
             
-            // <!-- PERBAIKAN (Kategori 1, Poin 4): Implementasi Logging -->
+            // <!-- PERBAIKAN (Kategori 3): Implementasi Logging -->
             if (function_exists('umh_create_log_entry') && $old_data) {
                 $user_context = umh_get_current_user_context();
-                $item_name = $old_data['name'] ?? $old_data['full_name'] ?? $old_data['title'] ?? $this->table_name . ' item';
+                $item_desc = $old_data['name'] ?? $old_data['full_name'] ?? $old_data['title'] ?? $old_data['description'] ?? $this->table_name . ' item';
                 umh_create_log_entry(
                     $user_context['id'],
                     'delete',
                     $this->table_name,
                     $id,
-                    "Menghapus item dari {$this->table_name}: '{$item_name}' (ID: {$id})",
+                    "Menghapus item dari {$this->table_name}: '{$item_desc}' (ID: {$id})",
                     wp_json_encode($old_data) // Data lama yang dihapus
                 );
             }
@@ -202,7 +217,13 @@ class UMH_CRUD_Controller {
         $data = array();
         foreach ($column_names as $column) {
             if (isset($params[$column])) {
-                $data[$column] = $params[$column];
+                // --- PERBAIKAN: Konversi boolean ke 0/1 untuk DB ---
+                if (is_bool($params[$column])) {
+                    $data[$column] = $params[$column] ? 1 : 0;
+                } else {
+                    $data[$column] = $params[$column];
+                }
+                // --- AKHIR PERBAIKAN ---
             }
         }
         return $data;
@@ -292,10 +313,19 @@ class UMH_CRUD_Controller {
             $type = $this->map_db_type_to_rest_type($col['Type']);
             $required = ($col['Null'] === 'NO' && $col['Default'] === null && $col['Extra'] !== 'auto_increment');
 
+            // --- PERBAIKAN: Jangan wajibkan 'created_at' dan 'updated_at' ---
+            if ($name === 'created_at' || $name === 'updated_at') {
+                $required = false;
+            }
+            // --- AKHIR PERBAIKAN ---
+
             $args[$name] = array(
                 'description' => sprintf(__('Kolom %s untuk %s', 'umroh-manager-hybrid'), $name, $this->item_name),
                 'type'        => $type,
                 'required'    => $method === WP_REST_Server::CREATABLE ? $required : false,
+                 // --- PERBAIKAN: Tambahkan sanitasi berdasarkan tipe ---
+                'sanitize_callback' => $this->get_sanitize_callback($type),
+                 // --- AKHIR PERBAIKAN ---
             );
             
             if ($type === 'array') {
@@ -327,7 +357,26 @@ class UMH_CRUD_Controller {
         if (strpos($db_type, 'decimal') !== false || strpos($db_type, 'float') !== false || strpos($db_type, 'double') !== false) return 'number';
         if (strpos($db_type, 'json') !== false) return 'object'; // Bisa juga 'array'
         if (strpos($db_type, 'text') !== false || strpos($db_type, 'varchar') !== false || strpos($db_type, 'date') !== false) return 'string';
-        if (strpos($db_type, 'boolean') !== false) return 'boolean';
+        if (strpos($db_type, 'boolean') !== false || strpos($db_type, 'tinyint(1)') !== false) return 'boolean';
         return 'string';
     }
+
+    // --- PERBAIKAN: Tambahkan helper sanitasi ---
+    /**
+     * Mendapatkan callback sanitasi default berdasarkan tipe REST.
+     */
+    protected function get_sanitize_callback($type) {
+        switch ($type) {
+            case 'integer':
+                return 'absint';
+            case 'number':
+                return 'floatval';
+            case 'boolean':
+                return 'rest_sanitize_boolean';
+            case 'string':
+            default:
+                return 'sanitize_text_field';
+        }
+    }
+    // --- AKHIR PERBAIKAN ---
 }

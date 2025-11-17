@@ -12,8 +12,8 @@ body.login {
 }
 
 body.login h1 a {
-    /* PERBAIKAN: Menggunakan logo baru */
-    background-image: url('../images/umh-logo.png'); 
+    /* PERBAIKAN: Menggunakan logo baru dan path yang benar */
+    background-image: url('../images/login-bg.jpg.png'); 
     background-size: contain;
     background-position: center bottom;
     width: 200px; /* Sesuaikan lebar */

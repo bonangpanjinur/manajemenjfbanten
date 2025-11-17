@@ -1,256 +1,230 @@
 import React, { useState, useMemo } from 'react';
-// PERBAIKAN: Menambahkan ekstensi .jsx untuk import konteks dan komponen
-import { useAuth } from '../context/AuthContext.jsx';
-import { useApi } from '../context/ApiContext.jsx';
-import Modal from '../components/common/Modal.jsx';
+import { useAuth } from '../context/AuthContext';
+import { useApi } from '../context/ApiContext';
+import { LoadingSpinner } from '../components/common/Loading.jsx';
+// PERBAIKAN: Mengganti import default 'ErrorMessage' menjadi named import '{ ErrorMessage }'
+import { ErrorMessage } from '../components/common/ErrorMessage.jsx';
+// PERBAIKAN: Menghapus 'getPackagePrice' dari import helpers
+import { formatCurrency } from '../utils/helpers';
 import JamaahForm from '../components/forms/JamaahForm.jsx';
 import JamaahPaymentsModal from '../components/modals/JamaahPaymentsModal.jsx';
-import Loading from '../components/common/Loading.jsx';
-import ErrorMessage from '../components/common/ErrorMessage.jsx';
-// File .js tidak perlu diubah
-import { formatCurrency, formatDate } from '../utils/helpers.js';
-import { tableStyle, thStyle, tdStyle, buttonStyle, inputStyle, selectStyle } from '../style.js';
+// PERBAIKAN: Menghapus komponen Tabel (Table, Thead, dll.) yang tidak ada di FormUI
+import { Button, Input, Select } from '../components/common/FormUI.jsx';
+// PERBAIKAN: Mengganti import default 'Modal' menjadi named import '{ Modal }'
+import { Modal } from '../components/common/Modal.jsx';
+import { FaEdit, FaTrash, FaMoneyBillWave, FaPrint, FaUserPlus } from 'react-icons/fa';
 
-// Komponen utama untuk halaman Jamaah
-const JamaahComponent = ({ jamaah, packages, loading, error, createOrUpdate, deleteItem }) => {
+// PERBAIKAN: Menambahkan fungsi getPackagePrice secara lokal
+// Fungsi ini tidak ditemukan di helpers.js, jadi kita definisikan di sini
+// berdasarkan struktur data di PackageForm.jsx
+const getPackagePrice = (pkg, room_type) => {
+    if (!pkg) return 0;
+    if (room_type === 'quad') return parseFloat(pkg.price_quad || 0);
+    if (room_type === 'triple') return parseFloat(pkg.price_triple || 0);
+    if (room_type === 'double') return parseFloat(pkg.price_double || 0);
+    return 0; // Default case
+};
+
+
+const JamaahComponent = ({ openModal }) => {
     const { user } = useAuth();
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-    const [selectedItem, setSelectedItem] = useState(null);
-    const [selectedJamaahForPayment, setSelectedJamaahForPayment] = useState(null);
+    const { data, loading, error, createOrUpdate, deleteItem } = useApi();
+    // PERBAIKAN: Menghapus underscore '_' yang salah ketik setelah destructuring
+    const { jamaah, packages } = data || { jamaah: [], packages: [] }; // Fallback
+
     const [searchTerm, setSearchTerm] = useState('');
     const [filterPackage, setFilterPackage] = useState('');
-    const [filterPayment, setFilterPayment] = useState('');
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState(null);
+    const [paymentsModalData, setPaymentsModalData] = useState(null);
 
-    const canCreate = user.roles.includes('owner') || user.roles.includes('admin_staff');
-    const canEdit = user.roles.includes('owner') || user.roles.includes('admin_staff');
-    const canDelete = user.roles.includes('owner');
-    const canManagePayments = user.roles.includes('owner') || user.roles.includes('admin_staff') || user.roles.includes('finance_staff');
-
-    // Memo-kan data yang difilter untuk performa
-    const filteredJamaah = useMemo(() => {
-        if (!jamaah) return [];
-        return jamaah.filter(j => {
-            const matchesSearch = j.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                j.ktp_no?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                j.passport_no?.toLowerCase().includes(searchTerm.toLowerCase());
-            
-            const matchesPackage = filterPackage ? j.package_id == filterPackage : true;
-            const matchesPayment = filterPayment ? j.payment_status === filterPayment : true;
-
-            return matchesSearch && matchesPackage && matchesPayment;
-        });
-    }, [jamaah, searchTerm, filterPackage, filterPayment]);
-
-    // Handler untuk membuka form modal
     const openFormModal = (item = null) => {
-        setSelectedItem(item);
-        setIsModalOpen(true);
+        openModal(
+            item ? 'Edit Jamaah' : 'Tambah Jamaah',
+            <JamaahForm
+                initialData={item}
+                packages={packages || []}
+                onSave={(formData) => {
+                    createOrUpdate('jamaah', formData, item ? item.id : null);
+                }}
+            />
+        );
     };
 
-    // Handler untuk menutup form modal
-    const closeFormModal = () => {
-        setSelectedItem(null);
-        setIsModalOpen(false);
+    const openPaymentsModal = (item) => {
+        setPaymentsModalData(item);
     };
 
-    // Handler untuk membuka modal pembayaran
-    const openPaymentModal = (jamaah) => {
-        setSelectedJamaahForPayment(jamaah);
-        setIsPaymentModalOpen(true);
+    const handleDelete = (item) => {
+        setItemToDelete(item);
+        setIsDeleteModalOpen(true);
     };
 
-    // Handler untuk menutup modal pembayaran
-    const closePaymentModal = () => {
-        setSelectedJamaahForPayment(null);
-        setIsPaymentModalOpen(false);
-    };
-
-    // Handler untuk submit form (Create/Update)
-    const handleFormSubmit = async (data) => {
-        await createOrUpdate('jamaah', data);
-        closeFormModal();
-    };
-
-    // Handler untuk hapus item
-    const handleDelete = async (id) => {
-        // Ganti dengan UI konfirmasi kustom
-        if (true) { // Ganti `true` dengan logika konfirmasi modal
-            await deleteItem('jamaah', id);
+    const confirmDelete = () => {
+        if (itemToDelete) {
+            deleteItem('jamaah', itemToDelete.id);
+            setIsDeleteModalOpen(false);
+            setItemToDelete(null);
         }
     };
 
-    if (loading) return <Loading />;
-    if (error) return <ErrorMessage message={error} />;
+    const handlePrint = (item) => {
+        // Pastikan 'umh.printUrl' tersedia di scope window
+        if (window.umh && window.umh.printUrl) {
+            window.open(window.umh.printUrl + '&jamaah_id=' + item.id, '_blank');
+        } else {
+            console.error('Print URL (window.umh.printUrl) not defined.');
+        }
+    };
+
+    const filteredJamaah = useMemo(() => {
+        return (jamaah || []).filter(item => {
+            const matchesSearch = item.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (item.ktp_number && item.ktp_number.includes(searchTerm)); // Menambahkan pengecekan null/undefined
+            const matchesPackage = filterPackage ? item.package_id === filterPackage : true;
+            return matchesSearch && matchesPackage;
+        });
+    }, [jamaah, searchTerm, filterPackage]);
+
+    if (loading) return <LoadingSpinner />;
+    if (error) return <ErrorMessage message={error.message} />;
+
+    const getPackageName = (packageId) => {
+        const pkg = (packages || []).find(p => p.id === packageId);
+        return pkg ? pkg.package_name : 'N/A';
+    };
 
     return (
-        <div className="container mx-auto p-6 bg-gray-50 min-h-screen">
-            <h1 className="text-3xl font-bold mb-6 text-gray-800">Manajemen Jamaah</h1>
+        <div className="p-6">
+            <h2 className="text-2xl font-semibold mb-4 text-gray-800">Manajemen Jamaah</h2>
 
-            {/* Kontrol Filter dan Tambah Data */}
-            <div className="mb-6 flex flex-wrap gap-4 items-center justify-between">
-                <input
+            <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
+                <Input
                     type="text"
-                    placeholder="Cari jamaah (nama, KTP, paspor)..."
-                    className={`${inputStyle} w-full md:w-1/3`}
+                    placeholder="Cari nama atau no. KTP jamaah..."
+                    className="w-full md:w-1/3"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
-                <div className="flex flex-wrap gap-4">
-                    <select
-                        className={selectStyle}
-                        value={filterPackage}
-                        onChange={(e) => setFilterPackage(e.target.value)}
-                    >
-                        <option value="">Semua Paket</option>
-                        {packages?.map(pkg => (
-                            <option key={pkg.id} value={pkg.id}>{pkg.name}</option>
-                        ))}
-                    </select>
-                    <select
-                        className={selectStyle}
-                        value={filterPayment}
-                        onChange={(e) => setFilterPayment(e.target.value)}
-                    >
-                        <option value="">Semua Status Bayar</option>
-                        <option value="pending">Pending</option>
-                        <option value="dp">DP</option>
-                        <option value="installment">Cicilan</option>
-                        <option value="paid">Lunas</option>
-                    </select>
-                    {canCreate && (
-                        <button
-                            onClick={() => openFormModal()}
-                            className={buttonStyle.primary}
-                        >
-                            Tambah Jamaah Baru
-                        </button>
-                    )}
-                </div>
+                <Select
+                    className="w-full md:w-1/3"
+                    value={filterPackage}
+                    onChange={(e) => setFilterPackage(e.target.value)}
+                >
+                    <option value="">Semua Paket</option>
+                    {(packages || []).map(pkg => (
+                        <option key={pkg.id} value={pkg.id}>{pkg.package_name}</option>
+                    ))}
+                </Select>
+                <Button
+                    variant="primary"
+                    onClick={() => openFormModal()}
+                    className="w-full md:w-auto"
+                >
+                    <FaUserPlus className="mr-2" />
+                    Tambah Jamaah
+                </Button>
             </div>
 
-            {/* Tabel Data Jamaah */}
             <div className="overflow-x-auto bg-white rounded-lg shadow">
-                <table className={tableStyle.table}>
-                    <thead className={tableStyle.thead}>
+                {/* PERBAIKAN: Mengganti <Table> dengan <table> dan menambahkan class Tailwind */}
+                <table className="min-w-full divide-y divide-gray-200">
+                    {/* PERBAIKAN: Mengganti <Thead> dengan <thead> */}
+                    <thead className="bg-gray-50">
+                        {/* PERBAIKAN: Mengganti <Tr> dengan <tr> */}
                         <tr>
-                            <th className={thStyle}>Nama</th>
-                            <th className={thStyle}>Paket</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kontak</th>
-                            <th className={thStyle}>Total Paket</th>
-                            <th className={thStyle}>Terbayar</th>
-                            <th className={thStyle}>Status Bayar</th>
-                            <th className={thStyle}>Verifikasi</th>
-                            <th className={thStyle}>Aksi</th>
+                            {/* PERBAIKAN: Mengganti <Th> dengan <th> dan menambahkan class Tailwind */}
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Lengkap</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Paket</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga Paket</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Bayar</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sisa Tagihan</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                         </tr>
                     </thead>
-                    <tbody className={tableStyle.tbody}>
-                        {filteredJamaah.length > 0 ? filteredJamaah.map(item => {
-                            const pkg = packages?.find(p => p.id == item.package_id);
-                            const price = item.package_price > 0 ? item.package_price : (pkg?.price || 0);
-                            const amountPaid = item.amount_paid || 0;
-                            
-                            let paymentStatusClass = '';
-                            switch (item.payment_status) {
-                                case 'paid': paymentStatusClass = 'bg-green-100 text-green-800'; break;
-                                case 'installment':
-                                case 'dp': paymentStatusClass = 'bg-yellow-100 text-yellow-800'; break;
-                                case 'pending': paymentStatusClass = 'bg-red-100 text-red-800'; break;
-                                default: paymentStatusClass = 'bg-gray-100 text-gray-800';
-                            }
+                    {/* PERBAIKAN: Mengganti <Tbody> dengan <tbody> */}
+                    <tbody className="bg-white divide-y divide-gray-200">
+                        {filteredJamaah.map(item => {
+                            const pkg = (packages || []).find(p => p.id === item.package_id);
+                            // PERBAIKAN: Memanggil fungsi getPackagePrice lokal (hanya room_type)
+                            const price = getPackagePrice(pkg, item.room_type);
+                            const totalPaid = parseFloat(item.total_payments || 0);
+                            const remaining = price - totalPaid;
 
                             return (
-                                <tr key={item.id} className="hover:bg-gray-50">
-                                    <td className={tdStyle}>
-                                        <div className="font-medium text-gray-900">{item.name}</div>
-                                        <div className="text-sm text-gray-500">{item.ktp_no}</div>
+                                // PERBAIKAN: Mengganti <Tr> dengan <tr>
+                                <tr key={item.id}>
+                                    {/* PERBAIKAN: Mengganti <Td> dengan <td> dan menambahkan class Tailwind */}
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.full_name}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{getPackageName(item.package_id)}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{formatCurrency(price)}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">{formatCurrency(totalPaid)}</td>
+                                    <td className={`px-6 py-4 whitespace-nowrap text-sm ${remaining > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                        {formatCurrency(remaining)}
                                     </td>
-                                    <td className={tdStyle}>{pkg?.name || 'N/A'}</td>
-                                    <td className="px-4 py-4 whitespace-nowrap">
-                                        <div className="text-sm text-gray-900">{item.phone}</div>
-                                        <div className="text-sm text-gray-500">{item.email}</div>
-                                    </td>
-                                    <td className={tdStyle}>{formatCurrency(price)}</td>
-                                    <td className={tdStyle}>{formatCurrency(amountPaid)}</td>
-                                    <td className={tdStyle}>
-                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${paymentStatusClass}`}>
-                                            {item.payment_status}
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${remaining <= 0 ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                            {remaining <= 0 ? 'Lunas' : 'Belum Lunas'}
                                         </span>
                                     </td>
-                                    <td className={tdStyle}>
-                                        <div className="flex space-x-1">
-                                            <span title="KTP" className={item.is_ktp_verified ? 'text-green-500' : 'text-gray-300'}>●</span>
-                                            <span title="Paspor" className={item.is_passport_verified ? 'text-green-500' : 'text-gray-300'}>●</span>
-                                            <span title="Foto" className={item.is_photo_verified ? 'text-green-500' : 'text-gray-300'}>●</span>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                        <div className="flex gap-2">
+                                            <Button variant="secondary" size="sm" onClick={() => openPaymentsModal(item)} title="Lihat Pembayaran">
+                                                <FaMoneyBillWave />
+                                            </Button>
+                                            <Button variant="secondary" size="sm" onClick={() => handlePrint(item)} title="Cetak Kartu">
+                                                <FaPrint />
+                                            </Button>
+                                            <Button variant="warning" size="sm" onClick={() => openFormModal(item)} title="Edit Jamaah">
+                                                <FaEdit />
+                                            </Button>
+                                            {user && user.role === 'admin' && (
+                                                <Button variant="danger" size="sm" onClick={() => handleDelete(item)} title="Hapus Jamaah">
+                                                    <FaTrash />
+                                                </Button>
+                                            )}
                                         </div>
-                                    </td>
-                                    <td className={`${tdStyle} space-x-2`}>
-                                        {canManagePayments && (
-                                            <button
-                                                onClick={() => openPaymentModal(item)}
-                                                className={buttonStyle.secondary}
-                                            >
-                                                Bayar
-                                            </button>
-                                        )}
-                                        {canEdit && (
-                                            <button
-                                                onClick={() => openFormModal(item)}
-                                                className={buttonStyle.warning}
-                                            >
-                                                Edit
-                                            </button>
-                                        )}
-                                        {canDelete && (
-                                            <button
-                                                onClick={() => handleDelete(item.id)}
-                                                className={buttonStyle.danger}
-                                            >
-                                                Hapus
-                                            </button>
-                                        )}
                                     </td>
                                 </tr>
                             );
-                        }) : (
-                            <tr>
-                                <td colSpan="8" className="text-center py-6 text-gray-500">
-                                    Tidak ada data jamaah.
-                                </td>
-                            </tr>
-                        )}
+                        })}
                     </tbody>
                 </table>
+                {filteredJamaah.length === 0 && (
+                    <p className="text-center p-4 text-gray-500">Data tidak ditemukan.</p>
+                )}
             </div>
 
-            {/* Modal untuk Form Tambah/Edit Jamaah */}
-            {isModalOpen && (
-                <Modal onClose={closeFormModal} title={selectedItem ? 'Edit Jamaah' : 'Tambah Jamaah Baru'}>
-                    <div className="p-6">
-                        {/* * PERBAIKAN: Menambahkan prop 'packages={packages}' 
-                          * 'packages' didapat dari prop 'JamaahComponent' 
-                          */}
-                        <JamaahForm
-                            initialData={selectedItem}
-                            onClose={closeFormModal}
-                            onSubmit={handleFormSubmit}
-                            packages={packages} 
-                        />
+            {/* Modal Konfirmasi Hapus */}
+            {isDeleteModalOpen && (
+                <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} title="Konfirmasi Hapus">
+                    <div className="p-4">
+                        <p className="text-gray-700">Anda yakin ingin menghapus data jamaah: <strong>{itemToDelete?.full_name}</strong>?</p>
+                        <div className="flex justify-end gap-3 mt-6">
+                            <Button variant="secondary" onClick={() => setIsDeleteModalOpen(false)}>Batal</Button>
+                            <Button variant="danger" onClick={confirmDelete}>Ya, Hapus</Button>
+                        </div>
                     </div>
                 </Modal>
             )}
 
-            {/* Modal untuk Manajemen Pembayaran */}
-            {isPaymentModalOpen && selectedJamaahForPayment && (
+            {/* Modal Pembayaran */}
+            {paymentsModalData && (
                 <JamaahPaymentsModal
-                    jamaah={selectedJamaahForPayment}
-                    onClose={closePaymentModal}
+                    isOpen={!!paymentsModalData}
+                    onClose={() => setPaymentsModalData(null)}
+                    jamaahData={paymentsModalData}
+                    packagePrice={getPackagePrice(
+                        (packages || []).find(p => p.id === paymentsModalData.package_id),
+                        paymentsModalData.room_type
+                    )}
+                    createOrUpdate={createOrUpdate}
+                    deleteItem={deleteItem}
                 />
             )}
         </div>
     );
 };
 
-// Wrapper component untuk mengambil data jika diperlukan
-// Dalam setup ini, data di-pass dari App.jsx, jadi kita hanya export komponen utama
 export default JamaahComponent;

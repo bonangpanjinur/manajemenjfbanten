@@ -15,7 +15,7 @@ export const formatCurrency = (amount) => {
     }).format(amount);
 };
 
-// --- PERBAIKAN: Menambahkan fungsi parseCurrency ---
+// --- PERBAIKAN (Kategori 4): Menambahkan fungsi parseCurrency ---
 /**
  * Mengonversi string mata uang format IDR (misal: "Rp 1.500.000")
  * kembali menjadi angka (misal: 1500000).

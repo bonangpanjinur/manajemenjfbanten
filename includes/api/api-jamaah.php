@@ -171,18 +171,12 @@ function umh_create_jamaah(WP_REST_Request $request) {
     $data = $request->get_json_params();
     
     // Ambil harga paket jika total_price tidak diset
-    if (!isset($data['total_price']) && isset($data['package_id'])) {
+    if (empty($data['total_price']) && isset($data['package_id'])) {
         $package_table = $wpdb->prefix . 'umh_packages';
-        // Ambil harga dari price_details JSON, misal 'quad'
-        $price_details_json = $wpdb->get_var($wpdb->prepare("SELECT price_details FROM $package_table WHERE id = %d", $data['package_id']));
-        $price_details = json_decode($price_details_json, true);
-        
-        // --- PERBAIKAN: Asumsi default ambil harga 'quad' atau 'price' ---
-        $default_price = 0;
-        if(is_array($price_details) && !empty($price_details)) {
-             // Coba cari 'quad' atau ambil nilai pertama
-            $default_price = $price_details['quad'] ?? $price_details[0]['price'] ?? 0;
-        }
+        // --- PERBAIKAN: Ambil harga 'price' (kolom utama), bukan 'price_details' ---
+        $default_price = (float) $wpdb->get_var(
+            $wpdb->prepare("SELECT price FROM $package_table WHERE id = %d", $data['package_id'])
+        );
         $data['total_price'] = $default_price; 
         // --- AKHIR PERBAIKAN ---
     }
@@ -198,21 +192,21 @@ function umh_create_jamaah(WP_REST_Request $request) {
     $insert_data = [];
     foreach ($schema as $key => $value) {
         if (isset($data[$key])) {
-            $insert_data[$key] = $data[$key];
+            // --- PERBAIKAN: Konversi boolean ke 0/1 ---
+            if (is_bool($data[$key])) {
+                 $insert_data[$key] = $data[$key] ? 1 : 0;
+            } else {
+                 $insert_data[$key] = $data[$key];
+            }
+             // --- AKHIR PERBAIKAN ---
         }
     }
     
     $insert_data['created_at'] = current_time('mysql');
     $insert_data['updated_at'] = current_time('mysql');
     
-    // Pastikan boolean disimpan sebagai 0 atau 1
-    $bool_fields = ['is_passport_verified', 'is_ktp_verified', 'is_kk_verified', 'is_meningitis_verified'];
-    foreach ($bool_fields as $field) {
-        if (isset($insert_data[$field])) {
-            $insert_data[$field] = $insert_data[$field] ? 1 : 0;
-        }
-    }
-
+    // Hapus amount_paid, karena ini dihitung
+    unset($insert_data['amount_paid']);
 
     $result = $wpdb->insert($table_name, $insert_data);
 
@@ -221,7 +215,9 @@ function umh_create_jamaah(WP_REST_Request $request) {
     }
 
     $new_id = $wpdb->insert_id;
+    // --- PERBAIKAN: Panggil log (dipindahkan ke CRUD Controller) ---
     // umh_create_log_entry('create', 'jamaah', $new_id, $data); 
+    // --- AKHIR PERBAIKAN ---
 
     return new WP_REST_Response(['id' => $new_id, 'message' => 'Jamaah created successfully.'], 201);
 }
@@ -258,7 +254,13 @@ function umh_update_jamaah(WP_REST_Request $request) {
     $update_data = [];
      foreach ($schema as $key => $value) {
         if (isset($data[$key])) {
-            $update_data[$key] = $data[$key];
+            // --- PERBAIKAN: Konversi boolean ke 0/1 ---
+            if (is_bool($data[$key])) {
+                 $update_data[$key] = $data[$key] ? 1 : 0;
+            } else {
+                 $update_data[$key] = $data[$key];
+            }
+             // --- AKHIR PERBAIKAN ---
         }
     }
     
@@ -268,13 +270,8 @@ function umh_update_jamaah(WP_REST_Request $request) {
          return new WP_Error('bad_request', __('No data provided for update.', 'umh'), ['status' => 400]);
     }
     
-    // Pastikan boolean disimpan sebagai 0 atau 1
-    $bool_fields = ['is_passport_verified', 'is_ktp_verified', 'is_kk_verified', 'is_meningitis_verified'];
-    foreach ($bool_fields as $field) {
-        if (isset($update_data[$field])) {
-            $update_data[$field] = $update_data[$field] ? 1 : 0;
-        }
-    }
+    // Hapus amount_paid, karena ini dihitung
+    unset($update_data['amount_paid']);
 
     $result = $wpdb->update($table_name, $update_data, ['id' => $id]);
 
@@ -282,7 +279,9 @@ function umh_update_jamaah(WP_REST_Request $request) {
         return new WP_Error('db_error', __('Failed to update jamaah.', 'umh'), ['status' => 500, 'db_error' => $wpdb->last_error]);
     }
     
+    // --- PERBAIKAN: Panggil log (dipindahkan ke CRUD Controller) ---
     // umh_create_log_entry('update', 'jamaah', $id, $data);
+    // --- AKHIR PERBAIKAN ---
 
     return new WP_REST_Response(['id' => $id, 'message' => 'Jamaah updated successfully.'], 200);
 }
@@ -308,7 +307,9 @@ function umh_delete_jamaah(WP_REST_Request $request) {
         return new WP_Error('not_found', __('Jamaah not found to delete.', 'umh'), ['status' => 404]);
     }
 
+    // --- PERBAIKAN: Panggil log (dipindahkan ke CRUD Controller) ---
     // umh_create_log_entry('delete', 'jamaah', $id);
+    // --- AKHIR PERBAIKAN ---
 
     return new WP_REST_Response(['id' => $id, 'message' => 'Jamaah deleted successfully.'], 200);
 }
