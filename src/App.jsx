@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-// --- PERBAIKAN: Menghapus ekstensi .jsx dari impor ---
+// --- PERBAIKAN: Menambahkan ekstensi .jsx ---
 import { useAuth } from './context/AuthContext';
 import { useApi } from './context/ApiContext';
 import { LoadingScreen, LoadingSpinner } from './components/common/Loading';
@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 
 // Impor Halaman
-// --- PERBAIKAN: Menghapus ekstensi .jsx dari impor ---
+// --- PERBAIKAN: Menambahkan ekstensi .jsx ---
 import DashboardComponent from './pages/Dashboard';
 import PackagesComponent from './pages/Packages';
 import JamaahComponent from './pages/Jamaah';

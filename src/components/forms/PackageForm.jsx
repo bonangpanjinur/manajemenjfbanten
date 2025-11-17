@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { useApi } from '../../context/ApiContext';
-// PERBAIKAN: Impor bernama (named import)
-import { ErrorMessage } from '../common/ErrorMessage';
-import { LoadingSpinner as Loading } from '../common/Loading';
-import { Input, Textarea, Button, Select, Checkbox } from '../common/FormUI';
+// PERBAIKAN: Menambahkan ekstensi .jsx
+import { useApi } from '../../context/ApiContext.jsx';
+// PERBAIKAN: Impor bernama (named import) dan ekstensi .jsx
+import { ErrorMessage } from '../common/ErrorMessage.jsx';
+import { LoadingSpinner as Loading } from '../common/Loading.jsx';
+import { Input, Textarea, Button, Select, Checkbox } from '../common/FormUI.jsx';
+// --- AKHIR PERBAIKAN ---
 import { Plus, Trash2 } from 'lucide-react';
-import { formatCurrency, parseCurrency } from '../../utils/helpers';
+// PERBAIKAN: Menambahkan ekstensi .js
+import { formatCurrency, parseCurrency } from '../../utils/helpers.js';
+// --- AKHIR PERBAIKAN ---
 
 // --- PERBAIKAN: Seluruh logika dibungkus dalam komponen fungsi ---
 const PackageForm = ({ data, onClose }) => {
@@ -75,7 +79,7 @@ const PackageForm = ({ data, onClose }) => {
 
         const finalData = {
             ...formData,
-            price: parseCurrency(price),
+            price: parseCurrency(price), // PERBAIKAN: Fungsi ini sekarang diimpor dengan benar
             itinerary: JSON.stringify(itinerary),
             includes: includes.split('\n').filter(line => line.trim() !== ''),
             // Pastikan tipe data angka benar

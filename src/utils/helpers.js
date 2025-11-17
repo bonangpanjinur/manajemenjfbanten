@@ -2,7 +2,11 @@ import React from 'react';
 
 export const formatCurrency = (amount) => {
     if (typeof amount !== 'number') {
-        amount = parseFloat(amount) || 0;
+        // Hapus karakter non-numerik kecuali koma (untuk desimal jika ada)
+        let numericString = String(amount).replace(/[^0-9,]/g, '');
+        // Ganti koma dengan titik jika itu pemisah desimal
+        numericString = numericString.replace(',', '.');
+        amount = parseFloat(numericString) || 0;
     }
     return new Intl.NumberFormat('id-ID', {
         style: 'currency',
@@ -10,6 +14,38 @@ export const formatCurrency = (amount) => {
         minimumFractionDigits: 0,
     }).format(amount);
 };
+
+// --- PERBAIKAN: Menambahkan fungsi parseCurrency ---
+/**
+ * Mengonversi string mata uang format IDR (misal: "Rp 1.500.000")
+ * kembali menjadi angka (misal: 1500000).
+ * @param {string} currencyString
+ * @returns {number}
+ */
+export const parseCurrency = (currencyString) => {
+    if (typeof currencyString === 'number') {
+        return currencyString;
+    }
+    if (typeof currencyString !== 'string') {
+        return 0;
+    }
+    
+    try {
+        // 1. Hapus "Rp" dan spasi
+        // 2. Hapus titik pemisah ribuan
+        // 3. Ganti koma pemisah desimal dengan titik (jika ada)
+        // 4. Parse sebagai float
+        const numberString = String(currencyString)
+            .replace(/Rp\s?/g, '')
+            .replace(/\./g, '')
+            .replace(/,/g, '.');
+            
+        return parseFloat(numberString) || 0;
+    } catch (e) {
+        return 0;
+    }
+};
+// --- AKHIR PERBAIKAN ---
 
 export const formatDate = (dateString) => {
     if (!dateString) return '-';

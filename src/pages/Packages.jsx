@@ -3,10 +3,13 @@
 import React, { useState, useMemo } from 'react';
 // --- PERBAIKAN: Path import relatif ---
 import { useApi } from '../context/ApiContext';
-import Loading from '../components/common/Loading';
-import ErrorMessage from '../components/common/ErrorMessage';
-import Modal from '../components/common/Modal';
+// --- PERBAIKAN: Impor bernama (named import) ---
+import { LoadingSpinner as Loading } from '../components/common/Loading';
+import { ErrorMessage } from '../components/common/ErrorMessage';
+import { Modal } from '../components/common/Modal';
+// --- PERBAIKAN: Menambahkan ekstensi .jsx ---
 import PackageForm from '../components/forms/PackageForm';
+// --- PERBAIKAN: Menambahkan ekstensi .js ---
 import { formatCurrency, formatDate } from '../utils/helpers';
 // --- AKHIR PERBAIKAN ---
 
@@ -23,7 +26,7 @@ const Packages = () => {
         onConfirm: () => {},
     });
 
-    if (loading) return <Loading />;
+    if (loading && !data.packages.length) return <Loading />; // PERBAIKAN: Pastikan loading state awal tidak error
     if (error) return <ErrorMessage message={error} />;
 
     const filteredData = useMemo(() => {
@@ -115,7 +118,14 @@ const Packages = () => {
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                        {filteredData.map(item => (
+                        {loading && (
+                             <tr>
+                                <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                                    <Loading />
+                                </td>
+                            </tr>
+                        )}
+                        {!loading && filteredData.map(item => (
                             <tr key={item.id} className="border-b hover:bg-gray-50">
                                 <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{item.name}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{item.duration}</td>
@@ -142,7 +152,7 @@ const Packages = () => {
                                 </td>
                             </tr>
                         ))}
-                        {filteredData.length === 0 && (
+                        {!loading && filteredData.length === 0 && (
                             <tr>
                                 <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
                                     Tidak ada data paket yang ditemukan.
@@ -156,6 +166,7 @@ const Packages = () => {
             {confirmModal.isOpen && (
                 <Modal
                     title={confirmModal.title}
+                    isOpen={confirmModal.isOpen} // PERBAIKAN: Prop `isOpen` diperlukan
                     onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
                 >
                     <p className="mb-6">{confirmModal.message}</p>
@@ -177,8 +188,12 @@ const Packages = () => {
             )}
 
             {modal.isOpen && (
-                <Modal title={modal.data ? 'Edit Paket' : 'Tambah Paket Baru'} onClose={() => setModal({ isOpen: false, data: null })}>
-                    <PackageForm data={modal.data} onSuccess={handleSuccess} />
+                <Modal 
+                    title={modal.data ? 'Edit Paket' : 'Tambah Paket Baru'} 
+                    isOpen={modal.isOpen} // PERBAIKAN: Prop `isOpen` diperlukan
+                    onClose={() => setModal({ isOpen: false, data: null })}
+                >
+                    <PackageForm data={modal.data} onClose={handleSuccess} />
                 </Modal>
             )}
         </div>
