@@ -5,6 +5,12 @@
 if (!defined('ABSPATH')) {
     exit;
 }
+
+/**
+ * Callback untuk me-render halaman cetak.
+ * Ini adalah halaman tersembunyi yang hanya diakses via link/menu tertentu.
+ */
+function umh_render_print_registration_page() {
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -268,3 +274,5 @@ if (!defined('ABSPATH')) {
 
 </body>
 </html>
+<?php
+}
