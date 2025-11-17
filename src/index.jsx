@@ -2,10 +2,10 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom';
-// --- PERBAIKAN: Path import absolut dari src/ ---
-import App from 'App';
-import { AuthProvider } from 'context/AuthContext';
-import { ApiProvider } from 'context/ApiContext';
+// --- PERBAIKAN: Menambahkan ekstensi file .jsx ---
+import App from './App.jsx';
+import { AuthProvider } from './context/AuthContext.jsx';
+import { ApiProvider } from './context/ApiContext.jsx';
 // --- AKHIR PERBAIKAN ---
 
 // Hapus import style.js

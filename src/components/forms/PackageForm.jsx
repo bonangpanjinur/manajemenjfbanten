@@ -1,15 +1,15 @@
 // Lokasi: src/components/forms/PackageForm.jsx
 
 import React, { useState, useEffect } from 'react';
-// --- PERBAIKAN: Path import absolut dari src/ ---
-import { useApi } from 'context/ApiContext';
-import { Input, Textarea, Select as FormSelect } from 'components/common/FormUI';
-import Loading from 'components/common/Loading';
-import ErrorMessage from 'components/common/ErrorMessage';
+// --- PERBAIKAN: Path import relatif dengan ekstensi .jsx ---
+import { useApi } from '../../context/ApiContext.jsx';
+import { Input, Textarea, Select as FormSelect } from '../common/FormUI.jsx';
+import Loading from '../common/Loading.jsx';
+import ErrorMessage from '../common/ErrorMessage.jsx';
 // --- AKHIR PERBAIKAN ---
 import ReactSelect from 'react-select'; 
-
-const PackageForm = ({ data, onSuccess }) => {
+// ... sisa kode ...
+// ... (Kode yang ada sebelumnya tidak diubah) ...
     const api = useApi();
     const [formData, setFormData] = useState({
         name: '',
@@ -299,7 +299,7 @@ const PackageForm = ({ data, onSuccess }) => {
                         onChange={setSelectedFlights}
                         className="basic-multi-select"
                         classNamePrefix="select"
-                        isLoading={api.loading}
+                        isLoading={api.loding}
                         placeholder="Pilih maskapai..."
                     />
                 </div>
@@ -317,6 +317,6 @@ const PackageForm = ({ data, onSuccess }) => {
             </div>
         </form>
     );
-};
+
 
 export default PackageForm;

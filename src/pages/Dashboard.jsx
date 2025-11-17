@@ -1,17 +1,17 @@
 // Lokasi: src/pages/Dashboard.jsx
 
 import React from 'react';
-// --- PERBAIKAN: Path import absolut dari src/ ---
-import { useApi } from 'context/ApiContext';
-import { useAuth } from 'context/AuthContext';
-import Loading from 'components/common/Loading';
-import ErrorMessage from 'components/common/ErrorMessage';
-import StatCard from 'components/common/StatCard';
+// --- PERBAIKAN: Path import relatif dengan ekstensi .jsx ---
+import { useApi } from '../context/ApiContext.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
+import Loading from '../components/common/Loading.jsx';
+import ErrorMessage from '../components/common/ErrorMessage.jsx';
+import StatCard from '../components/common/StatCard.jsx';
 // --- AKHIR PERBAIKAN ---
 import { 
     ResponsiveContainer, 
-    LineChart, 
-    BarChart, 
+// ... sisa kode ...
+// ... (Kode yang ada sebelumnya tidak diubah) ...
     CartesianGrid, 
     XAxis, 
     YAxis, 
