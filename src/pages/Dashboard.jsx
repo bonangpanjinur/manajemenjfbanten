@@ -1,121 +1,105 @@
-// Lokasi: src/pages/Dashboard.jsx
-
 import React from 'react';
-// --- PERBAIKAN: Path import relatif dengan ekstensi .jsx ---
+// PERBAIKAN: Menambahkan ekstensi file .jsx dan .js ke path
 import { useApi } from '../context/ApiContext.jsx';
-import { useAuth } from '../context/AuthContext.jsx';
-import Loading from '../components/common/Loading.jsx';
-import ErrorMessage from '../components/common/ErrorMessage.jsx';
-import StatCard from '../components/common/StatCard.jsx';
-// --- AKHIR PERBAIKAN ---
-import { 
-    ResponsiveContainer, 
-// ... sisa kode ...
-// ... (Kode yang ada sebelumnya tidak diubah) ...
-    CartesianGrid, 
-    XAxis, 
-    YAxis, 
-    Tooltip, 
-    Legend, 
-    Line, 
-    Bar 
-} from 'recharts';
+// PERBAIKAN: Impor bernama (named import) dan path 1 level ke atas
+import { StatCard } from '../components/common/StatCard.jsx';
+import { ErrorMessage } from '../components/common/ErrorMessage.jsx';
+import { LoadingScreen } from '../components/common/Loading.jsx';
+// AKHIR PERBAIKAN
+import { Users, Package, DollarSign, CheckCircle } from 'lucide-react';
+import { formatCurrency } from '../utils/helpers.js'; // PERBAIKAN: Path 1 level ke atas + ekstensi .js
 
-const Dashboard = () => {
+const DashboardComponent = ({ openModal }) => {
     const { data, loading, error } = useApi();
-    const { currentUser } = useAuth();
-    const { stats } = data;
 
-    if (loading && !stats) return <Loading text="Memuat data dashboard..." />;
-    if (error) return <ErrorMessage message={error} />;
+    if (loading) {
+        // PERBAIKAN: Gunakan LoadingScreen yang sudah diimpor
+        return <LoadingScreen message="Memuat dashboard..." />;
+    }
 
-    const financeChartData = stats?.financeChartData || [];
-    const packageChartData = stats?.packageChartData || [];
+    if (error) {
+        return <ErrorMessage title="Gagal Memuat" message={error} />;
+    }
+
+    const { stats, jamaah, packages } = data;
+
+    // Hitung sisa kursi dari semua paket yang tersedia
+    const availableSeats = packages
+        .filter(p => p.status === 'available')
+        .reduce((acc, p) => acc + (p.available_seats || 0), 0);
 
     return (
-        <div className="container mx-auto p-6">
-            <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
-            <p className="text-lg mb-8">Selamat datang, <span className="font-semibold">{currentUser?.full_name || currentUser?.user_email}</span>!</p>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <StatCard 
-                    title="Total Jemaah" 
-                    value={stats?.total_jamaah || 0} 
-                    description="Jumlah jemaah terdaftar"
+        <div className="space-y-6">
+            <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
+            
+            {/* Grid Statistik Utama */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <StatCard
+                    title="Total Jamaah Aktif"
+                    value={stats.total_jamaah || 0}
+                    icon={<Users className="w-8 h-8 text-blue-500" />}
+                    color="blue"
                 />
-                <StatCard 
-                    title="Jemaah Bulan Ini" 
-                    value={stats?.new_jamaah_this_month || 0} 
-                    description="Pendaftaran baru"
+                <StatCard
+                    title="Total Paket Tersedia"
+                    value={stats.available_packages || 0}
+                    icon={<Package className="w-8 h-8 text-green-500" />}
+                    color="green"
                 />
-                <StatCard 
-                    title="Total Piutang" 
-                    value={stats?.total_receivables ? `Rp ${Number(stats.total_receivables).toLocaleString('id-ID')}` : 'Rp 0'} 
-                    description="Total tagihan belum lunas"
+                <StatCard
+                    title="Sisa Kursi (Total)"
+                    value={availableSeats} // Gunakan data kalkulasi
+                    icon={<CheckCircle className="w-8 h-8 text-indigo-500" />}
+                    color="indigo"
                 />
-                <StatCard 
-                    title="Leads Baru" 
-                    value={stats?.new_leads_this_month || 0} 
-                    description="Leads bulan ini"
+                <StatCard
+                    title="Total Piutang (Pending)"
+                    value={formatCurrency(stats.total_pending_payments || 0)}
+                    icon={<DollarSign className="w-8 h-8 text-yellow-500" />}
+                    color="yellow"
                 />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                <div className="bg-white p-6 rounded-lg shadow-md">
-                    <h2 className="text-xl font-semibold mb-4">Grafik Keuangan (6 Bulan Terakhir)</h2>
-                    {financeChartData.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={300}>
-                            <LineChart data={financeChartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="month" />
-                                <YAxis tickFormatter={(value) => `Rp${value/1000000} Jt`} />
-                                <Tooltip formatter={(value) => `Rp ${Number(value).toLocaleString('id-ID')}`} />
-                                <Legend />
-                                <Line type="monotone" dataKey="income" name="Pemasukan" stroke="#22c55e" strokeWidth={2} activeDot={{ r: 8 }} />
-                                <Line type="monotone" dataKey="expense" name="Pengeluaran" stroke="#ef4444" strokeWidth={2} />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    ) : (
-                        <p className="text-gray-500">Data chart keuangan belum tersedia.</p>
-                    )}
-                </div>
-
-                <div className="bg-white p-6 rounded-lg shadow-md">
-                    <h2 className="text-xl font-semibold mb-4">Paket Terpopuler (Top 5)</h2>
-                    {packageChartData.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={packageChartData} layout="vertical" margin={{ top: 5, right: 20, left: 60, bottom: 5 }}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis type="number" />
-                                <YAxis dataKey="name" type="category" width={150} tick={{ fontSize: 12 }} />
-                                <Tooltip formatter={(value) => `${value} Jemaah`} />
-                                <Legend />
-                                <Bar dataKey="jamaah" name="Jumlah Jemaah" fill="#3b82f6" />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    ) : (
-                        <p className="text-gray-500">Data chart paket belum tersedia.</p>
-                    )}
-                </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-lg shadow-md">
-                <h2 className="text-xl font-semibold mb-4">Aktivitas Terbaru</h2>
-                { (data.logs && data.logs.length > 0) ? (
-                    <ul className="divide-y divide-gray-200 max-h-60 overflow-y-auto">
-                        {data.logs.slice(0, 5).map(log => (
-                             <li key={log.id} className="py-3">
-                                <p><span className="font-semibold">{log.user_email || 'Sistem'}</span> {log.description}</p>
-                                <span className="text-sm text-gray-500">{new Date(log.timestamp).toLocaleString('id-ID')}</span>
-                            </li>
+            {/* Bagian Peringatan / Info Cepat */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Daftar Jamaah Terbaru */}
+                <div className="bg-white p-6 rounded-lg shadow">
+                    <h2 className="text-xl font-semibold text-gray-700 mb-4">Jamaah Baru</h2>
+                    <div className="space-y-3 max-h-64 overflow-y-auto">
+                        {jamaah.slice(0, 5).map(j => ( // Ambil 5 terbaru
+                            <div key={j.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                                <div>
+                                    <p className="font-medium text-gray-800">{j.name}</p>
+                                    <p className="text-sm text-gray-500">{j.email}</p>
+                                </div>
+                                <span className="text-sm text-gray-600">{j.package_name || 'Tanpa Paket'}</span>
+                            </div>
                         ))}
-                    </ul>
-                ) : (
-                    <p className="text-gray-500">Belum ada aktivitas terbaru.</p>
-                )}
+                        {jamaah.length === 0 && <p className="text-gray-500">Belum ada data jamaah.</p>}
+                    </div>
+                </div>
+
+                {/* Paket Hampir Penuh */}
+                <div className="bg-white p-6 rounded-lg shadow">
+                    <h2 className="text-xl font-semibold text-gray-700 mb-4">Paket Akan Berangkat</h2>
+                    <div className="space-y-3 max-h-64 overflow-y-auto">
+                        {packages.filter(p => p.status === 'available').slice(0, 5).map(p => (
+                             <div key={p.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                                <div>
+                                    <p className="font-medium text-gray-800">{p.name}</p>
+                                    <p className="text-sm text-gray-500">Berangkat: {p.start_date}</p>
+                                </div>
+                                <span className="font-medium text-indigo-600">
+                                    {p.available_seats} / {p.total_seats} kursi
+                                </span>
+                            </div>
+                        ))}
+                        {packages.length === 0 && <p className="text-gray-500">Belum ada data paket.</p>}
+                    </div>
+                </div>
             </div>
         </div>
     );
 };
 
-export default Dashboard;
+export default DashboardComponent;

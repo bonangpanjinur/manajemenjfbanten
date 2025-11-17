@@ -1,322 +1,283 @@
-// Lokasi: src/components/forms/PackageForm.jsx
-
 import React, { useState, useEffect } from 'react';
-// --- PERBAIKAN: Path import relatif dengan ekstensi .jsx ---
-import { useApi } from '../../context/ApiContext.jsx';
-import { Input, Textarea, Select as FormSelect } from '../common/FormUI.jsx';
-import Loading from '../common/Loading.jsx';
-import ErrorMessage from '../common/ErrorMessage.jsx';
-// --- AKHIR PERBAIKAN ---
-import ReactSelect from 'react-select'; 
-// ... sisa kode ...
-// ... (Kode yang ada sebelumnya tidak diubah) ...
-    const api = useApi();
-    const [formData, setFormData] = useState({
+import { useApi } from '../../context/ApiContext';
+// PERBAIKAN: Impor bernama (named import)
+import { ErrorMessage } from '../common/ErrorMessage';
+import { LoadingSpinner as Loading } from '../common/Loading';
+import { Input, Textarea, Button, Select, Checkbox } from '../common/FormUI';
+import { Plus, Trash2 } from 'lucide-react';
+import { formatCurrency, parseCurrency } from '../../utils/helpers';
+
+// --- PERBAIKAN: Seluruh logika dibungkus dalam komponen fungsi ---
+const PackageForm = ({ data, onClose }) => {
+    const { createOrUpdate, loading: apiLoading, error: apiError } = useApi();
+
+    const [error, setError] = useState(null);
+    const [loading, setLoading] = useState(false);
+
+    const initialData = data || {
         name: '',
         description: '',
-        duration: '',
-        includes: '',
-        excludes: '',
+        price: '0',
+        duration_days: '9',
         start_date: '',
         end_date: '',
-        status: 'draft',
-        price_details: [], 
+        departure_city: 'JKT',
+        total_seats: 50,
+        available_seats: 50,
+        status: 'available',
+        includes_flights: true,
+        includes_hotels: true,
+        includes_visa: true,
+        itinerary: JSON.stringify([{ day: '1', title: '', details: '' }]),
+        includes: [],
+    };
+
+    const [formData, setFormData] = useState({
+        name: initialData.name,
+        description: initialData.description,
+        duration_days: initialData.duration_days,
+        start_date: initialData.start_date,
+        end_date: initialData.end_date,
+        departure_city: initialData.departure_city,
+        total_seats: initialData.total_seats,
+        available_seats: initialData.available_seats,
+        status: initialData.status,
+        includes_flights: initialData.includes_flights,
+        includes_hotels: initialData.includes_hotels,
+        includes_visa: initialData.includes_visa,
     });
-    const [selectedHotels, setSelectedHotels] = useState([]);
-    const [selectedFlights, setSelectedFlights] = useState([]);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [error, setError] = useState(null);
+    const [price, setPrice] = useState(formatCurrency(initialData.price));
+    const [itinerary, setItinerary] = useState(initialData.itinerary ? JSON.parse(initialData.itinerary) : [{ day: '1', title: '', details: '' }]);
+    const [includes, setIncludes] = useState(initialData.includes ? initialData.includes.join('\n') : '');
 
     useEffect(() => {
-        if (data) {
-            let priceDetailsArray = [];
-            if (typeof data.price_details === 'string') {
-                try {
-                    priceDetailsArray = JSON.parse(data.price_details);
-                    if (!Array.isArray(priceDetailsArray)) {
-                        priceDetailsArray = Object.keys(JSON.parse(data.price_details)).map(key => ({
-                            name: key,
-                            price: JSON.parse(data.price_details)[key]
-                        }));
-                    }
-                } catch (e) {
-                    console.error("Gagal parse price_details JSON:", e);
-                    priceDetailsArray = [];
-                }
-            } else if (Array.isArray(data.price_details)) {
-                priceDetailsArray = data.price_details;
-            } else if (data.price_details && typeof data.price_details === 'object') {
-                 priceDetailsArray = Object.keys(data.price_details).map(key => ({
-                    name: key,
-                    price: data.price_details[key]
-                }));
-            }
-
-            setFormData({
-                name: data.name || '',
-                description: data.description || '',
-                duration: data.duration || '',
-                includes: data.includes || '',
-                excludes: data.excludes || '',
-                start_date: data.start_date ? data.start_date.split('T')[0] : '',
-                end_date: data.end_date ? data.end_date.split('T')[0] : '',
-                status: data.status || 'draft',
-                price_details: priceDetailsArray.length > 0 ? priceDetailsArray : [{ name: 'Quad', price: '' }],
-            });
-
-            if (data.hotel_bookings && api.data.hotels) {
-                const hotelOptions = data.hotel_bookings.map(booking => {
-                    const hotel = api.data.hotels.find(h => h.id === booking.hotel_id);
-                    return hotel ? { value: hotel.id, label: hotel.name } : null;
-                }).filter(Boolean); 
-                setSelectedHotels(hotelOptions);
-            }
-
-            if (data.flight_bookings && api.data.flights) {
-                const flightOptions = data.flight_bookings.map(booking => {
-                    const flight = api.data.flights.find(f => f.id === booking.flight_id);
-                    return flight ? { value: flight.id, label: `${flight.airline_name} (${flight.flight_number})` } : null;
-                }).filter(Boolean);
-                setSelectedFlights(flightOptions);
-            }
-
-        } else {
-            setFormData({
-                name: '',
-                description: '',
-                duration: '',
-                includes: '',
-                excludes: '',
-                start_date: '',
-                end_date: '',
-                status: 'draft',
-                price_details: [{ name: 'Quad', price: '' }],
-            });
-            setSelectedHotels([]);
-            setSelectedFlights([]);
+        if (apiError) {
+            setError(apiError);
         }
-    }, [data, api.data.hotels, api.data.flights]); 
+    }, [apiError]);
 
     const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-    };
-
-    const handlePriceDetailChange = (index, field, value) => {
-        const newPriceDetails = [...formData.price_details];
-        newPriceDetails[index][field] = value;
-        setFormData(prev => ({ ...prev, price_details: newPriceDetails }));
-    };
-
-    const addPriceDetail = () => {
+        const { name, value, type, checked } = e.target;
         setFormData(prev => ({
             ...prev,
-            price_details: [...prev.price_details, { name: '', price: '' }]
+            [name]: type === 'checkbox' ? checked : value
         }));
     };
 
-    const removePriceDetail = (index) => {
-        const newPriceDetails = formData.price_details.filter((_, i) => i !== index);
-        setFormData(prev => ({ ...prev, price_details: newPriceDetails }));
+    const handlePriceChange = (e) => {
+        setPrice(formatCurrency(e.target.value));
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setIsSubmitting(true);
         setError(null);
+        setLoading(true);
+
+        const finalData = {
+            ...formData,
+            price: parseCurrency(price),
+            itinerary: JSON.stringify(itinerary),
+            includes: includes.split('\n').filter(line => line.trim() !== ''),
+            // Pastikan tipe data angka benar
+            duration_days: parseInt(formData.duration_days, 10) || 0,
+            total_seats: parseInt(formData.total_seats, 10) || 0,
+            available_seats: parseInt(formData.available_seats, 10) || 0,
+        };
+
+        // Jika ini adalah update, sertakan ID
+        if (data && data.id) {
+            finalData.id = data.id;
+        }
 
         try {
-            const payload = {
-                ...formData,
-                id: data ? data.id : null,
-                price_details: JSON.stringify(formData.price_details),
-                hotel_ids: selectedHotels.map(h => h.value),
-                flight_ids: selectedFlights.map(f => f.value),
-            };
-
-            await api.createOrUpdate('package', payload);
-            onSuccess(); 
+            await createOrUpdate('package', finalData);
+            setLoading(false);
+            onClose(); // Tutup modal setelah sukses
         } catch (err) {
+            setLoading(false);
             setError(err.message || 'Gagal menyimpan paket.');
-            console.error(err);
-        } finally {
-            setIsSubmitting(false);
         }
     };
 
-    const hotelOptions = (api.data.hotels || []).map(hotel => ({
-        value: hotel.id,
-        label: `${hotel.name} (${hotel.city})`
-    }));
+    const handleIncludesChange = (e) => {
+        setIncludes(e.target.value);
+    };
 
-    const flightOptions = (api.data.flights || []).map(flight => ({
-        value: flight.id,
-        label: `${flight.airline_name} (${flight.flight_number || 'N/A'}) - ${flight.departure_airport} ke ${flight.arrival_airport}`
-    }));
+    const handleItineraryChange = (index, field, value) => {
+        const newItinerary = [...itinerary];
+        newItinerary[index][field] = value;
+        setItinerary(newItinerary);
+    };
 
+    const addItineraryDay = () => {
+        setItinerary([...itinerary, { day: `${itinerary.length + 1}`, title: '', details: '' }]);
+    };
+
+    const removeItineraryDay = (index) => {
+        const newItinerary = itinerary.filter((_, i) => i !== index);
+        setItinerary(newItinerary);
+    };
+
+    // Ini adalah baris 157 di file asli Anda, sekarang di dalam fungsi
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
             {error && <ErrorMessage message={error} />}
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Input
-                    label="Nama Paket"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    required
-                />
-                <Input
-                    label="Durasi (misal: 12 Hari)"
-                    name="duration"
-                    value={formData.duration}
-                    onChange={handleChange}
-                />
-            </div>
 
+            <Input
+                label="Nama Paket"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                required
+            />
             <Textarea
                 label="Deskripsi"
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
-                rows="4"
+            />
+            <Input
+                label="Harga (IDR)"
+                name="price"
+                value={price}
+                onChange={handlePriceChange}
+                required
             />
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Textarea
-                    label="Fasilitas Termasuk (Includes)"
-                    name="includes"
-                    value={formData.includes}
-                    onChange={handleChange}
-                    rows="3"
-                    placeholder="Satu fasilitas per baris..."
-                />
-                <Textarea
-                    label="Fasilitas Tidak Termasuk (Excludes)"
-                    name="excludes"
-                    value={formData.excludes}
-                    onChange={handleChange}
-                    rows="3"
-                    placeholder="Satu fasilitas per baris..."
-                />
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-2 gap-4">
                 <Input
-                    label="Tanggal Mulai (Opsional)"
-                    name="start_date"
-                    type="date"
-                    value={formData.start_date}
+                    label="Durasi (Hari)"
+                    name="duration_days"
+                    type="number"
+                    value={formData.duration_days}
                     onChange={handleChange}
+                    required
                 />
-                <Input
-                    label="Tanggal Selesai (Opsional)"
-                    name="end_date"
-                    type="date"
-                    value={formData.end_date}
-                    onChange={handleChange}
-                />
-                <FormSelect
+                <Select
                     label="Status"
                     name="status"
                     value={formData.status}
                     onChange={handleChange}
                 >
+                    <option value="available">Tersedia</option>
+                    <option value="full">Penuh</option>
+                    <option value="completed">Selesai</option>
                     <option value="draft">Draft</option>
-                    <option value="published">Published</option>
-                    <option value="archived">Archived</option>
-                </FormSelect>
+                </Select>
             </div>
 
-            <fieldset className="border border-gray-300 p-4 rounded-lg">
-                <legend className="text-md font-semibold px-2">Detail Harga (Tipe Kamar)</legend>
-                {(formData.price_details || []).map((detail, index) => (
-                    <div key={index} className="flex items-center space-x-4 mb-4">
-                        <div className="flex-1">
-                            <Input
-                                label={`Tipe Kamar ${index + 1}`}
-                                name="name"
-                                placeholder="Contoh: Quad"
-                                value={detail.name}
-                                onChange={(e) => handlePriceDetailChange(index, 'name', e.target.value)}
-                            />
-                        </div>
-                        <div className="flex-1">
-                            <Input
-                                label={`Harga ${index + 1}`}
-                                name="price"
-                                type="number"
-                                placeholder="Contoh: 30000000"
-                                value={detail.price}
-                                onChange={(e) => handlePriceDetailChange(index, 'price', e.target.value)}
-                            />
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => removePriceDetail(index)}
-                            className="mt-6 px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50"
-                            disabled={formData.price_details.length <= 1}
-                        >
-                            Hapus
-                        </button>
-                    </div>
-                ))}
-                <button
-                    type="button"
-                    onClick={addPriceDetail}
-                    className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
-                >
-                    + Tambah Tipe Kamar
-                </button>
+            <div className="grid grid-cols-2 gap-4">
+                <Input
+                    label="Tanggal Mulai"
+                    name="start_date"
+                    type="date"
+                    value={formData.start_date}
+                    onChange={handleChange}
+                    required
+                />
+                <Input
+                    label="Tanggal Selesai"
+                    name="end_date"
+                    type="date"
+                    value={formData.end_date}
+                    onChange={handleChange}
+                    required
+                />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+                <Input
+                    label="Kota Keberangkatan"
+                    name="departure_city"
+                    value={formData.departure_city}
+                    onChange={handleChange}
+                    required
+                />
+                <Input
+                    label="Total Kursi"
+                    name="total_seats"
+                    type="number"
+                    value={formData.total_seats}
+                    onChange={handleChange}
+                    required
+                />
+            </div>
+
+             <Input
+                label="Kursi Tersedia"
+                name="available_seats"
+                type="number"
+                value={formData.available_seats}
+                onChange={handleChange}
+                required
+            />
+
+            <fieldset className="space-y-2">
+                <legend className="text-sm font-medium text-gray-700">Fasilitas Termasuk</legend>
+                <Checkbox label="Termasuk Penerbangan" name="includes_flights" checked={formData.includes_flights} onChange={handleChange} />
+                <Checkbox label="Termasuk Hotel" name="includes_hotels" checked={formData.includes_hotels} onChange={handleChange} />
+                <Checkbox label="Termasuk Visa" name="includes_visa" checked={formData.includes_visa} onChange={handleChange} />
             </fieldset>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Pilih Hotel (Bisa lebih dari satu)
-                    </label>
-                    <ReactSelect
-                        isMulti
-                        name="hotels"
-                        options={hotelOptions}
-                        value={selectedHotels}
-                        onChange={setSelectedHotels}
-                        className="basic-multi-select"
-                        classNamePrefix="select"
-                        isLoading={api.loading}
-                        placeholder="Pilih hotel..."
-                    />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Pilih Maskapai (Bisa lebih dari satu)
-                    </label>
-                    <ReactSelect
-                        isMulti
-                        name="flights"
-                        options={flightOptions}
-                        value={selectedFlights}
-                        onChange={setSelectedFlights}
-                        className="basic-multi-select"
-                        classNamePrefix="select"
-                        isLoading={api.loding}
-                        placeholder="Pilih maskapai..."
-                    />
-                </div>
+            <Textarea
+                label="Daftar Fasilitas (satu per baris)"
+                name="includes"
+                value={includes}
+                onChange={handleIncludesChange}
+                rows={5}
+                placeholder="Hotel Bintang 5&#10;Makan 3x Sehari&#10;Bus AC"
+            />
+
+            <div>
+                <h4 className="text-lg font-medium text-gray-800 mb-2">Itinerary</h4>
+                {itinerary.map((item, index) => (
+                    <div key={index} className="space-y-2 border p-4 rounded-lg mb-4 bg-gray-50 relative">
+                        <Input
+                            label={`Hari ke-${item.day}`}
+                            name={`itinerary-title-${index}`}
+                            value={item.title}
+                            onChange={(e) => handleItineraryChange(index, 'title', e.target.value)}
+                            placeholder="Judul/Lokasi (cth: Madinah)"
+                        />
+                        <Textarea
+                            label="Detail"
+                            name={`itinerary-details-${index}`}
+                            value={item.details}
+                            onChange={(e) => handleItineraryChange(index, 'details', e.target.value)}
+                            rows={3}
+                            placeholder="Detail kegiatan..."
+                        />
+                        {itinerary.length > 1 && (
+                            <Button
+                                type="button"
+                                variant="danger"
+                                size="sm"
+                                onClick={() => removeItineraryDay(index)}
+                                className="absolute top-2 right-2"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                            </Button>
+                        )}
+                    </div>
+                ))}
+                <Button type="button" variant="secondary" onClick={addItineraryDay}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Tambah Hari
+                </Button>
             </div>
 
 
-            <div className="flex justify-end pt-6">
-                <button
-                    type="submit"
-                    className="px-6 py-2 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
-                    disabled={isSubmitting}
-                >
-                    {isSubmitting ? <Loading text="Menyimpan..." /> : (data ? 'Update Paket' : 'Simpan Paket')}
-                </button>
+            <div className="flex justify-end space-x-3 pt-4 border-t">
+                <Button type="button" variant="secondary" onClick={onClose} disabled={loading || apiLoading}>
+                    Batal
+                </Button>
+                <Button type="submit" disabled={loading || apiLoading}>
+                    {(loading || apiLoading) ? <Loading /> : (data ? 'Update Paket' : 'Simpan Paket')}
+                </Button>
             </div>
         </form>
     );
-
+};
+// --- AKHIR PERBAIKAN ---
 
 export default PackageForm;

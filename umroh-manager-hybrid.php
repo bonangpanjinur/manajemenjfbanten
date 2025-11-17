@@ -162,14 +162,15 @@ function umh_admin_enqueue_scripts($hook) {
     $user_roles = (array) $current_user->roles;
     $primary_role = !empty($user_roles) ? $user_roles[0] : 'subscriber';
 
+    // --- PERBAIKAN: Mengubah nama objek dan kunci agar sesuai dengan build/index.js ---
     wp_localize_script(
         'umh-admin-react-app',
-        'umhApiSettings',
+        'umh_wp_data', // DIUBAH: dari 'umhApiSettings'
         array(
-            'apiUrl' => esc_url_raw(rest_url('umh/v1')),
-            'nonce' => wp_create_nonce('wp_rest'),
-            'isWpAdmin' => true,
-            'currentUser' => array(
+            'api_url' => esc_url_raw(rest_url('umh/v1')), // DIUBAH: dari 'apiUrl'
+            'api_nonce' => wp_create_nonce('wp_rest'), // DIUBAH: dari 'nonce'
+            'is_wp_admin' => true, // DIUBAH: dari 'isWpAdmin'
+            'current_user' => array( // DIUBAH: dari 'currentUser'
                 'id' => $current_user->ID,
                 'user_email' => $current_user->user_email,
                 'full_name' => $current_user->display_name,
@@ -179,6 +180,7 @@ function umh_admin_enqueue_scripts($hook) {
             'printUrl' => admin_url('admin.php?page=umh-print-registration'),
         )
     );
+    // --- AKHIR PERBAIKAN ---
 }
 add_action('admin_enqueue_scripts', 'umh_admin_enqueue_scripts');
 

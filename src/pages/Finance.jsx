@@ -1,236 +1,184 @@
-// Lokasi: src/pages/Finance.jsx
-
 import React, { useState, useMemo } from 'react';
-// --- PERBAIKAN: Path import relatif ---
-import { useApi } from '../context/ApiContext';
-import Loading from '../components/common/Loading';
-import ErrorMessage from '../components/common/ErrorMessage';
-import Modal from '../components/common/Modal';
-import FinanceForm from '../components/forms/FinanceForm';
-import { formatDate, formatCurrency } from '../utils/helpers';
-// --- AKHIR PERBAIKAN ---
+// PERBAIKAN: Path 1 level ke atas + ekstensi .jsx
+import { useApi } from '../context/ApiContext.jsx';
+// PERBAIKAN: Impor bernama (named import) dan path 1 level ke atas + ekstensi .jsx
+import { LoadingScreen, LoadingSpinner } from '../components/common/Loading.jsx';
+import { ErrorMessage } from '../components/common/ErrorMessage.jsx';
+import { Modal } from '../components/common/Modal.jsx';
+// PERBAIKAN: Path 1 level ke atas + ekstensi .jsx
+import FinanceForm from '../components/forms/FinanceForm.jsx';
+import { Button, Input } from '../components/common/FormUI.jsx';
+// PERBAIKAN: Path 1 level ke atas + ekstensi .js
+import { formatCurrency, formatDate } from '../utils/helpers.js';
+import { Plus, Edit, Trash2, TrendingUp, TrendingDown, Filter } from 'lucide-react';
 
-const Finance = () => {
-    const api = useApi();
-    const { data, loading, error } = api;
+const FinanceComponent = () => {
+    const { data, loading, error, createOrUpdate, deleteItem } = useApi();
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedItem, setSelectedItem] = useState(null);
     const [filter, setFilter] = useState('');
-    const [modal, setModal] = useState({ isOpen: false, data: null });
 
-    const [confirmModal, setConfirmModal] = useState({
-        isOpen: false,
-        title: '',
-        message: '',
-        onConfirm: () => {},
-    });
+    const openModal = (item = null) => {
+        setSelectedItem(item);
+        setIsModalOpen(true);
+    };
 
-    if (loading) return <Loading />;
-    if (error) return <ErrorMessage message={error} />;
+    const closeModal = () => {
+        setSelectedItem(null);
+        setIsModalOpen(false);
+    };
 
-    const categoriesMap = useMemo(() => {
-        return (data.categories || []).reduce((acc, cat) => {
-            acc[cat.id] = cat.name;
-            return acc;
-        }, {});
-    }, [data.categories]);
-
-    const jamaahMap = useMemo(() => {
-        return (data.jamaah || []).reduce((acc, j) => {
-            acc[j.id] = j.full_name;
-            return acc;
-        }, {});
-    }, [data.jamaah]);
+    const handleDelete = async (id) => {
+        if (window.confirm('Apakah Anda yakin ingin menghapus data ini?')) {
+            try {
+                await deleteItem('finance', id);
+            } catch (err) {
+                alert('Gagal menghapus: ' + err.message);
+            }
+        }
+    };
 
     const filteredData = useMemo(() => {
-        return (data.finance || []).filter(item =>
+        return data.finance.filter(item =>
             item.description.toLowerCase().includes(filter.toLowerCase()) ||
-            (categoriesMap[item.category_id] && categoriesMap[item.category_id].toLowerCase().includes(filter.toLowerCase())) ||
-            (jamaahMap[item.related_jamaah_id] && jamaahMap[item.related_jamaah_id].toLowerCase().includes(filter.toLowerCase()))
-        ).sort((a, b) => new Date(b.transaction_date) - new Date(a.transaction_date)); // Sortir terbaru dulu
-    }, [data.finance, filter, categoriesMap, jamaahMap]);
+            item.category.toLowerCase().includes(filter.toLowerCase())
+        );
+    }, [data.finance, filter]);
 
-    const totals = useMemo(() => {
-        return (data.finance || []).reduce((acc, item) => {
-            if (item.status === 'completed') {
-                if (item.type === 'income') {
-                    acc.income += parseFloat(item.amount);
-                } else if (item.type === 'expense') {
-                    acc.expense += parseFloat(item.amount);
-                }
-            }
-            return acc;
-        }, { income: 0, expense: 0 });
+    const totalIncome = useMemo(() => {
+        return data.finance
+            .filter(item => item.type === 'income')
+            .reduce((acc, item) => acc + parseFloat(item.amount), 0);
     }, [data.finance]);
-    const profit = totals.income - totals.expense;
 
-    const handleDelete = (id) => {
-        setConfirmModal({
-            isOpen: true,
-            title: 'Konfirmasi Hapus',
-            message: 'Apakah Anda yakin ingin menghapus data transaksi ini? (Transaksi dari pembayaran jemaah tidak bisa dihapus di sini)',
-            onConfirm: async () => {
-                try {
-                    await api.deleteItem('finance', id);
-                    api.refreshData('finance'); 
-                    setConfirmModal({ ...confirmModal, isOpen: false });
-                } catch (error) {
-                    console.error('Gagal menghapus transaksi:', error);
-                    setConfirmModal({ ...confirmModal, isOpen: false });
-                }
-            },
-        });
-    };
+    const totalExpense = useMemo(() => {
+        return data.finance
+            .filter(item => item.type === 'expense')
+            .reduce((acc, item) => acc + parseFloat(item.amount), 0);
+    }, [data.finance]);
 
-    const handleVerify = (id) => {
-        setConfirmModal({
-            isOpen: true,
-            title: 'Konfirmasi Verifikasi',
-            message: 'Apakah Anda yakin ingin memverifikasi transaksi ini?',
-            onConfirm: async () => {
-                try {
-                    await api.createOrUpdate('finance', { id: id, status: 'completed' });
-                    api.refreshData('finance');
-                    setConfirmModal({ ...confirmModal, isOpen: false });
-                } catch (error) {
-                    console.error('Gagal verifikasi:', error);
-                    setConfirmModal({ ...confirmModal, isOpen: false });
-                }
-            },
-        });
-    };
+    const netProfit = totalIncome - totalExpense;
 
-    const handleEdit = (item) => {
-        setModal({ isOpen: true, data: item });
-    };
+    if (loading && !data.finance.length) {
+        // PERBAIKAN: Gunakan LoadingScreen
+        return <LoadingScreen message="Memuat data keuangan..." />;
+    }
 
-    const handleSuccess = () => {
-        setModal({ isOpen: false, data: null });
-        api.refreshData('finance');
-    };
+    if (error) {
+        return <ErrorMessage title="Gagal Memuat" message={error} />;
+    }
 
     return (
-        <div className="container mx-auto p-6">
-            <h1 className="text-3xl font-bold mb-6">Manajemen Keuangan</h1>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                <div className="bg-green-100 p-6 rounded-lg shadow">
-                    <h4 className="text-lg font-semibold text-green-800">Total Pemasukan</h4>
-                    <p className="text-3xl font-bold text-green-900">{formatCurrency(totals.income)}</p>
-                </div>
-                <div className="bg-red-100 p-6 rounded-lg shadow">
-                    <h4 className="text-lg font-semibold text-red-800">Total Pengeluaran</h4>
-                    <p className="text-3xl font-bold text-red-900">{formatCurrency(totals.expense)}</p>
-                </div>
-                <div className="bg-blue-100 p-6 rounded-lg shadow">
-                    <h4 className="text-lg font-semibold text-blue-800">Keuntungan (Profit)</h4>
-                    <p className="text-3xl font-bold text-blue-900">{formatCurrency(profit)}</p>
-                </div>
+        <div className="space-y-6">
+            <div className="flex flex-col md:flex-row justify-between items-center">
+                <h1 className="text-3xl font-bold text-gray-800">Manajemen Keuangan</h1>
+                <Button onClick={() => openModal()} className="mt-4 md:mt-0">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Tambah Transaksi
+                </Button>
             </div>
 
-            <div className="flex justify-between items-center mb-6">
-                <input
-                    type="text"
-                    placeholder="Cari transaksi (deskripsi, kategori, jemaah)..."
-                    className="px-4 py-2 border rounded-lg w-1/3"
-                    value={filter}
-                    onChange={(e) => setFilter(e.target.value)}
-                />
-                <button
-                    onClick={() => setModal({ isOpen: true, data: null })}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700"
-                >
-                    + Tambah Transaksi Manual
-                </button>
+            {/* Stat Box */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <StatBox label="Total Pemasukan" value={formatCurrency(totalIncome)} color="text-green-600" icon={<TrendingUp />} />
+                <StatBox label="Total Pengeluaran" value={formatCurrency(totalExpense)} color="text-red-600" icon={<TrendingDown />} />
+                <StatBox label="Profit Bersih" value={formatCurrency(netProfit)} color={netProfit >= 0 ? "text-blue-600" : "text-red-600"} />
             </div>
 
-            <div className="bg-white shadow-md rounded-lg overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deskripsi</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kategori</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Terkait</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                        {filteredData.map(item => (
-                            <tr key={item.id} className="border-b hover:bg-gray-50">
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{formatDate(item.transaction_date)}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.description}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{categoriesMap[item.category_id] || 'Tanpa Kategori'}</td>
-                                <td className={`px-6 py-4 whitespace-nowrap text-sm font-semibold ${item.type === 'income' ? 'text-green-700' : 'text-red-700'}`}>
-                                    {item.type === 'expense' ? '-' : ''}{formatCurrency(item.amount)}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                    {item.related_jamaah_id ? jamaahMap[item.related_jamaah_id] : (item.related_payment_id ? `Pembayaran #${item.related_payment_id}` : '-')}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <span className={`px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                        item.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                        'bg-yellow-100 text-yellow-800'
-                                    }`}>
-                                        {item.status}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <div className="flex items-center space-x-2">
-                                        {item.status === 'pending' && (
-                                            <button onClick={() => handleVerify(item.id)} className="text-green-600 hover:text-green-900">Verifikasi</button>
-                                        )}
-                                        {!item.related_payment_id && (
-                                            <>
-                                                <button onClick={() => handleEdit(item)} className="text-blue-600 hover:text-blue-900">Edit</button>
-                                                <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:text-red-900">Hapus</button>
-                                            </>
-                                        )}
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
-                        {filteredData.length === 0 && (
+            {/* Filter dan Tabel */}
+            <div className="bg-white p-6 rounded-lg shadow">
+                <div className="flex items-center mb-4">
+                    <Filter className="w-5 h-5 text-gray-500 mr-2" />
+                    <Input
+                        type="text"
+                        placeholder="Cari berdasarkan deskripsi atau kategori..."
+                        value={filter}
+                        onChange={(e) => setFilter(e.target.value)}
+                        className="max-w-sm"
+                    />
+                </div>
+                
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
                             <tr>
-                                <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
-                                    Tidak ada data transaksi yang ditemukan.
-                                </td>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deskripsi</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kategori</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipe</th>
+                                <th scope="col" className="relative px-6 py-3">
+                                    <span className="sr-only">Aksi</span>
+                                </th>
                             </tr>
-                        )}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {loading && (
+                                <tr>
+                                    <td colSpan="6" className="text-center p-4"><LoadingSpinner /></td>
+                                </tr>
+                            )}
+                            {!loading && filteredData.length === 0 && (
+                                <tr>
+                                    <td colSpan="6" className="text-center p-4 text-gray-500">Data tidak ditemukan.</td>
+                                </tr>
+                            )}
+                            {!loading && filteredData.map((item) => {
+                                const isIncome = item.type === 'income';
+                                const amountColor = isIncome ? 'text-green-600' : 'text-red-600';
+                                const amountPrefix = isIncome ? '+' : '-';
+                                
+                                return (
+                                    <tr key={item.id}>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(item.transaction_date)}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.description}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.category}</td>
+                                        <td className={`px-6 py-4 whitespace-nowrap text-sm font-semibold ${amountColor}`}>
+                                            {amountPrefix} {formatCurrency(item.amount)}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${isIncome ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                                {item.type}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                                            <Button variant="icon" size="sm" onClick={() => openModal(item)}>
+                                                <Edit className="w-4 h-4" />
+                                            </Button>
+                                            <Button variant="icon" size="sm" color="danger" onClick={() => handleDelete(item.id)}>
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
             </div>
-            
-            {confirmModal.isOpen && (
-                <Modal
-                    title={confirmModal.title}
-                    onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
-                >
-                    <p className="mb-6">{confirmModal.message}</p>
-                    <div className="flex justify-end space-x-4">
-                        <button
-                            onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })}
-                            className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400"
-                        >
-                            Batal
-                        </button>
-                        <button
-                            onClick={confirmModal.onConfirm}
-                            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-                        >
-                            Konfirmasi
-                        </button>
-                    </div>
-                </Modal>
-            )}
 
-            {modal.isOpen && (
-                <Modal title={modal.data ? 'Edit Transaksi' : 'Tambah Transaksi'} onClose={() => setModal({ isOpen: false, data: null })}>
-                    <FinanceForm data={modal.data} onSuccess={handleSuccess} />
+            {isModalOpen && (
+                // PERBAIKAN: Gunakan Modal
+                <Modal title={selectedItem ? 'Edit Transaksi' : 'Tambah Transaksi'} onClose={closeModal}>
+                    <div className="p-6">
+                        <FinanceForm data={selectedItem} onClose={closeModal} />
+                    </div>
                 </Modal>
             )}
         </div>
     );
 };
 
-export default Finance;
+const StatBox = ({ label, value, color, icon }) => (
+    <div className="bg-white p-4 rounded-lg shadow flex items-center">
+        <div className={`p-3 rounded-full ${color.replace('text-', 'bg-')} bg-opacity-10 mr-4`}>
+            {React.cloneElement(icon, { className: `w-6 h-6 ${color}` })}
+        </div>
+        <div>
+            <span className="text-sm font-medium text-gray-500">{label}</span>
+            <p className={`text-2xl font-bold ${color}`}>{value}</p>
+        </div>
+    </div>
+);
+
+export default FinanceComponent;

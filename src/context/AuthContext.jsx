@@ -1,10 +1,10 @@
 import React, { createContext, useContext, useState } from 'react';
 
-// PERBAIKAN: Langsung baca data pengguna dari objek global 'umhApiSettings' yang dikirim PHP
-const globalSettings = window.umhApiSettings || {};
-const initialUser = globalSettings.currentUser || null;
-const initialNonce = globalSettings.nonce || null;
-const initialApiUrl = globalSettings.apiUrl || '/wp-json/umh/v1';
+// PERBAIKAN: Membaca data dari 'umh_wp_data' agar sesuai dengan PHP dan build/index.js
+const globalSettings = window.umh_wp_data || {};
+const initialUser = globalSettings.current_user || null; // DIUBAH: dari currentUser
+const initialNonce = globalSettings.api_nonce || null; // DIUBAH: dari nonce
+const initialApiUrl = globalSettings.api_url || '/wp-json/umh/v1'; // DIUBAH: dari apiUrl
 
 const AuthContext = createContext();
 
@@ -19,6 +19,8 @@ export const AuthProvider = ({ children }) => {
         apiUrl: initialApiUrl,
         adminUrl: globalSettings.adminUrl,
         printUrl: globalSettings.printUrl,
+        // PERBAIKAN: Tambahkan isWpAdmin
+        isWpAdmin: globalSettings.is_wp_admin || false,
     };
 
     return (

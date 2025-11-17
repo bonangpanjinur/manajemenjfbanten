@@ -1,137 +1,266 @@
 import React, { useState } from 'react';
-import { useAuth } from './context/AuthContext'; // .jsx dihapus
-import { useApi } from './context/ApiContext'; // .jsx dihapus
-import { LoadingScreen, LoadingSpinner } from './components/common/Loading'; // .jsx dihapus
-import { ErrorMessage } from './components/common/ErrorMessage'; // .jsx dihapus
-import { Button } from './components/common/FormUI'; // .jsx dihapus
-import JamaahPaymentsModal from './components/modals/JamaahPaymentsModal'; // .jsx dihapus
+// --- PERBAIKAN: Menghapus ekstensi .jsx dari impor ---
+import { useAuth } from './context/AuthContext';
+import { useApi } from './context/ApiContext';
+import { LoadingScreen, LoadingSpinner } from './components/common/Loading';
+import { ErrorMessage } from './components/common/ErrorMessage';
+import { Button } from './components/common/FormUI';
+import JamaahPaymentsModal from './components/modals/JamaahPaymentsModal';
+// --- AKHIR PERBAIKAN ---
 import { 
-    Briefcase, Home, Package, Users, DollarSign, BarChart2, FileText, LogOut
+    Briefcase, Home, Package, Users, DollarSign, BarChart2, FileText, LogOut,
+    Menu, X
 } from 'lucide-react';
 
 // Impor Halaman
-import DashboardComponent from './pages/Dashboard'; // .jsx dihapus
-import PackagesComponent from './pages/Packages'; // .jsx dihapus
-import JamaahComponent from './pages/Jamaah'; // .jsx dihapus
-import FinanceComponent from './pages/Finance'; // .jsx dihapus
-import HRComponent from './pages/HR'; // .jsx dihapus
-import MarketingComponent from './pages/Marketing'; // .jsx dihapus
-import LogComponent from './pages/Logs'; // .jsx dihapus
+// --- PERBAIKAN: Menghapus ekstensi .jsx dari impor ---
+import DashboardComponent from './pages/Dashboard';
+import PackagesComponent from './pages/Packages';
+import JamaahComponent from './pages/Jamaah';
+import FinanceComponent from './pages/Finance';
+import HRComponent from './pages/HR';
+import MarketingComponent from './pages/Marketing';
+import LogComponent from './pages/Logs';
+// --- AKHIR PERBAIKAN ---
 
 // -- STYLING HELPER (PENGGANTI clsx) --
-const cn = (...classes) => classes.filter(Boolean).join(' ');
+const clsx = (...classes) => {
+    return classes.filter(Boolean).join(' ');
+};
 
 const App = () => {
-    const { currentUser, logout, isLoading: authLoading } = useAuth();
-    const { loading: apiLoading, error: apiError } = useApi();
-    const [activeView, setActiveView] = useState('dashboard');
+    // State
+    const [activePage, setActivePage] = useState('dashboard');
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [modal, setModal] = useState({ type: null, props: {} }); // State untuk modal
+
+    // Contexts
+    const { currentUser, adminUrl } = useAuth();
+    const { loading, error, refreshData } = useApi(); // Get loading and error
+
+    // Role & Navigation Logic
+    const userRole = currentUser?.role || 'subscriber';
+
+    const getNavAccess = (role) => {
+        const allNav = {
+            dashboard: { name: 'Dashboard', icon: Home, page: 'dashboard' },
+            packages: { name: 'Paket', icon: Package, page: 'packages' },
+            jamaah: { name: 'Jamaah', icon: Users, page: 'jamaah' },
+            finance: { name: 'Keuangan', icon: DollarSign, page: 'finance' },
+            hr: { name: 'HR', icon: Briefcase, page: 'hr' },
+            marketing: { name: 'Marketing', icon: BarChart2, page: 'marketing' },
+            logs: { name: 'Logs', icon: FileText, page: 'logs' },
+        };
+        
+        // Define access based on roles
+        const access = {
+            administrator: ['dashboard', 'packages', 'jamaah', 'finance', 'hr', 'marketing', 'logs'],
+            owner: ['dashboard', 'packages', 'jamaah', 'finance', 'hr', 'marketing', 'logs'],
+            admin_staff: ['dashboard', 'packages', 'jamaah', 'marketing'],
+            finance_staff: ['dashboard', 'finance', 'jamaah'],
+            marketing_staff: ['dashboard', 'marketing', 'jamaah'],
+            hr_staff: ['dashboard', 'hr', 'jamaah'],
+            subscriber: ['dashboard'], // Default fallback for unknown roles
+        };
+
+        const allowedKeys = access[role] || access['subscriber'];
+        return allowedKeys.map(key => allNav[key]);
+    };
+
+    const navItems = getNavAccess(userRole);
+
+    // Logout URL
+    // Hasilkan URL logout WP yang benar
+    const logoutUrl = adminUrl ? `${adminUrl.replace(/admin\.php\?page=.*$/, '')}wp-login.php?action=logout` : '#';
+
+
+    // Render Function
+    const renderPage = () => {
+        // Pass a function to open modal to child components
+        const openModal = (type, props = {}) => setModal({ type, props });
+
+        switch (activePage) {
+            case 'dashboard':
+                return <DashboardComponent openModal={openModal} />;
+            case 'packages':
+                return <PackagesComponent openModal={openModal} />;
+            case 'jamaah':
+                return <JamaahComponent openModal={openModal} />;
+            case 'finance':
+                return <FinanceComponent openModal={openModal} />;
+            case 'hr':
+                return <HRComponent openModal={openModal} />;
+            case 'marketing':
+                return <MarketingComponent openModal={openModal} />;
+            case 'logs':
+                return <LogComponent openModal={openModal} />;
+            default:
+                return <DashboardComponent openModal={openModal} />;
+        }
+    };
+
+    // Render Modal
+    const renderModal = () => {
+        if (!modal.type) return null;
+
+        const closeModal = () => setModal({ type: null, props: {} });
+
+        switch (modal.type) {
+            case 'jamaahPayments':
+                return <JamaahPaymentsModal jamaah={modal.props.jamaah} onClose={closeModal} />;
+            // TODO: Tambahkan case untuk modal lain (misal: 'packageForm', 'jamaahForm')
+            // case 'packageForm':
+            //     return <PackageFormModal data={modal.props.data} onClose={closeModal} />;
+            default:
+                console.warn('Modal type not recognized:', modal.type);
+                return null;
+        }
+    };
     
-    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-    const [selectedJamaahForPayments, setSelectedJamaahForPayments] = useState(null);
-
-    const handleOpenPayments = (jamaah) => {
-        setSelectedJamaahForPayments(jamaah);
-        setIsPaymentModalOpen(true);
-    };
-
-    const handleClosePayments = () => {
-        setSelectedJamaahForPayments(null);
-        setIsPaymentModalOpen(false);
-    };
-
-    // Menampilkan loading screen penuh saat auth pertama kali dimuat
-    if (authLoading) {
-        return <LoadingScreen />;
+    // Handle loading and error states
+    if (loading && !error) {
+        return <LoadingScreen message="Memuat data aplikasi..." />;
+    }
+    
+    if (error) {
+        return (
+            <ErrorMessage 
+                title="Error Aplikasi" 
+                message={error}
+            >
+                <Button onClick={refreshData} disabled={loading}>
+                    {loading ? <LoadingSpinner /> : 'Coba Lagi'}
+                </Button>
+            </ErrorMessage>
+        );
+    }
+    
+    // Jika data pengguna belum dimuat
+    if (!currentUser) {
+         return <LoadingScreen message="Memuat data pengguna..." />;
     }
 
-    // (TODO: Tampilkan halaman login jika !currentUser dan bukan di wp-admin)
-    // if (!currentUser) {
-    //     return <LoginPage />;
-    // }
-    
-    const renderView = () => {
-        // Tampilkan loading spinner jika API sedang memuat data awal
-        if (apiLoading) {
-            return (
-                <div className="bg-white shadow-lg rounded-lg p-6 relative min-h-[300px]">
-                    <LoadingSpinner />
-                </div>
-            );
-        }
-        
-        // Tampilkan error jika ada
-        if (apiError) {
-             return (
-                <div className="bg-white shadow-lg rounded-lg p-6">
-                    <ErrorMessage message={`Gagal memuat data: ${apiError}`} />
-                </div>
-            );
-        }
-        
-        // Tampilkan halaman yang aktif
-        switch (activeView) {
-            case 'dashboard': return <DashboardComponent />;
-            case 'packages': return <PackagesComponent />;
-            case 'jamaah': return <JamaahComponent onOpenPayments={handleOpenPayments} />;
-            case 'finance': return <FinanceComponent />;
-            case 'hr': return <HRComponent />;
-            case 'marketing': return <MarketingComponent />;
-            case 'logs': return <LogComponent />;
-            default: return <DashboardComponent />;
-        }
-    };
-
-    const NavButton = ({ view, icon, label }) => (
-        <button
-            className={cn(
-                'flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors',
-                'bg-white border border-gray-300 text-gray-600 hover:bg-gray-100',
-                activeView === view && 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
-            )}
-            onClick={() => setActiveView(view)}
-        >
-            {icon} {label}
-        </button>
-    );
-    
+    // Main JSX Layout
     return (
-        <div className="p-4 md:p-6 lg:p-8">
-            <header className="flex flex-col md:flex-row justify-between items-center mb-6 p-4 bg-white shadow-md rounded-lg gap-4">
-                <h1 className="text-2xl font-bold text-blue-700 flex items-center gap-3">
-                    <Briefcase /> 
-                    <span>Jannah Firdaus - Umroh Manager</span>
-                </h1>
-                <div className="flex items-center gap-4">
-                     <span className="text-sm text-gray-600 hidden md:block">
-                        Halo, <strong>{currentUser?.full_name || currentUser?.email}</strong>
-                     </span>
-                    <Button variant="secondary" size="md" onClick={logout}>
-                        <LogOut size={16} /> Logout
-                    </Button>
+        <div className="flex h-screen bg-gray-100 font-sans">
+            {/* Modal */}
+            {renderModal()}
+
+            {/* Sidebar (Desktop) */}
+            <aside className="hidden w-64 flex-shrink-0 flex-col bg-white shadow-lg md:flex">
+                <div className="flex h-16 flex-shrink-0 items-center justify-center bg-gray-900 text-white">
+                    <Briefcase className="h-8 w-8 text-blue-400" />
+                    <span className="ml-2 text-xl font-semibold">Umroh Manager</span>
                 </div>
-            </header>
+                <nav className="flex-1 overflow-y-auto">
+                    {navItems.map((item) => (
+                        <a
+                            key={item.page}
+                            href="#"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                setActivePage(item.page);
+                            }}
+                            className={clsx(
+                                'flex items-center px-6 py-3 text-gray-600 hover:bg-blue-50 hover:text-blue-600',
+                                activePage === item.page && 'border-r-4 border-blue-500 bg-blue-50 text-blue-600'
+                            )}
+                        >
+                            <item.icon className="h-5 w-5" />
+                            <span className="ml-3">{item.name}</span>
+                        </a>
+                    ))}
+                </nav>
+                <div className="border-t p-4">
+                    <a
+                        href={logoutUrl}
+                        className="flex w-full items-center rounded-lg px-4 py-2 text-gray-500 hover:bg-red-100 hover:text-red-700"
+                    >
+                        <LogOut className="h-5 w-5" />
+                        <span className="ml-3">Logout</span>
+                    </a>
+                </div>
+            </aside>
 
-            <nav className="flex flex-wrap gap-2 mb-6">
-                <NavButton view="dashboard" icon={<Home size={16} />} label="Dashboard" />
-                <NavButton view="packages" icon={<Package size={16} />} label="Paket" />
-                <NavButton view="jamaah" icon={<Users size={16} />} label="Jemaah" />
-                <NavButton view="finance" icon={<DollarSign size={16} />} label="Keuangan" />
-                <NavButton view="hr" icon={<Briefcase size={16} />} label="HR" />
-                <NavButton view="marketing" icon={<BarChart2 size={16} />} label="Marketing" />
-                <NavButton view="logs" icon={<FileText size={16} />} label="Logs" />
-            </nav>
+            {/* Mobile Sidebar (Overlay) */}
+            <div
+                className={clsx(
+                    'fixed inset-0 z-30 bg-black bg-opacity-50 transition-opacity md:hidden',
+                    sidebarOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
+                )}
+                onClick={() => setSidebarOpen(false)}
+            ></div>
+            <aside
+                className={clsx(
+                    'fixed inset-y-0 left-0 z-40 w-64 transform bg-white shadow-lg transition-transform duration-300 ease-in-out md:hidden',
+                    sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+                )}
+            >
+                <div className="flex h-16 items-center justify-between bg-gray-900 px-4 text-white">
+                    <div className="flex items-center">
+                        <Briefcase className="h-8 w-8 text-blue-400" />
+                        <span className="ml-2 text-xl font-semibold">UMH</span>
+                    </div>
+                    <button onClick={() => setSidebarOpen(false)} className="text-gray-300 hover:text-white">
+                        <X className="h-6 w-6" />
+                    </button>
+                </div>
+                <nav className="flex-1 overflow-y-auto pt-4">
+                    {navItems.map((item) => (
+                        <a
+                            key={item.page}
+                            href="#"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                setActivePage(item.page);
+                                setSidebarOpen(false); // Close on select
+                            }}
+                            className={clsx(
+                                'flex items-center px-6 py-3 text-gray-600 hover:bg-blue-50 hover:text-blue-600',
+                                activePage === item.page && 'border-r-4 border-blue-500 bg-blue-50 text-blue-600'
+                            )}
+                        >
+                            <item.icon className="h-5 w-5" />
+                            <span className="ml-3">{item.name}</span>
+                        </a>
+                    ))}
+                </nav>
+                 <div className="border-t p-4">
+                    <a
+                        href={logoutUrl}
+                        className="flex w-full items-center rounded-lg px-4 py-2 text-gray-500 hover:bg-red-100 hover:text-red-700"
+                    >
+                        <LogOut className="h-5 w-5" />
+                        <span className="ml-3">Logout</span>
+                    </a>
+                </div>
+            </aside>
 
-            {/* Konten Halaman */}
-            <main>
-                {renderView()}
-            </main>
-            
-            {/* Modal Pembayaran (Global) */}
-            <JamaahPaymentsModal
-                isOpen={isPaymentModalOpen}
-                onClose={handleClosePayments}
-                jamaah={selectedJamaahForPayments}
-            />
+            {/* Main Content */}
+            <div className="flex flex-1 flex-col">
+                {/* Header */}
+                <header className="flex h-16 flex-shrink-0 items-center justify-between bg-white shadow-md md:justify-end">
+                    <button
+                        onClick={() => setSidebarOpen(true)}
+                        className="px-4 text-gray-500 md:hidden"
+                    >
+                        <Menu className="h-6 w-6" />
+                    </button>
+                    <div className="flex items-center pr-4">
+                        <span className="text-sm text-gray-600">
+                            Selamat datang, <span className="font-medium">{currentUser.full_name}</span>
+                        </span>
+                        <span className="ml-2 rounded-full bg-gray-200 px-2 py-0.5 text-xs font-semibold text-gray-700">
+                            {currentUser.role}
+                        </span>
+                    </div>
+                </header>
+
+                {/* Page Content */}
+                <main className="flex-1 overflow-y-auto p-4 md:p-8">
+                    {renderPage()}
+                </main>
+            </div>
         </div>
     );
 };
