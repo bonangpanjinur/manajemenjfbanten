@@ -1,11 +1,16 @@
+// Lokasi: src/components/forms/JamaahForm.jsx
 import React, { useState, useEffect } from 'react';
 import { formatDateForInput } from '../../utils/helpers';
 import { ModalFooter } from '../common/Modal';
 import { Input, Select, Checkbox, FormGroup, FormLabel } from '../common/FormUI';
 
-const JamaahForm = ({ initialData, onSubmit, onCancel, packages }) => {
+// --- PENAMBAHAN: Terima prop 'sub_agents' ---
+const JamaahForm = ({ initialData, onSubmit, onCancel, packages, sub_agents = [], onSave }) => {
     const [formData, setFormData] = useState({
         package_id: '',
+        // --- PENAMBAHAN: Tambahkan 'sub_agent_id' ke state ---
+        sub_agent_id: '',
+        // --- AKHIR PENAMBAHAN ---
         full_name: '',
         id_number: '',
         phone: '',
@@ -28,6 +33,9 @@ const JamaahForm = ({ initialData, onSubmit, onCancel, packages }) => {
             setFormData(prev => ({
                 ...prev,
                 ...initialData,
+                // --- PENAMBAHAN: Pastikan 'sub_agent_id' di-load ---
+                sub_agent_id: initialData.sub_agent_id || '',
+                // --- AKHIR PENAMBAHAN ---
                 is_passport_verified: !!initialData.is_passport_verified,
                 is_ktp_verified: !!initialData.is_ktp_verified,
                 is_kk_verified: !!initialData.is_kk_verified,
@@ -37,7 +45,11 @@ const JamaahForm = ({ initialData, onSubmit, onCancel, packages }) => {
         } else {
              // Reset form
             setFormData({
-                package_id: '', full_name: '', id_number: '', phone: '',
+                package_id: '',
+                // --- PENAMBAHAN: Reset 'sub_agent_id' ---
+                sub_agent_id: '',
+                // --- AKHIR PENAMBAHAN ---
+                full_name: '', id_number: '', phone: '',
                 email: '', address: '', gender: 'male', birth_date: '',
                 passport_number: '', status: 'pending', total_price: '',
                 equipment_status: 'belum_di_kirim', is_passport_verified: false,
@@ -56,7 +68,14 @@ const JamaahForm = ({ initialData, onSubmit, onCancel, packages }) => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        onSubmit(formData);
+        // 'onSave' akan memanggil createOrUpdate dari Jamaah.jsx
+        if (onSave) {
+            onSave(formData);
+        }
+        if (onSubmit) {
+            onSubmit(formData); // Fallback jika onSave tidak ada
+        }
+        onCancel(); // Tutup modal
     };
 
     return (
@@ -71,6 +90,19 @@ const JamaahForm = ({ initialData, onSubmit, onCancel, packages }) => {
                         ))}
                     </Select>
                 </FormGroup>
+
+                {/* --- PENAMBAHAN: Dropdown Sub Agen --- */}
+                <FormGroup className="md:col-span-2">
+                    <FormLabel htmlFor="sub_agent_id">Sub Agen (Opsional)</FormLabel>
+                    <Select name="sub_agent_id" id="sub_agent_id" value={formData.sub_agent_id} onChange={handleChange}>
+                        <option value="">Pilih Sub Agen (Jika ada)</option>
+                        {/* Filter hanya agen yang aktif */}
+                        {sub_agents.filter(agent => agent.status === 'active').map(agent => (
+                            <option key={agent.id} value={agent.id}>{agent.name}</option>
+                        ))}
+                    </Select>
+                </FormGroup>
+                {/* --- AKHIR PENAMBAHAN --- */}
 
                 <FormGroup>
                     <FormLabel htmlFor="full_name">Nama Lengkap</FormLabel>
@@ -106,10 +138,12 @@ const JamaahForm = ({ initialData, onSubmit, onCancel, packages }) => {
                     <FormLabel htmlFor="passport_number">No. Paspor</FormLabel>
                     <Input type="text" name="passport_number" id="passport_number" value={formData.passport_number} onChange={handleChange} />
                 </FormGroup>
+                {/* --- PERBAIKAN: Typo </FormGrout> diperbaiki --- */}
                 <FormGroup>
                     <FormLabel htmlFor="address">Alamat</FormLabel>
                     <Input type="text" name="address" id="address" value={formData.address} onChange={handleChange} />
                 </FormGroup>
+                {/* --- AKHIR PERBAIKAN --- */}
 
                 <hr className="md:col-span-2" />
                 <h4 className="md:col-span-2 text-lg font-semibold text-gray-800 -mb-2">Administrasi & Keuangan</h4>

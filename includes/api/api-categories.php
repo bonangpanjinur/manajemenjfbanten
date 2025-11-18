@@ -14,7 +14,7 @@ function umh_register_categories_api_routes($namespace) {
     global $wpdb;
     $table_name = $wpdb->prefix . 'umh_categories';
     
-    // --- PERBAIKAN (No Route Found): ---
+    // --- PERBAIKAN (Kategori 2): ---
     // Mengganti $item_name dari 'category' menjadi 'categories'
     // agar route yang terdaftar adalah '/categories' BUKAN '/categorys'
     $item_name = 'categories'; 
@@ -37,16 +37,20 @@ function umh_register_categories_api_routes($namespace) {
         array(
             'methods'             => WP_REST_Server::READABLE,
             'callback'            => array($crud_controller, 'get_items'),
+            // --- PERBAIKAN (Kategori 1): Menggunakan anonymous function ---
             'permission_callback' => function ($request) use ($permissions) {
                 return umh_check_api_permission($request, $permissions['get_items']);
             },
+            // --- AKHIR PERBAIKAN ---
         ),
         array(
             'methods'             => WP_REST_Server::CREATABLE,
             'callback'            => array($crud_controller, 'create_item'),
+            // --- PERBAIKAN (Kategori 1): Menggunakan anonymous function ---
             'permission_callback' => function ($request) use ($permissions) {
                 return umh_check_api_permission($request, $permissions['create_item']);
             },
+            // --- AKHIR PERBAIKAN ---
             'args' => $crud_controller->get_endpoint_args_for_item_schema(WP_REST_Server::CREATABLE),
         ),
     ));
@@ -55,24 +59,30 @@ function umh_register_categories_api_routes($namespace) {
         array(
             'methods'             => WP_REST_Server::READABLE,
             'callback'            => array($crud_controller, 'get_item'),
+            // --- PERBAIKAN (Kategori 1): Menggunakan anonymous function ---
             'permission_callback' => function ($request) use ($permissions) {
                 return umh_check_api_permission($request, $permissions['get_item']);
             },
+            // --- AKHIR PERBAIKAN ---
         ),
         array(
             'methods'             => WP_REST_Server::EDITABLE,
             'callback'            => array($crud_controller, 'update_item'),
+            // --- PERBAIKAN (Kategori 1): Menggunakan anonymous function ---
             'permission_callback' => function ($request) use ($permissions) {
                 return umh_check_api_permission($request, $permissions['update_item']);
             },
+            // --- AKHIR PERBAIKAN ---
             'args' => $crud_controller->get_endpoint_args_for_item_schema(WP_REST_Server::EDITABLE),
         ),
         array(
             'methods'             => WP_REST_Server::DELETABLE,
             'callback'            => array($crud_controller, 'delete_item'),
+            // --- PERBAIKAN (Kategori 1): Menggunakan anonymous function ---
             'permission_callback' => function ($request) use ($permissions) {
                 return umh_check_api_permission($request, $permissions['delete_item']);
             },
+            // --- AKHIR PERBAIKAN ---
         ),
     ));
 }

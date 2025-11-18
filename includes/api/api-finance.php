@@ -44,16 +44,20 @@ function umh_register_finance_api_routes() {
         array(
             'methods'             => WP_REST_Server::READABLE,
             'callback'            => array($finance_controller, 'get_items'),
+            // --- PERBAIKAN (Kategori 1): Menggunakan anonymous function ---
             'permission_callback' => function ($request) use ($finance_permissions) {
                 return umh_check_api_permission($request, $finance_permissions['get_items']);
             },
+            // --- AKHIR PERBAIKAN ---
         ),
         array(
             'methods'             => WP_REST_Server::CREATABLE,
             'callback'            => array($finance_controller, 'create_item'),
+            // --- PERBAIKAN (Kategori 1): Menggunakan anonymous function ---
             'permission_callback' => function ($request) use ($finance_permissions) {
                 return umh_check_api_permission($request, $finance_permissions['create_item']);
             },
+            // --- AKHIR PERBAIKAN ---
             'args' => $finance_controller->get_endpoint_args_for_item_schema(WP_REST_Server::CREATABLE),
         ),
     ));
@@ -62,24 +66,30 @@ function umh_register_finance_api_routes() {
         array(
             'methods'             => WP_REST_Server::READABLE,
             'callback'            => array($finance_controller, 'get_item'),
+            // --- PERBAIKAN (Kategori 1): Menggunakan anonymous function ---
             'permission_callback' => function ($request) use ($finance_permissions) {
                 return umh_check_api_permission($request, $finance_permissions['get_item']);
             },
+            // --- AKHIR PERBAIKAN ---
         ),
         array(
             'methods'             => WP_REST_Server::EDITABLE,
             'callback'            => array($finance_controller, 'update_item'),
+            // --- PERBAIKAN (Kategori 1): Menggunakan anonymous function ---
             'permission_callback' => function ($request) use ($finance_permissions) {
                 return umh_check_api_permission($request, $finance_permissions['update_item']);
             },
+            // --- AKHIR PERBAIKAN ---
             'args' => $finance_controller->get_endpoint_args_for_item_schema(WP_REST_Server::EDITABLE),
         ),
         array(
             'methods'             => WP_REST_Server::DELETABLE,
             'callback'            => array($finance_controller, 'delete_item'),
+            // --- PERBAIKAN (Kategori 1): Menggunakan anonymous function ---
             'permission_callback' => function ($request) use ($finance_permissions) {
                 return umh_check_api_permission($request, $finance_permissions['delete_item']);
             },
+            // --- AKHIR PERBAIKAN ---
         ),
     ));
 
@@ -109,16 +119,20 @@ function umh_register_finance_api_routes() {
         array(
             'methods'             => WP_REST_Server::READABLE,
             'callback'            => array($accounts_controller, 'get_items'),
+            // --- PERBAIKAN (Kategori 1): Menggunakan anonymous function ---
             'permission_callback' => function ($request) use ($accounts_permissions) {
                 return umh_check_api_permission($request, $accounts_permissions['get_items']);
             },
+            // --- AKHIR PERBAIKAN ---
         ),
         array(
             'methods'             => WP_REST_Server::CREATABLE,
             'callback'            => array($accounts_controller, 'create_item'),
+            // --- PERBAIKAN (Kategori 1): Menggunakan anonymous function ---
             'permission_callback' => function ($request) use ($accounts_permissions) {
                 return umh_check_api_permission($request, $accounts_permissions['create_item']);
             },
+            // --- AKHIR PERBAIKAN ---
             'args' => $accounts_controller->get_endpoint_args_for_item_schema(WP_REST_Server::CREATABLE),
         ),
     ));
@@ -127,24 +141,30 @@ function umh_register_finance_api_routes() {
         array(
             'methods'             => WP_REST_Server::READABLE,
             'callback'            => array($accounts_controller, 'get_item'),
+            // --- PERBAIKAN (Kategori 1): Menggunakan anonymous function ---
             'permission_callback' => function ($request) use ($accounts_permissions) {
                 return umh_check_api_permission($request, $accounts_permissions['get_item']);
             },
+            // --- AKHIR PERBAIKAN ---
         ),
         array(
             'methods'             => WP_REST_Server::EDITABLE,
             'callback'            => array($accounts_controller, 'update_item'),
+            // --- PERBAIKAN (Kategori 1): Menggunakan anonymous function ---
             'permission_callback' => function ($request) use ($accounts_permissions) {
                 return umh_check_api_permission($request, $accounts_permissions['update_item']);
             },
+            // --- AKHIR PERBAIKAN ---
             'args' => $accounts_controller->get_endpoint_args_for_item_schema(WP_REST_Server::EDITABLE),
         ),
         array(
             'methods'             => WP_REST_Server::DELETABLE,
             'callback'            => array($accounts_controller, 'delete_item'),
+            // --- PERBAIKAN (Kategori 1): Menggunakan anonymous function ---
             'permission_callback' => function ($request) use ($accounts_permissions) {
                 return umh_check_api_permission($request, $accounts_permissions['delete_item']);
             },
+            // --- AKHIR PERBAIKAN ---
         ),
     ));
 }

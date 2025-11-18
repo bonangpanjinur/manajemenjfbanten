@@ -12,49 +12,60 @@ if (!defined('ABSPATH')) {
 function umh_get_current_user_context() {
     $user = wp_get_current_user();
     if (0 === $user->ID) {
-        // --- PERBAIKAN: Cek juga dari token kustom (untuk user headless) ---
+        // --- PERBAIKAN: Logika token kustom (jika diperlukan untuk klien eksternal) ---
+        // Saat ini, aplikasi React berjalan di dalam admin,
+        // jadi jika $user->ID adalah 0, berarti dia benar-benar 'guest'.
+        // Logika token di bawah ini akan relevan jika ada aplikasi seluler/eksternal.
         global $wpdb;
         $token = null;
 
-        // Cek header Authorization
         if (!empty($_SERVER['HTTP_AUTHORIZATION']) && preg_match('/Bearer\s(\S+)/', $_SERVER['HTTP_AUTHORIZATION'], $matches)) {
             $token = $matches[1];
         }
+
+        if ($token) {
+            $table_name = $wpdb->prefix . 'umh_users';
+            $headless_user = $wpdb->get_row($wpdb->prepare(
+                "SELECT id, email, full_name, role FROM $table_name WHERE auth_token = %s AND token_expires > %s",
+                $token,
+                current_time('mysql')
+            ));
+
+            if ($headless_user) {
+                return array(
+                    'id'        => $headless_user->id,
+                    'email'     => $headless_user->email,
+                    'full_name' => $headless_user->full_name,
+                    'role'      => $headless_user->role,
+                );
+            }
+        }
         
-        // Cek X-WP-Nonce (meskipun ini lebih untuk cookie, tapi API kustom mungkin menggunakannya)
-        // Sebaiknya, kita andalkan 'umh_check_api_permission' untuk memvalidasi
-        
-        // Jika kita ingin memvalidasi token di sini (redundan dengan permission_callback)
-        // ... (logika validasi token) ...
-        
-        // Untuk saat ini, asumsikan 'guest' jika WP user ID adalah 0
+        // Jika tidak ada user WP dan tidak ada token valid, dia adalah guest.
         return array(
             'id'    => 0,
             'email' => 'guest',
+            'full_name' => 'Guest',
             'role'  => 'guest',
         );
         // --- AKHIR PERBAIKAN ---
     }
 
-    // Ambil role kustom plugin
+    // Jika user WP login:
     $custom_roles = umh_get_staff_roles(); // Menggunakan helper function
     $user_roles = $user->roles;
     $role = 'subscriber'; // Default
 
-    // Cari role paling relevan
-    foreach ($custom_roles as $custom_role) {
-        if (in_array($custom_role, $user_roles, true)) {
-            $role = $custom_role;
-            break; // Ambil role kustom pertama yang ditemukan
-        }
-    }
-    
-    // Jika tidak ada role kustom, cek role WP standar
-    if ($role === 'subscriber') {
-        if (in_array('administrator', $user_roles, true)) {
-            $role = 'administrator';
-        } elseif (in_array('editor', $user_roles, true)) {
-            $role = 'editor';
+    // Cek dulu apakah dia Super Admin
+    if (in_array('administrator', $user_roles, true)) {
+        $role = 'administrator';
+    } else {
+        // Jika bukan, cari role kustom
+        foreach ($custom_roles as $custom_role) {
+            if (in_array($custom_role, $user_roles, true)) {
+                $role = $custom_role;
+                break; // Ambil role kustom pertama yang ditemukan
+            }
         }
     }
 
@@ -74,10 +85,20 @@ function umh_get_current_user_context() {
  * @return bool|WP_Error True if allowed, WP_Error if denied.
  */
 function umh_check_api_permission($request, $required_roles) {
-    // --- PERBAIKAN: Panggil umh_get_current_user_context() tanpa argumen ---
+    // --- PERBAIKAN: Panggil umh_get_current_user_context() ---
     $user_context = umh_get_current_user_context();
     // --- AKHIR PERBAIKAN ---
     $user_role = $user_context['role'];
+    $user_id = $user_context['id'];
+
+    // Jika id 0, berarti guest (tidak login WP dan tidak ada token valid)
+    if (0 === $user_id) {
+         return new WP_Error(
+            'rest_forbidden_context',
+            __('Anda harus login untuk mengakses data ini.', 'umroh-manager-hybrid'),
+            array('status' => 401)
+        );
+    }
 
     // Administrator WordPress selalu memiliki akses
     if ('administrator' === $user_role) {
@@ -90,8 +111,8 @@ function umh_check_api_permission($request, $required_roles) {
     }
     
     // --- PERBAIKAN: Izinkan jika array role yang dibutuhkan kosong (hanya cek login) ---
-    if (empty($required_roles) && $user_context['id'] > 0) {
-        return true;
+    if (empty($required_roles) && $user_id > 0) {
+        return true; // Hanya butuh login, role apapun
     }
     // --- AKHIR PERBAIKAN ---
 
@@ -119,16 +140,11 @@ function umh_create_log_entry($user_id, $action_type, $related_table, $related_i
     $table_name = $wpdb->prefix . 'umh_logs';
 
     // Pastikan user_id adalah integer yang valid
-    $user_id = intval($user_id);
+    $user_id_to_insert = intval($user_id);
     
     // Jika user_id 0 (mungkin sistem atau pengguna tidak dikenal), set ke NULL
-    // Periksa apakah user_id ada di tabel wp_users
-    $user_exists = $wpdb->get_var($wpdb->prepare("SELECT EXISTS(SELECT 1 FROM {$wpdb->users} WHERE ID = %d)", $user_id));
-
-    if (!$user_exists || $user_id === 0) {
+    if ($user_id_to_insert === 0) {
         $user_id_to_insert = null;
-    } else {
-        $user_id_to_insert = $user_id;
     }
 
     $wpdb->insert(
@@ -140,7 +156,7 @@ function umh_create_log_entry($user_id, $action_type, $related_table, $related_i
             'related_id' => $related_id,
             'description' => $description,
             'details_json' => $details_json,
-            'timestamp' => current_time('mysql', 1)
+            'timestamp' => current_time('mysql', 1) // Gunakan GMT
         ),
         array(
             '%d', // user_id (bisa null)

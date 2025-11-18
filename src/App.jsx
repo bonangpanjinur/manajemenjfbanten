@@ -9,10 +9,15 @@ import HRComponent from './pages/HR';
 import JamaahComponent from './pages/Jamaah';
 import PackagesComponent from './pages/Packages';
 import LogsComponent from './pages/Logs';
+// --- PENAMBAHAN: Import Halaman SubAgents ---
+import SubAgentsComponent from './pages/SubAgents';
+// --- AKHIR PENAMBAHAN ---
 import { Modal } from './components/common/Modal';
 import { LoadingScreen } from './components/common/Loading';
 // AKHIR PERBAIKAN
-import { FaTachometerAlt, FaMoneyBillWave, FaBullhorn, FaUsers, FaUserFriends, FaBoxOpen, FaClipboardList } from 'react-icons/fa';
+// --- PENAMBAHAN: Import Ikon FaUserTie ---
+import { FaTachometerAlt, FaMoneyBillWave, FaBullhorn, FaUsers, FaUserFriends, FaBoxOpen, FaClipboardList, FaUserTie } from 'react-icons/fa';
+// --- AKHIR PENAMBAHAN ---
 
 const App = () => {
     // --- PERBAIKAN (Loading): ---
@@ -64,6 +69,9 @@ const App = () => {
         { id: 'dashboard', label: 'Dashboard', icon: <FaTachometerAlt className="mr-3" />, roles: ['admin', 'finance', 'marketing', 'hr', 'jamaah', 'owner', 'super_admin', 'administrator'] },
         { id: 'finance', label: 'Finance', icon: <FaMoneyBillWave className="mr-3" />, roles: ['admin', 'finance', 'owner', 'super_admin', 'administrator', 'admin_staff', 'finance_staff'] },
         { id: 'marketing', label: 'Marketing', icon: <FaBullhorn className="mr-3" />, roles: ['admin', 'marketing', 'owner', 'super_admin', 'administrator', 'admin_staff', 'marketing_staff'] },
+        // --- PENAMBAHAN: Nav Item Sub Agen ---
+        { id: 'sub_agents', label: 'Sub Agen', icon: <FaUserTie className="mr-3" />, roles: ['admin', 'marketing', 'owner', 'super_admin', 'administrator', 'admin_staff', 'marketing_staff'] },
+        // --- AKHIR PENAMBAHAN ---
         { id: 'hr', label: 'HR', icon: <FaUsers className="mr-3" />, roles: ['admin', 'hr', 'owner', 'super_admin', 'administrator', 'admin_staff', 'hr_staff'] },
         { id: 'jamaah', label: 'Jamaah', icon: <FaUserFriends className="mr-3" />, roles: ['admin', 'jamaah', 'marketing', 'finance', 'owner', 'super_admin', 'administrator', 'admin_staff', 'finance_staff', 'marketing_staff'] },
         { id: 'packages', label: 'Packages', icon: <FaBoxOpen className="mr-3" />, roles: ['admin', 'marketing', 'owner', 'super_admin', 'administrator', 'admin_staff', 'marketing_staff'] },
@@ -105,7 +113,7 @@ const App = () => {
                 <main className="flex-1 overflow-y-auto">
                     {/* Top Bar */}
                     <header className="bg-white shadow-sm p-4 flex justify-between items-center sticky top-0 z-50">
-                        <h2 className="text-xl font-semibold text-gray-700 capitalize">{activePage}</h2>
+                        <h2 className="text-xl font-semibold text-gray-700 capitalize">{activePage.replace('_', ' ')}</h2>
                         <div className="text-right">
                             {/* --- PERBAIKAN (Loading): --- */}
                             {/* Mengganti 'user.display_name' menjadi 'currentUser.full_name' */}
@@ -121,6 +129,9 @@ const App = () => {
                         {activePage === 'dashboard' && <Dashboard openModal={openModal} />}
                         {activePage === 'finance' && <FinanceComponent openModal={openModal} />}
                         {activePage === 'marketing' && <MarketingComponent openModal={openModal} />}
+                        {/* --- PENAMBAHAN: Tampilkan Komponen SubAgents --- */}
+                        {activePage === 'sub_agents' && <SubAgentsComponent openModal={openModal} />}
+                        {/* --- AKHIR PENAMBAHAN --- */}
                         {activePage === 'hr' && <HRComponent openModal={openModal} />}
                         {activePage === 'jamaah' && <JamaahComponent openModal={openModal} />}
                         {activePage === 'packages' && <PackagesComponent openModal={openModal} />}

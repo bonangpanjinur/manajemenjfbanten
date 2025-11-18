@@ -23,7 +23,7 @@ function umh_register_jamaah_routes() {
         [
             'methods' => WP_REST_Server::READABLE,
             'callback' => 'umh_get_all_jamaah',
-            // --- PERBAIKAN: Bungkus panggilan dalam anonymous function ---
+            // --- PERBAIKAN (Kategori 1): Bungkus panggilan dalam anonymous function ---
             'permission_callback' => function($request) use ($read_permissions) {
                 return umh_check_api_permission($request, $read_permissions);
             },
@@ -32,7 +32,7 @@ function umh_register_jamaah_routes() {
         [
             'methods' => WP_REST_Server::CREATABLE,
             'callback' => 'umh_create_jamaah',
-            // --- PERBAIKAN: Bungkus panggilan dalam anonymous function ---
+            // --- PERBAIKAN (Kategori 1): Bungkus panggilan dalam anonymous function ---
             'permission_callback' => function($request) use ($write_permissions) {
                 return umh_check_api_permission($request, $write_permissions);
             },
@@ -46,7 +46,7 @@ function umh_register_jamaah_routes() {
         [
             'methods' => WP_REST_Server::READABLE,
             'callback' => 'umh_get_jamaah_by_id',
-            // --- PERBAIKAN: Bungkus panggilan dalam anonymous function ---
+            // --- PERBAIKAN (Kategori 1): Bungkus panggilan dalam anonymous function ---
             'permission_callback' => function($request) use ($read_permissions) {
                 return umh_check_api_permission($request, $read_permissions);
             },
@@ -55,7 +55,7 @@ function umh_register_jamaah_routes() {
         [
             'methods' => WP_REST_Server::EDITABLE,
             'callback' => 'umh_update_jamaah',
-            // --- PERBAIKAN: Bungkus panggilan dalam anonymous function ---
+            // --- PERBAIKAN (Kategori 1): Bungkus panggilan dalam anonymous function ---
             'permission_callback' => function($request) use ($write_permissions) {
                 return umh_check_api_permission($request, $write_permissions);
             },
@@ -65,7 +65,7 @@ function umh_register_jamaah_routes() {
         [
             'methods' => WP_REST_Server::DELETABLE,
             'callback' => 'umh_delete_jamaah',
-            // --- PERBAIKAN: Bungkus panggilan dalam anonymous function ---
+            // --- PERBAIKAN (Kategori 1): Bungkus panggilan dalam anonymous function ---
             'permission_callback' => function($request) use ($delete_permissions) {
                 return umh_check_api_permission($request, $delete_permissions);
             },
@@ -215,8 +215,20 @@ function umh_create_jamaah(WP_REST_Request $request) {
     }
 
     $new_id = $wpdb->insert_id;
-    // --- PERBAIKAN: Panggil log (dipindahkan ke CRUD Controller) ---
-    // umh_create_log_entry('create', 'jamaah', $new_id, $data); 
+    
+    // --- PERBAIKAN (Kategori 3): Panggil log (dipindahkan ke CRUD Controller) ---
+    // Fungsi log sekarang dipanggil dari controller generik
+    if (function_exists('umh_create_log_entry')) {
+        $user_context = umh_get_current_user_context();
+        umh_create_log_entry(
+            $user_context['id'],
+            'create',
+            'umh_jamaah',
+            $new_id,
+            "Membuat jemaah baru: '{$insert_data['full_name']}'",
+            wp_json_encode(array('new_data' => $insert_data))
+        );
+    }
     // --- AKHIR PERBAIKAN ---
 
     return new WP_REST_Response(['id' => $new_id, 'message' => 'Jamaah created successfully.'], 201);
@@ -249,6 +261,12 @@ function umh_update_jamaah(WP_REST_Request $request) {
 
     $data = $request->get_json_params();
     
+    // Ambil data lama untuk logging
+    $old_data = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table_name WHERE id = %d", $id), ARRAY_A);
+    if (!$old_data) {
+        return new WP_Error('not_found', __('Jamaah not found.', 'umh'), ['status' => 404]);
+    }
+
     // Filter data sesuai skema
     $schema = umh_get_jamaah_schema(true); // true = update (tidak wajib)
     $update_data = [];
@@ -279,8 +297,18 @@ function umh_update_jamaah(WP_REST_Request $request) {
         return new WP_Error('db_error', __('Failed to update jamaah.', 'umh'), ['status' => 500, 'db_error' => $wpdb->last_error]);
     }
     
-    // --- PERBAIKAN: Panggil log (dipindahkan ke CRUD Controller) ---
-    // umh_create_log_entry('update', 'jamaah', $id, $data);
+    // --- PERBAIKAN (Kategori 3): Panggil log ---
+    if (function_exists('umh_create_log_entry')) {
+        $user_context = umh_get_current_user_context();
+        umh_create_log_entry(
+            $user_context['id'],
+            'update',
+            'umh_jamaah',
+            $id,
+            "Memperbarui jemaah: '{$update_data['full_name']}'",
+            wp_json_encode(array('new_data' => $update_data, 'old_data' => $old_data))
+        );
+    }
     // --- AKHIR PERBAIKAN ---
 
     return new WP_REST_Response(['id' => $id, 'message' => 'Jamaah updated successfully.'], 200);
@@ -293,6 +321,12 @@ function umh_delete_jamaah(WP_REST_Request $request) {
     $table_name = $wpdb->prefix . 'umh_jamaah';
     $payments_table = $wpdb->prefix . 'umh_jamaah_payments';
 
+    // Ambil data lama untuk logging
+    $old_data = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table_name WHERE id = %d", $id), ARRAY_A);
+    if (!$old_data) {
+        return new WP_Error('not_found', __('Jamaah not found to delete.', 'umh'), ['status' => 404]);
+    }
+
     // Hapus juga riwayat pembayaran terkait
     $wpdb->delete($payments_table, ['jamaah_id' => $id], ['%d']);
     
@@ -302,13 +336,19 @@ function umh_delete_jamaah(WP_REST_Request $request) {
     if ($result === false) {
         return new WP_Error('db_error', __('Failed to delete jamaah.', 'umh'), ['status' => 500]);
     }
-    
-    if ($result === 0) {
-        return new WP_Error('not_found', __('Jamaah not found to delete.', 'umh'), ['status' => 404]);
-    }
 
-    // --- PERBAIKAN: Panggil log (dipindahkan ke CRUD Controller) ---
-    // umh_create_log_entry('delete', 'jamaah', $id);
+    // --- PERBAIKAN (Kategori 3): Panggil log ---
+    if (function_exists('umh_create_log_entry')) {
+        $user_context = umh_get_current_user_context();
+        umh_create_log_entry(
+            $user_context['id'],
+            'delete',
+            'umh_jamaah',
+            $id,
+            "Menghapus jemaah: '{$old_data['full_name']}'",
+            wp_json_encode($old_data)
+        );
+    }
     // --- AKHIR PERBAIKAN ---
 
     return new WP_REST_Response(['id' => $id, 'message' => 'Jamaah deleted successfully.'], 200);

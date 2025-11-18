@@ -1,6 +1,9 @@
 <?php
 // File: includes/api/api-users.php
 // Mengelola login, auto-login, dan CRUD pengguna headless.
+// CATATAN: File ini sepertinya tidak digunakan oleh aplikasi React,
+// karena React app menggunakan autentikasi cookie WP.
+// Namun, perbaikan permission tetap dilakukan.
 
 if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly.
@@ -24,7 +27,10 @@ function umh_register_user_api_routes() {
         'callback' => 'umh_handle_wp_admin_login',
         // Hanya Super Admin (yang login via cookie WP) yang bisa memanggil ini
         'permission_callback' => function () {
-            return umh_is_super_admin(wp_get_current_user()); 
+            // --- PERBAIKAN: Menggunakan fungsi umh_get_current_user_context ---
+            $context = umh_get_current_user_context();
+            return $context['role'] === 'administrator';
+            // --- AKHIR PERBAIKAN ---
         },
     ]);
 
@@ -32,7 +38,7 @@ function umh_register_user_api_routes() {
     register_rest_route($namespace, '/users/me', [
         'methods' => WP_REST_Server::READABLE,
         'callback' => 'umh_get_current_user_by_token',
-        // --- PERBAIKAN: Bungkus panggilan dalam anonymous function ---
+        // --- PERBAIKAN (Kategori 1): Bungkus panggilan dalam anonymous function ---
         'permission_callback' => function($request) { 
             return umh_check_api_permission($request, []); // Cukup terautentikasi
         },
@@ -44,7 +50,7 @@ function umh_register_user_api_routes() {
         [
             'methods' => WP_REST_Server::READABLE,
             'callback' => 'umh_get_all_users',
-            // --- PERBAIKAN: Bungkus panggilan dalam anonymous function ---
+            // --- PERBAIKAN (Kategori 1): Bungkus panggilan dalam anonymous function ---
             'permission_callback' => function($request) { 
                 return umh_check_api_permission($request, ['owner', 'admin_staff', 'hr_staff']); 
             },
@@ -53,7 +59,7 @@ function umh_register_user_api_routes() {
         [
             'methods' => WP_REST_Server::CREATABLE,
             'callback' => 'umh_create_user',
-            // --- PERBAIKAN: Bungkus panggilan dalam anonymous function ---
+            // --- PERBAIKAN (Kategori 1): Bungkus panggilan dalam anonymous function ---
             'permission_callback' => function($request) { 
                 return umh_check_api_permission($request, ['owner', 'admin_staff', 'hr_staff']); 
             },
@@ -65,7 +71,7 @@ function umh_register_user_api_routes() {
         [
             'methods' => WP_REST_Server::READABLE,
             'callback' => 'umh_get_user_by_id',
-            // --- PERBAIKAN: Bungkus panggilan dalam anonymous function ---
+            // --- PERBAIKAN (Kategori 1): Bungkus panggilan dalam anonymous function ---
             'permission_callback' => function($request) { 
                 return umh_check_api_permission($request, ['owner', 'admin_staff', 'hr_staff']); 
             },
@@ -74,7 +80,7 @@ function umh_register_user_api_routes() {
         [
             'methods' => WP_REST_Server::EDITABLE,
             'callback' => 'umh_update_user',
-            // --- PERBAIKAN: Bungkus panggilan dalam anonymous function ---
+            // --- PERBAIKAN (Kategori 1): Bungkus panggilan dalam anonymous function ---
             'permission_callback' => function($request) { 
                 return umh_check_api_permission($request, ['owner', 'admin_staff', 'hr_staff']); 
             },
@@ -83,7 +89,7 @@ function umh_register_user_api_routes() {
         [
             'methods' => WP_REST_Server::DELETABLE,
             'callback' => 'umh_delete_user',
-            // --- PERBAIKAN: Bungkus panggilan dalam anonymous function ---
+            // --- PERBAIKAN (Kategori 1): Bungkus panggilan dalam anonymous function ---
             'permission_callback' => function($request) { 
                 return umh_check_api_permission($request, ['owner']); 
             },
@@ -176,7 +182,7 @@ function umh_handle_wp_admin_login(WP_REST_Request $request) {
                     'wp_user_id' => $wp_user->ID,
                     'email' => $wp_user->user_email,
                     'full_name' => $wp_user->display_name,
-                    'role' => 'super_admin', // Role khusus untuk Super Admin
+                    'role' => 'administrator', // PERBAIKAN: Gunakan role 'administrator'
                     'password_hash' => '', // Tidak perlu password, auth via WP
                     'status' => 'active',
                     'created_at' => current_time('mysql'),
@@ -194,12 +200,12 @@ function umh_handle_wp_admin_login(WP_REST_Request $request) {
                 $table_name,
                 [
                     'wp_user_id' => $wp_user->ID,
-                    'role' => 'super_admin',
+                    'role' => 'administrator', // PERBAIKAN: Gunakan role 'administrator'
                     'full_name' => $wp_user->display_name, // Update nama juga
                 ],
                 ['id' => $user->id]
             );
-            $user->role = 'super_admin'; // Update objek lokal
+            $user->role = 'administrator'; // Update objek lokal
             $user->full_name = $wp_user->display_name;
             $user->wp_user_id = $wp_user->ID;
         }
@@ -237,40 +243,23 @@ function umh_handle_wp_admin_login(WP_REST_Request $request) {
  * Mengambil data user berdasarkan token yang valid.
  */
 function umh_get_current_user_by_token(WP_REST_Request $request) {
-    // Fungsi umh_check_api_permission sudah memvalidasi token.
+    // Fungsi umh_check_api_permission sudah memvalidasi token ATAU cookie WP.
     // Kita panggil umh_get_current_user_context untuk mendapatkan data user.
     // --- PERBAIKAN: Panggil umh_get_current_user_context() tanpa argumen ---
     $context = umh_get_current_user_context();
     // --- AKHIR PERBAIKAN ---
 
-    if (is_wp_error($context)) {
-        return $context; // Token invalid, expired, dll.
+    if (is_wp_error($context) || $context['id'] === 0) {
+        return new WP_Error('invalid_token', 'Token tidak valid atau sesi telah berakhir.', ['status' => 401]);
     }
 
-    // Jika Super Admin (dari WP), kirim data WP
-    if ($context['role'] === 'super_admin') {
-         $wp_user = wp_get_current_user();
-         return new WP_REST_Response([
-            'id' => $wp_user->ID, // Kirim ID WP
-            'email' => $wp_user->user_email,
-            'full_name' => $wp_user->display_name,
-            'role' => 'super_admin',
-         ], 200);
-    }
-    
-    // Jika user headless, ambil data lengkap dari umh_users
-    global $wpdb;
-    $table_name = $wpdb->prefix . 'umh_users';
-    $user = $wpdb->get_row($wpdb->prepare(
-        "SELECT id, email, full_name, role, phone, status FROM $table_name WHERE id = %d", 
-        $context['id'] // --- PERBAIKAN: Menggunakan 'id' dari konteks ---
-    ));
-
-    if (!$user) {
-        return new WP_Error('invalid_token', 'User tidak ditemukan.', ['status' => 401]);
-    }
-
-    return new WP_REST_Response($user, 200);
+    // Kirim kembali data konteks yang sudah bersih
+    return new WP_REST_Response([
+        'id' => $context['id'],
+        'email' => $context['email'],
+        'full_name' => $context['full_name'],
+        'role' => $context['role'],
+    ], 200);
 }
 
 
@@ -359,7 +348,7 @@ function umh_update_user(WP_REST_Request $request) {
     }
 
     // Super admin tidak boleh diedit via API ini
-    if (!empty($user->wp_user_id) || $user->role === 'super_admin') {
+    if (!empty($user->wp_user_id) || $user->role === 'administrator') {
          return new WP_Error('permission_denied', 'Akun Super Admin tidak dapat diubah dari sini.', ['status' => 403]);
     }
 
@@ -422,7 +411,7 @@ function umh_delete_user(WP_REST_Request $request) {
     }
     
     // Super admin tidak boleh dihapus via API ini
-    if (!empty($user->wp_user_id) || $user->role === 'super_admin') {
+    if (!empty($user->wp_user_id) || $user->role === 'administrator') {
          return new WP_Error('permission_denied', 'Akun Super Admin tidak dapat dihapus.', ['status' => 403]);
     }
 
