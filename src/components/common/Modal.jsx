@@ -1,11 +1,23 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
-import { Button } from './FormUI.jsx'; // Impor Button dari file UI baru
+import { Button } from './FormUI.jsx';
 
-// -- STYLING HELPER (PENGGANTI clsx) --
+// -- STYLING HELPER --
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
 export const Modal = ({ title, isOpen, onClose, children, footer, size = '3xl' }) => {
+    // Mencegah scroll pada body utama saat modal terbuka
+    useEffect(() => {
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [isOpen]);
+
     if (!isOpen) return null;
 
     const sizeClasses = {
@@ -20,28 +32,38 @@ export const Modal = ({ title, isOpen, onClose, children, footer, size = '3xl' }
     };
 
     return (
+        // Z-Index 100000 untuk memastikan di atas WP Admin Bar
         <div 
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-4 z-[1000] overflow-y-auto pt-16" 
+            className="fixed inset-0 bg-gray-900 bg-opacity-75 backdrop-blur-sm flex items-start justify-center p-4 z-[100000] overflow-y-auto pt-10 sm:pt-20" 
             onClick={onClose}
         >
             <div 
                 className={cn(
-                    'bg-white rounded-lg shadow-xl w-full m-auto flex flex-col max-h-[90vh]',
+                    'bg-white rounded-xl shadow-2xl w-full m-auto flex flex-col max-h-[90vh] transform transition-all',
                     sizeClasses[size] || 'max-w-3xl'
                 )} 
                 onClick={e => e.stopPropagation()}
             >
-                <div className="flex justify-between items-center p-4 border-b border-gray-200 sticky top-0 bg-white rounded-t-lg z-10">
-                    <h3 className="text-xl font-semibold text-gray-800">{title}</h3>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                {/* Header */}
+                <div className="flex justify-between items-center p-5 border-b border-gray-100 sticky top-0 bg-white rounded-t-xl z-10">
+                    <h3 className="text-xl font-bold text-gray-800">{title}</h3>
+                    <button 
+                        onClick={onClose} 
+                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                        aria-label="Close"
+                    >
                         <X className="h-6 w-6" />
                     </button>
                 </div>
-                <div className="p-6 overflow-y-auto">
+
+                {/* Body */}
+                <div className="p-6 overflow-y-auto custom-scrollbar">
                     {children}
                 </div>
+
+                {/* Footer */}
                 {footer && (
-                    <div className="flex justify-end gap-3 p-4 border-t border-gray-200 bg-gray-50 rounded-b-lg sticky bottom-0 z-10">
+                    <div className="flex justify-end gap-3 p-4 border-t border-gray-100 bg-gray-50 rounded-b-xl sticky bottom-0 z-10">
                         {footer}
                     </div>
                 )}

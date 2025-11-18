@@ -4,18 +4,14 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Log aktivitas pengguna ke database.
- *
- * @param int $user_id ID pengguna WordPress.
- * @param string $action_type Tipe aksi (misal: 'create_jamaah', 'update_package').
- * @param string $description Deskripsi singkat.
- * @param string $related_table (Opsional) Tabel terkait.
- * @param int $related_id (Opsional) ID entitas terkait.
- * @param array $details (Opsional) Data tambahan (seperti data lama vs baru) dalam bentuk array.
+ * Membuat entri log aktivitas.
  */
-function umh_log_activity($user_id, $action_type, $description, $related_table = null, $related_id = null, $details = null) {
+function umh_create_log_entry($user_id, $action_type, $related_table, $related_id, $description, $details_json = '') {
     global $wpdb;
     $table_name = $wpdb->prefix . 'umh_logs';
+
+    // Pastikan user_id valid, jika 0 berarti sistem/guest
+    $user_id = intval($user_id);
 
     $wpdb->insert(
         $table_name,
@@ -25,162 +21,106 @@ function umh_log_activity($user_id, $action_type, $description, $related_table =
             'related_table' => $related_table,
             'related_id' => $related_id,
             'description' => $description,
-            'details_json' => $details ? wp_json_encode($details) : null,
-            'timestamp' => current_time('mysql', 1)
+            'details_json' => $details_json,
+            'timestamp' => current_time('mysql', 1) // GMT
         ],
-        [
-            '%d', // user_id
-            '%s', // action_type
-            '%s', // related_table
-            '%d', // related_id
-            '%s', // description
-            '%s', // details_json
-            '%s'  // timestamp
-        ]
+        ['%d', '%s', '%s', '%d', '%s', '%s', '%s']
     );
 }
 
 /**
- * Memeriksa izin pengguna untuk REST API.
- * Saat ini hanya memeriksa apakah pengguna login.
- * TODO: Implementasi pemeriksaan kapabilitas yang lebih detail.
+ * Memeriksa izin API berdasarkan role staff.
+ * * @param WP_REST_Request $request
+ * @param array $required_capabilities Array kemampuan yang dibutuhkan (salah satu harus dimiliki).
  */
-function umh_check_permission() {
-    return is_user_logged_in();
+function umh_check_api_permission($request, $required_capabilities = []) {
+    // 1. Dapatkan konteks user saat ini
+    $context = umh_get_current_user_context();
+    
+    // 2. Jika tidak login, tolak
+    if ($context['id'] === 0) {
+        return new WP_Error('rest_forbidden', 'Anda harus login.', ['status' => 401]);
+    }
+    
+    // 3. Jika user adalah administrator WP, izinkan semua
+    if ($context['role'] === 'administrator') {
+        return true;
+    }
+    
+    // 4. Jika tidak ada kapabilitas spesifik yang diminta, cukup login saja
+    if (empty($required_capabilities)) {
+        return true;
+    }
+
+    // 5. Cek apakah role user ada di daftar yang diizinkan
+    // Logika: Role di tabel umh_hr harus cocok dengan salah satu di $required_capabilities
+    // Catatan: $required_capabilities di sini berisi daftar role key (misal: 'marketing_staff')
+    if (in_array($context['role'], $required_capabilities)) {
+        return true;
+    }
+
+    return new WP_Error('rest_forbidden', 'Anda tidak memiliki izin untuk akses ini.', ['status' => 403]);
 }
 
-
-// --- PENAMBAHAN: Fungsi helper baru untuk mengambil data role ---
 /**
- * Mengambil data role dan permissions staff dari database.
- *
- * @param int $user_id ID user WordPress.
- * @return array Data role ['name' => (string), 'permissions' => (array)]
+ * Mengambil data role staff dari database.
  */
 function umh_get_staff_role_data($user_id) {
     global $wpdb;
     $hr_table = $wpdb->prefix . 'umh_hr';
     $roles_table = $wpdb->prefix . 'umh_roles';
 
-    // 1. Dapatkan role_id dari tabel HR
-    $hr_entry = $wpdb->get_row(
-        $wpdb->prepare(
-            "SELECT role_id FROM $hr_table WHERE wp_user_id = %d",
-            $user_id
-        )
-    );
-
-    if (!$hr_entry || !$hr_entry->role_id) {
-        // User ini mungkin admin WordPress tapi bukan staff HR
-        $user = get_userdata($user_id);
-        if ($user && in_array('administrator', $user->roles)) {
-            return ['name' => 'administrator', 'permissions' => ['administrator']]; // Full admin
-        }
-        return ['name' => 'none', 'permissions' => []]; // Bukan staff & bukan admin
+    // Cek administrator WP native
+    $user = get_userdata($user_id);
+    if ($user && in_array('administrator', $user->roles)) {
+        return ['name' => 'administrator', 'permissions' => ['all']];
     }
 
-    $role_id = $hr_entry->role_id;
+    // Cek di tabel HR
+    $hr_entry = $wpdb->get_row($wpdb->prepare("SELECT role_id FROM $hr_table WHERE wp_user_id = %d AND status = 'active'", $user_id));
 
-    // 2. Dapatkan nama role dan permissions_json dari tabel Roles
-    $role_entry = $wpdb->get_row(
-        $wpdb->prepare(
-            "SELECT name, permissions_json FROM $roles_table WHERE id = %d",
-            $role_id
-        )
-    );
+    if (!$hr_entry) {
+        return ['name' => 'subscriber', 'permissions' => []];
+    }
+
+    // Cek detail Role
+    $role_entry = $wpdb->get_row($wpdb->prepare("SELECT name, permissions_json FROM $roles_table WHERE id = %d", $hr_entry->role_id));
 
     if (!$role_entry) {
-        return ['name' => 'none', 'permissions' => []]; // Role tidak ditemukan
+        return ['name' => 'staff', 'permissions' => []];
     }
-
-    // 3. Decode JSON
-    $permissions = [];
-    if (!empty($role_entry->permissions_json)) {
-        $permissions = json_decode($role_entry->permissions_json, true);
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            $permissions = []; // JSON tidak valid
-        }
-    }
+    
+    // Mapping nama role DB ke slug sistem yang konsisten
+    // Misal: "Marketing Staff" -> "marketing_staff"
+    $role_slug = strtolower(str_replace(' ', '_', $role_entry->name));
 
     return [
-        'name' => $role_entry->name,
-        'permissions' => $permissions
+        'name' => $role_slug,
+        'permissions' => !empty($role_entry->permissions_json) ? json_decode($role_entry->permissions_json, true) : []
     ];
 }
-// --- AKHIR PENAMBAHAN ---
-
 
 /**
- * Mendapatkan data user yang login untuk React context.
+ * Mendapatkan data user untuk React context.
  */
 function umh_get_current_user_context() {
     if (!is_user_logged_in()) {
-        return [ 'id' => 0, 'name' => 'Guest', 'role' => 'none', 'permissions' => [] ];
+        return ['id' => 0, 'name' => 'Guest', 'role' => 'none', 'permissions' => []];
     }
 
     $user = wp_get_current_user();
-    
-    // --- PERBAIKAN: Mengganti logika role & permission ---
-    // $role = 'administrator'; // Hapus default yang salah
-
-    // Panggil fungsi helper baru
     $role_data = umh_get_staff_role_data($user->ID);
-    
-    $role = $role_data['name'];
-    $permissions = $role_data['permissions'];
-    // --- AKHIR PERBAIKAN ---
 
     return [
         'id' => $user->ID,
-        'name' => $user->display_name,
+        'full_name' => $user->display_name,
         'email' => $user->user_email,
-        'role' => $role, // 'administrator', 'finance', 'marketing', etc.
-        'permissions' => $permissions // Array of capabilities
+        'role' => $role_data['name'], 
+        'permissions' => $role_data['permissions']
     ];
 }
 
-/**
- * Utility function to send JSON response.
- */
-function umh_send_json_success($data = null) {
-    wp_send_json_success($data, 200);
-}
-
-/**
- * Utility function to send JSON error response.
- */
-function umh_send_json_error($message, $status_code = 400, $error_code = 'umh_error') {
-    wp_send_json_error(
-        [
-            'code' => $error_code,
-            'message' => $message
-        ],
-        $status_code
-    );
-}
-
-/**
- * Memformat tanggal untuk database, menangani string kosong atau null.
- */
-function umh_format_date_for_db($date_string) {
-    if (empty($date_string) || $date_string === '0000-00-00') {
-        return null;
-    }
-    try {
-        $date = new DateTime($date_string);
-        return $date->format('Y-m-d');
-    } catch (Exception $e) {
-        return null;
-    }
-}
-
-/**
- * Membersihkan input data.
- */
-function umh_sanitize_input($data) {
-    if (is_array($data)) {
-        return array_map('umh_sanitize_input', $data);
-    } else {
-        return sanitize_text_field($data);
-    }
+// Helper Formatter
+function umh_format_currency($amount) {
+    return 'Rp ' . number_format((float)$amount, 0, ',', '.');
 }

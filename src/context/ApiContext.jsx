@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import apiFetch from '@wordpress/api-fetch';
 import { useAuth } from './AuthContext';
 
@@ -6,20 +6,31 @@ const ApiContext = createContext();
 
 export const useApi = () => useContext(ApiContext);
 
-const useApiData = () => {
+export const ApiProvider = ({ children }) => {
     const { currentUser } = useAuth();
-    const [data, setData] = useState(null);
+    const [data, setData] = useState({
+        packages: [],
+        jamaah: [],
+        finance: [],
+        marketing: [],
+        hr: [],
+        users: [],
+        sub_agents: [],
+        roles: [],
+        logs: [],
+        stats: {} // Tambahkan ini
+    });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // --- PENAMBAHAN: 'sub_agents' ditambahkan ke daftar endpoint ---
     const endpoints = [
         'packages', 'jamaah', 'finance', 'categories', 'accounts', 
-        'marketing', 'hr', 'users', 'roles', 'logs', 'tasks', 'sub_agents'
+        'marketing', 'hr', 'users', 'roles', 'logs', 'tasks', 'sub_agents', 'stats' // Tambah stats
     ];
-    // --- AKHIR PENAMBAHAN ---
 
-    const fetchData = async () => {
+    // Fungsi untuk fetch semua data (Initial Load)
+    // Menggunakan Promise.allSettled agar satu error tidak membatalkan semua
+    const fetchAllData = useCallback(async () => {
         if (!currentUser) {
             setLoading(false);
             return;
@@ -29,42 +40,52 @@ const useApiData = () => {
         setError(null);
 
         try {
-            const requests = endpoints.map(endpoint =>
+            const promises = endpoints.map(endpoint => 
                 apiFetch({ path: `/umh/v1/${endpoint}` })
-                    .then(response => ({ [endpoint]: response }))
-                    .catch(err => {
-                        console.warn(`Failed to fetch ${endpoint}:`, err.message);
-                        return { [endpoint]: [] }; // Kembalikan array kosong jika gagal
-                    })
+                    .then(res => ({ status: 'fulfilled', endpoint, value: res }))
+                    .catch(err => ({ status: 'rejected', endpoint, reason: err }))
             );
 
-            const results = await Promise.all(requests);
+            const results = await Promise.all(promises);
             
-            const combinedData = results.reduce((acc, current) => ({ ...acc, ...current }), {});
+            const newData = { ...data };
             
-            // Relasi data
-            if (combinedData.jamaah && combinedData.jamaah_payments) {
-                 combinedData.jamaah.forEach(j => {
-                    j.total_payments = combinedData.jamaah_payments
-                        .filter(p => p.jamaah_id === j.id && p.status === 'completed')
-                        .reduce((sum, p) => sum + parseFloat(p.amount), 0);
+            results.forEach(res => {
+                if (res.status === 'fulfilled') {
+                    newData[res.endpoint] = res.value;
+                } else {
+                    console.warn(`Gagal memuat ${res.endpoint}:`, res.reason);
+                    // Opsional: Set error state spesifik jika perlu
+                }
+            });
+
+            // Kalkulasi Relasi Sederhana (Client Side Calculation)
+            // Note: Sebaiknya ini dipindah ke backend jika data besar
+            if (newData.jamaah && newData.jamaah_payments) {
+                newData.jamaah = newData.jamaah.map(j => {
+                    const payments = Array.isArray(newData.jamaah_payments) 
+                        ? newData.jamaah_payments.filter(p => p.jamaah_id === j.id && p.status === 'paid')
+                        : [];
+                    const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+                    return { ...j, amount_paid: totalPaid }; // Update data lokal
                 });
             }
 
-            setData(combinedData);
+            setData(newData);
             
         } catch (err) {
-            console.error('API Fetch Error:', err);
-            setError(err);
+            console.error('Critical API Error:', err);
+            setError(err.message || 'Terjadi kesalahan jaringan.');
         } finally {
             setLoading(false);
         }
-    };
+    }, [currentUser]);
 
     useEffect(() => {
-        fetchData();
-    }, [currentUser]); // Hanya refetch saat user berubah
+        fetchAllData();
+    }, [fetchAllData]);
 
+    // Fungsi Create/Update
     const createOrUpdate = async (endpoint, itemData, id = null) => {
         const method = id ? 'PUT' : 'POST';
         const path = id ? `/umh/v1/${endpoint}/${id}` : `/umh/v1/${endpoint}`;
@@ -72,54 +93,87 @@ const useApiData = () => {
         try {
             const response = await apiFetch({ path, method, data: itemData });
             
-            // Update state secara optimis
+            // Optimistic UI Update
             setData(prevData => {
-                const endpointData = prevData[endpoint] || [];
-                let newData;
+                const currentList = prevData[endpoint] || [];
+                let newList;
                 if (id) {
-                    // Update
-                    newData = endpointData.map(item => (item.id === id ? response : item));
+                    newList = currentList.map(item => (item.id === id ? response : item));
                 } else {
-                    // Create
-                    newData = [...endpointData, response];
+                    newList = [response, ...currentList]; // Tambah ke atas
                 }
-                return { ...prevData, [endpoint]: newData };
+                return { ...prevData, [endpoint]: newList };
             });
-            // Refetch data lengkap untuk sinkronisasi relasi (opsional tapi lebih aman)
-            fetchData();
+
+            // Opsional: Refresh data jika perlu relasi server-side yang kompleks
+            // fetchAllData(); 
+            
             return response;
         } catch (err) {
             console.error(`Failed to ${method} ${endpoint}:`, err);
-            setError(err); // Tampilkan error ke user
-            throw err; // Lempar error agar form bisa menangani
-        }
-    };
-
-    const deleteItem = async (endpoint, id) => {
-        try {
-            await apiFetch({ path: `/umh/v1/${endpoint}/${id}`, method: 'DELETE' });
-            
-            // Update state secara optimis
-            setData(prevData => {
-                const endpointData = prevData[endpoint] || [];
-                const newData = endpointData.filter(item => item.id !== id);
-                return { ...prevData, [endpoint]: newData };
-            });
-        } catch (err) {
-            console.error(`Failed to DELETE ${endpoint}:`, err);
-            setError(err);
             throw err;
         }
     };
 
-    return { data, loading, error, createOrUpdate, deleteItem, refreshData: fetchData };
-};
+    // Fungsi Delete
+    const deleteItem = async (endpoint, id) => {
+        try {
+            await apiFetch({ path: `/umh/v1/${endpoint}/${id}`, method: 'DELETE' });
+            
+            setData(prevData => {
+                const currentList = prevData[endpoint] || [];
+                const newList = currentList.filter(item => item.id !== id && item.ID !== id); // Handle 'id' vs 'ID'
+                return { ...prevData, [endpoint]: newList };
+            });
+        } catch (err) {
+            console.error(`Failed to DELETE ${endpoint}:`, err);
+            throw err;
+        }
+    };
 
-export const ApiProvider = ({ children }) => {
-    const apiData = useApiData();
+    // Fungsi untuk fetch resource spesifik (untuk refresh parsial)
+    const fetchResource = async (endpoint) => {
+        try {
+            const res = await apiFetch({ path: `/umh/v1/${endpoint}` });
+            setData(prev => ({ ...prev, [endpoint]: res }));
+        } catch (err) {
+            console.error(`Gagal refresh ${endpoint}`, err);
+        }
+    };
+    
+    // Khusus pembayaran
+    const updatePaymentStatus = async (paymentId, status) => {
+        try {
+             const res = await apiFetch({ 
+                path: `/umh/v1/jamaah/payments/${paymentId}`,
+                method: 'PUT',
+                data: { status }
+            });
+            // Refresh jamaah dan payments untuk sinkronisasi saldo
+            await Promise.all([
+                fetchResource('jamaah'),
+                fetchResource('jamaah_payments') // Asumsi endpoint ini ada di list utama
+            ]);
+            return res;
+        } catch (err) {
+            throw err;
+        }
+    };
+
+    const value = {
+        data,
+        loading,
+        error,
+        createOrUpdate,
+        deleteItem,
+        refreshData: fetchAllData,
+        fetchResource,
+        updatePaymentStatus,
+        fetchLogs: () => fetchResource('logs')
+    };
 
     return (
-        <ApiContext.Provider value={apiData}>
+        <ApiContext.Provider value={value}>
             {children}
         </ApiContext.Provider>
     );

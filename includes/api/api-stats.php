@@ -1,69 +1,59 @@
 <?php
-/**
- * API endpoint for getting stats.
- */
-
-if ( ! defined( 'ABSPATH' ) ) {
-    exit; // Exit if accessed directly.
+if (!defined('ABSPATH')) {
+    exit;
 }
 
-// Register stats route
-add_action('rest_api_init', function () {
-    register_rest_route('umh/v1', '/stats', array(
-        'methods' => 'GET',
-        'callback' => 'umh_get_stats',
-        'permission_callback' => 'umh_api_permission_check',
-    ));
-});
+class UMH_Stats_Controller extends WP_REST_Controller {
 
-/**
- * Get stats callback.
- *
- * @return WP_REST_Response
- */
-function umh_get_stats() {
-    global $wpdb;
-    $tables = umh_get_db_tables();
+    public function register_routes() {
+        $namespace = 'umh/v1';
+        $base = 'stats';
 
-    // Initialize with default values
-    $total_jamaah = 0;
-    $total_packages = 0;
-    $total_finance_raw = 0;
-    $total_leads = 0;
-
-    // --- PERBAIKAN DIMULAI DI SINI ---
-    // Logika yang sebelumnya di-comment, sekarang diaktifkan
-    // dan disempurnakan dengan pengecekan tabel
-
-    // Get total jamaah
-    if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $tables['jamaah'] ) ) == $tables['jamaah'] ) {
-        $total_jamaah = $wpdb->get_var("SELECT COUNT(*) FROM {$tables['jamaah']}");
+        register_rest_route($namespace, '/' . $base, array(
+            array(
+                'methods' => WP_REST_Server::READABLE,
+                'callback' => array($this, 'get_dashboard_stats'),
+                'permission_callback' => array($this, 'get_stats_permissions_check'),
+            ),
+        ));
     }
 
-    // Get total packages
-    if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $tables['packages'] ) ) == $tables['packages'] ) {
-        $total_packages = $wpdb->get_var("SELECT COUNT(*) FROM {$tables['packages']}");
+    public function get_stats_permissions_check($request) {
+        // Gunakan helper permission yang sudah kita buat
+        return umh_check_api_permission($request);
     }
 
-    // Get total finance
-    if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $tables['finance'] ) ) == $tables['finance'] ) {
-        $total_finance_raw = $wpdb->get_var("SELECT SUM(CASE WHEN type = 'income' THEN amount ELSE -amount END) FROM {$tables['finance']}");
+    public function get_dashboard_stats($request) {
+        global $wpdb;
+
+        // 1. Total Jamaah
+        $total_jamaah = $wpdb->get_var("SELECT COUNT(id) FROM {$wpdb->prefix}umh_jamaah");
+
+        // 2. Total Omzet (Total Price semua jamaah, bukan yg paid)
+        // Atau bisa ambil dari tabel finance 'income'
+        $total_revenue = $wpdb->get_var("SELECT SUM(amount) FROM {$wpdb->prefix}umh_jamaah_payments WHERE status = 'paid'");
+
+        // 3. Paket Aktif
+        $active_packages = $wpdb->get_var("SELECT COUNT(id) FROM {$wpdb->prefix}umh_packages WHERE status = 'available'");
+
+        // 4. Jamaah Bulan Ini
+        $current_month = date('Y-m');
+        $new_leads = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(id) FROM {$wpdb->prefix}umh_jamaah WHERE created_at LIKE %s",
+            $current_month . '%'
+        ));
+
+        // 5. Recent Logs
+        $recent_logs = $wpdb->get_results("SELECT * FROM {$wpdb->prefix}umh_logs ORDER BY timestamp DESC LIMIT 5");
+
+        $data = array(
+            'total_jamaah' => (int) $total_jamaah,
+            'total_revenue' => (float) $total_revenue,
+            'active_packages' => (int) $active_packages,
+            'new_leads' => (int) $new_leads,
+            'recent_logs' => $recent_logs
+        );
+
+        return new WP_REST_Response($data, 200);
     }
-
-    // Get total leads
-    if ( $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $tables['marketing'] ) ) == $tables['marketing'] ) {
-        $total_leads = $wpdb->get_var("SELECT COUNT(*) FROM {$tables['marketing']}");
-    }
-
-    // Format finance value
-    $total_finance_formatted = 'Rp ' . number_format($total_finance_raw ? $total_finance_raw : 0, 0, ',', '.');
-    
-    // --- PERBAIKAN SELESAI ---
-
-    return new WP_REST_Response(array(
-        'total_jamaah' => (int) $total_jamaah, // Kirim sebagai integer
-        'total_packages' => (int) $total_packages, // Kirim sebagai integer
-        'total_finance' => $total_finance_formatted, // Kirim sebagai string yang sudah diformat
-        'total_leads' => 999, // <--- UBAH SEMENTARA UNTUK TES
-    ), 200);
 }
