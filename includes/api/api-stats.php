@@ -1,59 +1,76 @@
 <?php
-if (!defined('ABSPATH')) {
-    exit;
+/**
+ * API endpoint for getting stats.
+ */
+
+if ( ! defined( 'ABSPATH' ) ) {
+    exit; // Exit if accessed directly.
 }
 
-class UMH_Stats_Controller extends WP_REST_Controller {
+// Register stats route
+add_action('rest_api_init', function () {
+    register_rest_route('umh/v1', '/stats', array(
+        'methods' => 'GET',
+        'callback' => 'umh_get_stats',
+        'permission_callback' => function() {
+            // Gunakan helper permission check jika tersedia
+            if (function_exists('umh_check_api_permission')) {
+                return umh_check_api_permission(null, ['owner', 'admin_staff', 'finance_staff', 'marketing_staff']);
+            }
+            return current_user_can('read');
+        },
+    ));
+});
 
-    public function register_routes() {
-        $namespace = 'umh/v1';
-        $base = 'stats';
+/**
+ * Get stats callback.
+ *
+ * @return WP_REST_Response
+ */
+function umh_get_stats() {
+    global $wpdb;
+    
+    // Prefix tabel
+    $prefix = $wpdb->prefix . 'umh_';
+    
+    // Initialize default values
+    $total_jamaah = 0;
+    $available_packages = 0;
+    $total_pending_payments = 0;
+    $total_revenue = 0;
 
-        register_rest_route($namespace, '/' . $base, array(
-            array(
-                'methods' => WP_REST_Server::READABLE,
-                'callback' => array($this, 'get_dashboard_stats'),
-                'permission_callback' => array($this, 'get_stats_permissions_check'),
-            ),
-        ));
+    // 1. Total Jamaah
+    $table_jamaah = $prefix . 'jamaah';
+    if ($wpdb->get_var("SHOW TABLES LIKE '$table_jamaah'") == $table_jamaah) {
+        $total_jamaah = (int) $wpdb->get_var("SELECT COUNT(id) FROM $table_jamaah");
     }
 
-    public function get_stats_permissions_check($request) {
-        // Gunakan helper permission yang sudah kita buat
-        return umh_check_api_permission($request);
+    // 2. Total Paket Tersedia
+    $table_packages = $prefix . 'packages';
+    if ($wpdb->get_var("SHOW TABLES LIKE '$table_packages'") == $table_packages) {
+        $available_packages = (int) $wpdb->get_var("SELECT COUNT(id) FROM $table_packages WHERE status = 'available'");
     }
 
-    public function get_dashboard_stats($request) {
-        global $wpdb;
-
-        // 1. Total Jamaah
-        $total_jamaah = $wpdb->get_var("SELECT COUNT(id) FROM {$wpdb->prefix}umh_jamaah");
-
-        // 2. Total Omzet (Total Price semua jamaah, bukan yg paid)
-        // Atau bisa ambil dari tabel finance 'income'
-        $total_revenue = $wpdb->get_var("SELECT SUM(amount) FROM {$wpdb->prefix}umh_jamaah_payments WHERE status = 'paid'");
-
-        // 3. Paket Aktif
-        $active_packages = $wpdb->get_var("SELECT COUNT(id) FROM {$wpdb->prefix}umh_packages WHERE status = 'available'");
-
-        // 4. Jamaah Bulan Ini
-        $current_month = date('Y-m');
-        $new_leads = $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(id) FROM {$wpdb->prefix}umh_jamaah WHERE created_at LIKE %s",
-            $current_month . '%'
-        ));
-
-        // 5. Recent Logs
-        $recent_logs = $wpdb->get_results("SELECT * FROM {$wpdb->prefix}umh_logs ORDER BY timestamp DESC LIMIT 5");
-
-        $data = array(
-            'total_jamaah' => (int) $total_jamaah,
-            'total_revenue' => (float) $total_revenue,
-            'active_packages' => (int) $active_packages,
-            'new_leads' => (int) $new_leads,
-            'recent_logs' => $recent_logs
-        );
-
-        return new WP_REST_Response($data, 200);
+    // 3. Total Piutang (Pending Payments)
+    // Logika: Total harga semua jamaah dikurangi total yang sudah dibayar
+    // Ini estimasi kasar. Untuk akurasi, perlu query join yang lebih kompleks.
+    // Untuk sekarang kita gunakan query sederhana pada tabel jamaah.
+    if ($wpdb->get_var("SHOW TABLES LIKE '$table_jamaah'") == $table_jamaah) {
+        $total_price_all = (float) $wpdb->get_var("SELECT SUM(total_price) FROM $table_jamaah");
+        $amount_paid_all = (float) $wpdb->get_var("SELECT SUM(amount_paid) FROM $table_jamaah");
+        $total_pending_payments = $total_price_all - $amount_paid_all;
     }
+
+    // 4. Total Revenue (Dari tabel finance jika ada)
+    $table_finance = $prefix . 'finance';
+    if ($wpdb->get_var("SHOW TABLES LIKE '$table_finance'") == $table_finance) {
+        $total_revenue = (float) $wpdb->get_var("SELECT SUM(amount) FROM $table_finance WHERE type = 'income'");
+    }
+
+    return new WP_REST_Response(array(
+        'total_jamaah' => $total_jamaah,
+        'available_packages' => $available_packages,
+        'total_pending_payments' => $total_pending_payments, // Untuk StatCard 'Total Piutang'
+        'total_revenue' => $total_revenue,
+    ), 200);
 }
