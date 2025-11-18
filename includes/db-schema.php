@@ -157,6 +157,9 @@ function umh_create_tables() {
         id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
         package_id BIGINT(20) UNSIGNED NOT NULL,
         user_id BIGINT(20) UNSIGNED DEFAULT NULL,
+        -- Penambahan: Kolom untuk sub_agent_id
+        sub_agent_id BIGINT(20) UNSIGNED DEFAULT NULL,
+        -- Akhir Penambahan
         full_name VARCHAR(150) NOT NULL,
         id_number VARCHAR(30) DEFAULT NULL,
         passport_number VARCHAR(30) DEFAULT NULL,
@@ -184,7 +187,9 @@ function umh_create_tables() {
         updated_at DATETIME NOT NULL,
         PRIMARY KEY (id),
         KEY package_id (package_id),
-        KEY user_id (user_id)
+        KEY user_id (user_id),
+        -- Penambahan: Index untuk sub_agent_id
+        KEY sub_agent_id (sub_agent_id)
     ) $charset_collate;";
     dbDelta($sql);
 
@@ -301,4 +306,25 @@ function umh_create_tables() {
         KEY related_table_id (related_table, related_id)
     ) $charset_collate;";
     dbDelta($sql);
+
+    // --- PENAMBAHAN: Tabel Sub Agents ---
+    // 18. Tabel Sub Agents
+    $table_name = $table_prefix . 'sub_agents';
+    $sql = "CREATE TABLE $table_name (
+        id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+        agent_id VARCHAR(50) DEFAULT NULL UNIQUE, -- No ID
+        name VARCHAR(150) NOT NULL, -- NAMA
+        join_date DATE DEFAULT NULL, -- TGL BERGABUNG
+        id_number VARCHAR(30) DEFAULT NULL, -- NO KTP
+        address TEXT DEFAULT NULL, -- ALAMAT
+        phone VARCHAR(20) DEFAULT NULL, -- TELP
+        notes TEXT DEFAULT NULL, -- KET
+        status VARCHAR(20) NOT NULL DEFAULT 'active', -- 'active', 'inactive'
+        created_at DATETIME NOT NULL,
+        updated_at DATETIME NOT NULL,
+        PRIMARY KEY (id),
+        KEY agent_id (agent_id)
+    ) $charset_collate;";
+    dbDelta($sql);
+    // --- AKHIR PENAMBAHAN ---
 }

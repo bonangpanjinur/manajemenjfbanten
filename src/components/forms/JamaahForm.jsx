@@ -1,11 +1,19 @@
 // Lokasi: src/components/forms/JamaahForm.jsx
 import React, { useState, useEffect } from 'react';
-import { formatDateForInput } from '../../utils/helpers';
-import { ModalFooter } from '../common/Modal';
-import { Input, Select, Checkbox, FormGroup, FormLabel } from '../common/FormUI';
+// --- PERBAIKAN: Mengubah path import menjadi relatif ---
+import { formatDateForInput } from '../../utils/helpers.js';
+import { ModalFooter } from '../common/Modal.jsx';
+import { Input, Select, Checkbox, FormGroup, FormLabel } from '../common/FormUI.jsx';
+import { useApi } from '../../context/ApiContext.jsx'; // Import useApi
+// --- AKHIR PERBAIKAN ---
 
-// --- PENAMBAHAN: Terima prop 'sub_agents' ---
-const JamaahForm = ({ initialData, onSubmit, onCancel, packages, sub_agents = [], onSave }) => {
+// --- PERBAIKAN: Hapus 'sub_agents' dari props, ambil dari useApi ---
+const JamaahForm = ({ initialData, onSubmit, onCancel, packages, onSave }) => {
+    // --- PENAMBAHAN: Ambil data sub_agents dari ApiContext ---
+    const { data: apiData } = useApi();
+    const sub_agents = apiData.sub_agents || [];
+    // --- AKHIR PENAMBAHAN ---
+
     const [formData, setFormData] = useState({
         package_id: '',
         // --- PENAMBAHAN: Tambahkan 'sub_agent_id' ke state ---

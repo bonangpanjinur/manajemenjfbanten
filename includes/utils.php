@@ -1,172 +1,186 @@
 <?php
-// Lokasi: includes/utils.php
-
 if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
 
 /**
- * Mendapatkan konteks pengguna saat ini untuk API.
- * Mengembalikan array dengan id, email, dan role.
- */
-function umh_get_current_user_context() {
-    $user = wp_get_current_user();
-    if (0 === $user->ID) {
-        // --- PERBAIKAN: Logika token kustom (jika diperlukan untuk klien eksternal) ---
-        // Saat ini, aplikasi React berjalan di dalam admin,
-        // jadi jika $user->ID adalah 0, berarti dia benar-benar 'guest'.
-        // Logika token di bawah ini akan relevan jika ada aplikasi seluler/eksternal.
-        global $wpdb;
-        $token = null;
-
-        if (!empty($_SERVER['HTTP_AUTHORIZATION']) && preg_match('/Bearer\s(\S+)/', $_SERVER['HTTP_AUTHORIZATION'], $matches)) {
-            $token = $matches[1];
-        }
-
-        if ($token) {
-            $table_name = $wpdb->prefix . 'umh_users';
-            $headless_user = $wpdb->get_row($wpdb->prepare(
-                "SELECT id, email, full_name, role FROM $table_name WHERE auth_token = %s AND token_expires > %s",
-                $token,
-                current_time('mysql')
-            ));
-
-            if ($headless_user) {
-                return array(
-                    'id'        => $headless_user->id,
-                    'email'     => $headless_user->email,
-                    'full_name' => $headless_user->full_name,
-                    'role'      => $headless_user->role,
-                );
-            }
-        }
-        
-        // Jika tidak ada user WP dan tidak ada token valid, dia adalah guest.
-        return array(
-            'id'    => 0,
-            'email' => 'guest',
-            'full_name' => 'Guest',
-            'role'  => 'guest',
-        );
-        // --- AKHIR PERBAIKAN ---
-    }
-
-    // Jika user WP login:
-    $custom_roles = umh_get_staff_roles(); // Menggunakan helper function
-    $user_roles = $user->roles;
-    $role = 'subscriber'; // Default
-
-    // Cek dulu apakah dia Super Admin
-    if (in_array('administrator', $user_roles, true)) {
-        $role = 'administrator';
-    } else {
-        // Jika bukan, cari role kustom
-        foreach ($custom_roles as $custom_role) {
-            if (in_array($custom_role, $user_roles, true)) {
-                $role = $custom_role;
-                break; // Ambil role kustom pertama yang ditemukan
-            }
-        }
-    }
-
-    return array(
-        'id'        => $user->ID,
-        'email'     => $user->user_email,
-        'full_name' => $user->display_name,
-        'role'      => $role,
-    );
-}
-
-/**
- * Memeriksa izin API berdasarkan role.
+ * Log aktivitas pengguna ke database.
  *
- * @param WP_REST_Request $request        Request object.
- * @param array           $required_roles Array of roles that are allowed.
- * @return bool|WP_Error True if allowed, WP_Error if denied.
+ * @param int $user_id ID pengguna WordPress.
+ * @param string $action_type Tipe aksi (misal: 'create_jamaah', 'update_package').
+ * @param string $description Deskripsi singkat.
+ * @param string $related_table (Opsional) Tabel terkait.
+ * @param int $related_id (Opsional) ID entitas terkait.
+ * @param array $details (Opsional) Data tambahan (seperti data lama vs baru) dalam bentuk array.
  */
-function umh_check_api_permission($request, $required_roles) {
-    // --- PERBAIKAN: Panggil umh_get_current_user_context() ---
-    $user_context = umh_get_current_user_context();
-    // --- AKHIR PERBAIKAN ---
-    $user_role = $user_context['role'];
-    $user_id = $user_context['id'];
-
-    // Jika id 0, berarti guest (tidak login WP dan tidak ada token valid)
-    if (0 === $user_id) {
-         return new WP_Error(
-            'rest_forbidden_context',
-            __('Anda harus login untuk mengakses data ini.', 'umroh-manager-hybrid'),
-            array('status' => 401)
-        );
-    }
-
-    // Administrator WordPress selalu memiliki akses
-    if ('administrator' === $user_role) {
-        return true;
-    }
-    
-    // Owner kustom selalu memiliki akses
-    if ('owner' === $user_role) {
-        return true;
-    }
-    
-    // --- PERBAIKAN: Izinkan jika array role yang dibutuhkan kosong (hanya cek login) ---
-    if (empty($required_roles) && $user_id > 0) {
-        return true; // Hanya butuh login, role apapun
-    }
-    // --- AKHIR PERBAIKAN ---
-
-    if (in_array($user_role, $required_roles, true)) {
-        return true;
-    }
-
-    // Jika tidak ada role yang cocok
-    return new WP_Error(
-        'rest_forbidden_context',
-        __('Maaf, Anda tidak memiliki izin untuk melakukan tindakan ini.', 'umroh-manager-hybrid'),
-        array('status' => 403)
-    );
-}
-
-
-// <!-- PERBAIKAN (Kategori 3): Pindahkan fungsi log ke sini -->
-/**
- * Membuat entri log baru di database.
- * Ini dipindahkan dari api-logs.php agar bisa diakses secara global,
- * terutama oleh UMH_CRUD_Controller.
- */
-function umh_create_log_entry($user_id, $action_type, $related_table, $related_id, $description, $details_json = '') {
+function umh_log_activity($user_id, $action_type, $description, $related_table = null, $related_id = null, $details = null) {
     global $wpdb;
     $table_name = $wpdb->prefix . 'umh_logs';
 
-    // Pastikan user_id adalah integer yang valid
-    $user_id_to_insert = intval($user_id);
-    
-    // Jika user_id 0 (mungkin sistem atau pengguna tidak dikenal), set ke NULL
-    if ($user_id_to_insert === 0) {
-        $user_id_to_insert = null;
-    }
-
     $wpdb->insert(
         $table_name,
-        array(
-            'user_id' => $user_id_to_insert,
+        [
+            'user_id' => $user_id,
             'action_type' => $action_type,
             'related_table' => $related_table,
             'related_id' => $related_id,
             'description' => $description,
-            'details_json' => $details_json,
-            'timestamp' => current_time('mysql', 1) // Gunakan GMT
-        ),
-        array(
-            '%d', // user_id (bisa null)
+            'details_json' => $details ? wp_json_encode($details) : null,
+            'timestamp' => current_time('mysql', 1)
+        ],
+        [
+            '%d', // user_id
             '%s', // action_type
             '%s', // related_table
             '%d', // related_id
             '%s', // description
             '%s', // details_json
             '%s'  // timestamp
-        )
+        ]
     );
 }
-// <!-- AKHIR PERBAIKAN -->
+
+/**
+ * Memeriksa izin pengguna untuk REST API.
+ * Saat ini hanya memeriksa apakah pengguna login.
+ * TODO: Implementasi pemeriksaan kapabilitas yang lebih detail.
+ */
+function umh_check_permission() {
+    return is_user_logged_in();
+}
+
+
+// --- PENAMBAHAN: Fungsi helper baru untuk mengambil data role ---
+/**
+ * Mengambil data role dan permissions staff dari database.
+ *
+ * @param int $user_id ID user WordPress.
+ * @return array Data role ['name' => (string), 'permissions' => (array)]
+ */
+function umh_get_staff_role_data($user_id) {
+    global $wpdb;
+    $hr_table = $wpdb->prefix . 'umh_hr';
+    $roles_table = $wpdb->prefix . 'umh_roles';
+
+    // 1. Dapatkan role_id dari tabel HR
+    $hr_entry = $wpdb->get_row(
+        $wpdb->prepare(
+            "SELECT role_id FROM $hr_table WHERE wp_user_id = %d",
+            $user_id
+        )
+    );
+
+    if (!$hr_entry || !$hr_entry->role_id) {
+        // User ini mungkin admin WordPress tapi bukan staff HR
+        $user = get_userdata($user_id);
+        if ($user && in_array('administrator', $user->roles)) {
+            return ['name' => 'administrator', 'permissions' => ['administrator']]; // Full admin
+        }
+        return ['name' => 'none', 'permissions' => []]; // Bukan staff & bukan admin
+    }
+
+    $role_id = $hr_entry->role_id;
+
+    // 2. Dapatkan nama role dan permissions_json dari tabel Roles
+    $role_entry = $wpdb->get_row(
+        $wpdb->prepare(
+            "SELECT name, permissions_json FROM $roles_table WHERE id = %d",
+            $role_id
+        )
+    );
+
+    if (!$role_entry) {
+        return ['name' => 'none', 'permissions' => []]; // Role tidak ditemukan
+    }
+
+    // 3. Decode JSON
+    $permissions = [];
+    if (!empty($role_entry->permissions_json)) {
+        $permissions = json_decode($role_entry->permissions_json, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            $permissions = []; // JSON tidak valid
+        }
+    }
+
+    return [
+        'name' => $role_entry->name,
+        'permissions' => $permissions
+    ];
+}
+// --- AKHIR PENAMBAHAN ---
+
+
+/**
+ * Mendapatkan data user yang login untuk React context.
+ */
+function umh_get_current_user_context() {
+    if (!is_user_logged_in()) {
+        return [ 'id' => 0, 'name' => 'Guest', 'role' => 'none', 'permissions' => [] ];
+    }
+
+    $user = wp_get_current_user();
+    
+    // --- PERBAIKAN: Mengganti logika role & permission ---
+    // $role = 'administrator'; // Hapus default yang salah
+
+    // Panggil fungsi helper baru
+    $role_data = umh_get_staff_role_data($user->ID);
+    
+    $role = $role_data['name'];
+    $permissions = $role_data['permissions'];
+    // --- AKHIR PERBAIKAN ---
+
+    return [
+        'id' => $user->ID,
+        'name' => $user->display_name,
+        'email' => $user->user_email,
+        'role' => $role, // 'administrator', 'finance', 'marketing', etc.
+        'permissions' => $permissions // Array of capabilities
+    ];
+}
+
+/**
+ * Utility function to send JSON response.
+ */
+function umh_send_json_success($data = null) {
+    wp_send_json_success($data, 200);
+}
+
+/**
+ * Utility function to send JSON error response.
+ */
+function umh_send_json_error($message, $status_code = 400, $error_code = 'umh_error') {
+    wp_send_json_error(
+        [
+            'code' => $error_code,
+            'message' => $message
+        ],
+        $status_code
+    );
+}
+
+/**
+ * Memformat tanggal untuk database, menangani string kosong atau null.
+ */
+function umh_format_date_for_db($date_string) {
+    if (empty($date_string) || $date_string === '0000-00-00') {
+        return null;
+    }
+    try {
+        $date = new DateTime($date_string);
+        return $date->format('Y-m-d');
+    } catch (Exception $e) {
+        return null;
+    }
+}
+
+/**
+ * Membersihkan input data.
+ */
+function umh_sanitize_input($data) {
+    if (is_array($data)) {
+        return array_map('umh_sanitize_input', $data);
+    } else {
+        return sanitize_text_field($data);
+    }
+}

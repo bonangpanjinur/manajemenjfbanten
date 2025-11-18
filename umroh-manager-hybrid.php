@@ -1,176 +1,213 @@
 <?php
 /**
- * Plugin Name: Umroh Manager Hybrid
- * Description: Plugin kustom untuk manajemen Umroh (Headless + React).
- * Version: 1.1
- * Author: Bonang Panji Nur
+ * Plugin Name:       Umroh Manager Hybrid
+ * Plugin URI:        https://github.com/bonangpanjinur/umroh-manager-hybrid
+ * Description:       A hybrid plugin (PHP Backend + React Frontend) for managing Umroh packages, jamaah, and finances within the WordPress admin.
+ * Version:           1.0.0
+ * Author:            Bonang Panji Nur
+ * Author URI:        https://bonang.me
+ * License:           GPL v2 or later
+ * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
+ * Text Domain:       umroh-manager-hybrid
+ * Domain Path:       /languages
  */
 
 if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
 
+// Define Constants
 define('UMH_PLUGIN_PATH', plugin_dir_path(__FILE__));
 define('UMH_PLUGIN_URL', plugin_dir_url(__FILE__));
+define('UMH_PLUGIN_VERSION', '1.0.0');
 
 // Includes
 require_once(UMH_PLUGIN_PATH . 'includes/db-schema.php');
-require_once(UMH_PLUGIN_PATH . 'includes/class-umh-crud-controller.php');
 require_once(UMH_PLUGIN_PATH . 'includes/utils.php');
+require_once(UMH_PLUGIN_PATH . 'includes/class-umh-crud-controller.php');
 
-// Aktivasi Plugin: Buat tabel
+// Activation Hook
 register_activation_hook(__FILE__, 'umh_create_tables');
 
-// Admin Menu
+// Admin Menu & Settings
 require_once(UMH_PLUGIN_PATH . 'admin/dashboard-react.php');
 require_once(UMH_PLUGIN_PATH . 'admin/settings-page.php');
+require_once(UMH_PLUGIN_PATH . 'admin/print-registration.php'); // Halaman Print
 
-// Include file-file API
-require_once(UMH_PLUGIN_PATH . 'includes/api/api-jamaah.php');
-require_once(UMH_PLUGIN_PATH . 'includes/api/api-packages.php');
-require_once(UMH_PLUGIN_PATH . 'includes/api/api-finance.php');
-require_entry('includes/api/api-categories.php');
-require_entry('includes/api/api-departures.php');
-require_entry('includes/api/api-export.php');
-require_entry('includes/api/api-flights.php');
-require_entry('includes/api/api-hotels.php');
-require_entry('includes/api/api-hr.php');
-require_entry('includes/api/api-jamaah-payments.php');
-require_entry('includes/api/api-logs.php');
-require_entry('includes/api/api-marketing.php');
-require_entry('includes/api/api-print.php');
-require_entry('includes/api/api-roles.php');
-require_entry('includes/api/api-stats.php');
-require_entry('includes/api/api-tasks.php');
-require_entry('includes/api/api-uploads.php');
-require_entry('includes/api/api-users.php');
-
+// --- PENAMBAHAN: Registrasi Menu Admin ---
 
 /**
- * Helper untuk mendaftarkan rute CRUD generik.
+ * Mendaftarkan halaman menu admin di sidebar WordPress.
  */
-function register_crud_routes($controller, $base_slug, $base_permission) {
-    register_rest_route('umh/v1', '/' . $base_slug, [
-        'methods' => WP_REST_Server::READABLE,
-        'callback' => [$controller, 'get_items'],
-        'permission_callback' => function () use ($controller, $base_permission) {
-            return umh_check_permission(array_merge(['administrator', 'super_admin', 'owner'], $base_permission, $controller->permissions['get_items']));
-        },
-    ]);
-    
-    register_rest_route('umh/v1', '/' . $base_slug, [
-        'methods' => WP_REST_Server::CREATABLE,
-        'callback' => [$controller, 'create_item'],
-        'permission_callback' => function () use ($controller, $base_permission) {
-            return umh_check_permission(array_merge(['administrator', 'super_admin', 'owner'], $base_permission, $controller->permissions['create_item']));
-        },
-        'args' => $controller->get_endpoint_args_for_item_schema(WP_REST_Server::CREATABLE),
-    ]);
-    
-    register_rest_route('umh/v1', '/' . $base_slug . '/(?P<id>\d+)', [
-        'methods' => WP_REST_Server::READABLE,
-        'callback' => [$controller, 'get_item'],
-        'permission_callback' => function () use ($controller, $base_permission) {
-            return umh_check_permission(array_merge(['administrator', 'super_admin', 'owner'], $base_permission, $controller->permissions['get_item']));
-        },
-    ]);
-    
-    register_rest_route('umh/v1', '/' . $base_slug . '/(?P<id>\d+)', [
-        'methods' => WP_REST_Server::EDITABLE,
-        'callback' => [$controller, 'update_item'],
-        'permission_callback' => function () use ($controller, $base_permission) {
-            return umh_check_permission(array_merge(['administrator', 'super_admin', 'owner'], $base_permission, $controller->permissions['update_item']));
-        },
-        'args' => $controller->get_endpoint_args_for_item_schema(WP_REST_Server::EDITABLE),
-    ]);
-    
-    register_rest_route('umh/v1', '/' . $base_slug . '/(?P<id>\d+)', [
-        'methods' => WP_REST_Server::DELETABLE,
-        'callback' => [$controller, 'delete_item'],
-        'permission_callback' => function () use ($controller, $base_permission) {
-            return umh_check_permission(array_merge(['administrator', 'super_admin', 'owner'], $base_permission, $controller->permissions['delete_item']));
-        },
-    ]);
-}
+function umh_register_admin_menu() {
+    // 1. Halaman Dashboard Utama (React App)
+    add_menu_page(
+        __('Umroh Manager Dashboard', 'umroh-manager-hybrid'), // Judul Halaman
+        __('Umroh Manager', 'umroh-manager-hybrid'),          // Judul Menu
+        'manage_options',                                     // Kapabilitas (minimal) - Nanti bisa disesuaikan
+        'umroh-manager-hybrid',                               // Menu Slug (PENTING: Ini adalah 'page' slug)
+        'umh_render_react_dashboard',                         // Fungsi callback untuk render div#root
+        'dashicons-airplane',                                 // Ikon
+        20                                                    // Posisi
+    );
 
+    // 2. Halaman Pengaturan (Submenu)
+    add_submenu_page(
+        'umroh-manager-hybrid',                               // Parent slug
+        __('Pengaturan', 'umroh-manager-hybrid'),             // Judul Halaman
+        __('Pengaturan', 'umroh-manager-hybrid'),             // Judul Menu
+        'manage_options',                                     // Kapabilitas
+        'umh-settings',                                       // Menu Slug
+        'umh_render_settings_page'                            // Fungsi callback
+    );
+}
+add_action('admin_menu', 'umh_register_admin_menu');
 
 /**
- * Registrasi semua endpoint REST API kustom.
+ * Mendaftarkan fields untuk halaman pengaturan.
  */
-function umh_register_api_endpoints() {
-    global $wpdb;
-    $table_prefix = $wpdb->prefix . 'umh_';
-
-    // Izin dasar untuk setiap modul
-    $admin_staff_permission = ['admin_staff'];
-    $finance_permission = ['finance_staff', 'admin_staff'];
-    $marketing_permission = ['marketing_staff', 'admin_staff'];
-    $hr_permission = ['hr_staff', 'admin_staff'];
-
-    // 1. Jamaah
-    $jamaah_controller = new UMH_CRUD_Controller($table_prefix . 'jamaah', 'jamaah');
-    register_crud_routes($jamaah_controller, 'jamaah', $admin_staff_permission);
-
-    // 2. Paket
-    $package_controller = new UMH_CRUD_Controller($table_prefix . 'packages', 'package');
-    register_crud_routes($package_controller, 'packages', $marketing_permission);
-
-    // 3. Finance
-    $finance_controller = new UMH_CRUD_Controller($table_prefix . 'finance', 'finance');
-    register_crud_routes($finance_controller, 'finance', $finance_permission);
-
-    // 4. Kategori Finance
-    $categories_controller = new UMH_CRUD_Controller($table_prefix . 'categories', 'category');
-    register_crud_routes($categories_controller, 'categories', $finance_permission);
-    
-    // 5. Akun Keuangan (Finance Accounts)
-    $accounts_controller = new UMH_CRUD_Controller($table_prefix . 'finance_accounts', 'account');
-    register_crud_routes($accounts_controller, 'accounts', $finance_permission);
-
-    // 6. Marketing
-    $marketing_controller = new UMH_CRUD_Controller($table_prefix . 'marketing', 'marketing');
-    register_crud_routes($marketing_controller, 'marketing', $marketing_permission);
-    
-    // 7. HR
-    $hr_controller = new UMH_CRUD_Controller($table_prefix . 'hr', 'hr');
-    register_crud_routes($hr_controller, 'hr', $hr_permission);
-
-    // 8. Users (Headless)
-    $users_controller = new UMH_CRUD_Controller($table_prefix . 'users', 'user');
-    register_crud_routes($users_controller, 'users', $admin_staff_permission);
-
-    // 9. Roles
-    $roles_controller = new UMH_CRUD_Controller($table_prefix . 'roles', 'role');
-    register_crud_routes($roles_controller, 'roles', $admin_staff_permission);
-    
-    // 10. Logs
-    $logs_controller = new UMH_CRUD_Controller($table_prefix . 'logs', 'log');
-    register_crud_routes($logs_controller, 'logs', $admin_staff_permission);
-
-    // 11. Tasks
-    $tasks_controller = new UMH_CRUD_Controller($table_prefix . 'tasks', 'task');
-    register_crud_routes($tasks_controller, 'tasks', $admin_staff_permission);
-
-    // --- PENAMBAHAN: Endpoint Sub Agen ---
-    // 12. Sub Agen
-    $sub_agents_controller = new UMH_CRUD_Controller($table_prefix . 'sub_agents', 'sub_agent');
-    register_crud_routes($sub_agents_controller, 'sub_agents', $marketing_permission);
-    // --- AKHIR PENAMBAHAN ---
-    
-    // Registrasi endpoint kustom (non-CRUD)
-    umh_register_custom_jamaah_routes();
-    umh_register_custom_package_routes();
-    umh_register_custom_finance_routes();
-    // ... daftarkan rute kustom lainnya ...
-}
-add_action('rest_api_init', 'umh_register_api_endpoints');
-
-// Helper 'require_entry'
-function require_entry($path) {
-    $full_path = UMH_PLUGIN_PATH . $path;
-    if (file_exists($full_path)) {
-        require_once($full_path);
-    } else {
-        // Handle error: file not found
+function umh_register_admin_settings() {
+    // Kita perlu memanggil class dari 'admin/settings-page.php'
+    if (class_exists('UMH_Settings_Page')) {
+        $settings_page = new UMH_Settings_Page();
+        $settings_page->register_settings(); // Menggunakan metode register_settings dari class
     }
 }
+add_action('admin_init', 'umh_register_admin_settings');
+
+// --- AKHIR PENAMBAHAN ---
+
+
+// Include file-file API
+require_once(UMH_PLUGIN_PATH . 'includes/api/api-stats.php');
+require_once(UMH_PLUGIN_PATH . 'includes/api/api-users.php');
+require_once(UMH_PLUGIN_PATH . 'includes/api/api-roles.php');
+require_once(UMH_PLUGIN_PATH . 'includes/api/api-hr.php');
+require_once(UMH_PLUGIN_PATH . 'includes/api/api-packages.php');
+require_once(UMH_PLUGIN_PATH . 'includes/api/api-departures.php');
+require_once(UMH_PLUGIN_PATH . 'includes/api/api-hotels.php');
+require_once(UMH_PLUGIN_PATH . 'includes/api/api-flights.php');
+require_once(UMH_PLUGIN_PATH . 'includes/api/api-jamaah.php');
+require_once(UMH_PLUGIN_PATH . 'includes/api/api-jamaah-payments.php');
+require_once(UMH_PLUGIN_PATH . 'includes/api/api-finance.php');
+require_once(UMH_PLUGIN_PATH . 'includes/api/api-categories.php');
+require_once(UMH_PLUGIN_PATH . 'includes/api/api-marketing.php');
+require_once(UMH_PLUGIN_PATH . 'includes/api/api-tasks.php');
+require_once(UMH_PLUGIN_PATH . 'includes/api/api-uploads.php');
+require_once(UMH_PLUGIN_PATH . 'includes/api/api-logs.php');
+require_once(UMH_PLUGIN_PATH . 'includes/api/api-export.php');
+require_once(UMH_PLUGIN_PATH . 'includes/api/api-print.php');
+
+// CORS Handling
+require_once(UMH_PLUGIN_PATH . 'includes/cors.php');
+
+/**
+ * Daftarkan semua Rute API
+ */
+function umh_register_api_routes() {
+    $stats_controller = new UMH_Stats_Controller();
+    $stats_controller->register_routes();
+
+    $users_controller = new UMH_Users_Controller();
+    $users_controller->register_routes();
+
+    $roles_controller = new UMH_Roles_Controller();
+    $roles_controller->register_routes();
+
+    $hr_controller = new UMH_HR_Controller();
+    $hr_controller->register_routes();
+
+    $packages_controller = new UMH_Packages_Controller();
+    $packages_controller->register_routes();
+
+    $departures_controller = new UMH_Departures_Controller();
+    $departures_controller->register_routes();
+
+    $hotels_controller = new UMH_Hotels_Controller();
+    $hotels_controller->register_routes();
+
+    $flights_controller = new UMH_Flights_Controller();
+    $flights_controller->register_routes();
+
+    $jamaah_controller = new UMH_Jamaah_Controller();
+    $jamaah_controller->register_routes();
+
+    $payments_controller = new UMH_Jamaah_Payments_Controller();
+    $payments_controller->register_routes();
+
+    $finance_controller = new UMH_Finance_Controller();
+    $finance_controller->register_routes();
+
+    $categories_controller = new UMH_Categories_Controller();
+    $categories_controller->register_routes();
+
+    $marketing_controller = new UMH_Marketing_Controller();
+    $marketing_controller->register_routes();
+
+    // PERBAIKAN: Menghapus typo 'semog'
+    $tasks_controller = new UMH_Tasks_Controller();
+    $tasks_controller->register_routes();
+
+    $uploads_controller = new UMH_Uploads_Controller();
+    $uploads_controller->register_routes();
+
+    $logs_controller = new UMH_Logs_Controller();
+    $logs_controller->register_routes();
+    
+    $export_controller = new UMH_Export_Controller();
+    $export_controller->register_routes();
+    
+    $print_controller = new UMH_Print_Controller();
+    $print_controller->register_routes();
+}
+add_action('rest_api_init', 'umh_register_api_routes');
+
+/**
+ * Enqueue scripts and styles for the admin dashboard.
+ */
+function umh_enqueue_admin_scripts($hook) {
+    
+    // Tentukan hook untuk halaman print
+    $print_page_hook = 'admin_page_umh-print-registration';
+
+    // Cek apakah hook adalah salah satu halaman plugin kita
+    if ('toplevel_page_umroh-manager-hybrid' != $hook && 
+        'umroh-manager_page_umh-settings' != $hook &&
+        $print_page_hook != $hook
+    ) {
+        return;
+    }
+
+    // Khusus untuk halaman print, load CSS print
+    if ($print_page_hook == $hook) {
+        wp_enqueue_style(
+            'umh-print-style',
+            UMH_PLUGIN_URL . 'assets/css/admin-style.css', // Sesuaikan jika ada file css khusus print
+            array(),
+            UMH_PLUGIN_VERSION
+        );
+        return; // Jangan load React di halaman print
+    }
+
+    // Untuk halaman React
+    $asset_file = include(UMH_PLUGIN_PATH . 'build/index.asset.php');
+
+    wp_enqueue_script(
+        'umh-react-app',
+        UMH_PLUGIN_URL . 'build/index.js',
+        $asset_file['dependencies'],
+        $asset_file['version'],
+        true
+    );
+
+    wp_enqueue_style(
+        'umh-admin-style',
+        UMH_PLUGIN_URL . 'assets/css/admin-style.css',
+        array(),
+        UMH_PLUGIN_VERSION
+    );
+
+    // Loloskan data dari PHP ke React
+    umh_localize_script();
+}
+add_action('admin_enqueue_scripts', 'umh_enqueue_admin_scripts');

@@ -1,17 +1,19 @@
 import React, { useState, useMemo } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { useApi } from '../context/ApiContext';
+// --- PERBAIKAN: Mengubah path import menjadi relatif ---
+import { useAuth } from '../context/AuthContext.jsx';
+import { useApi } from '../context/ApiContext.jsx';
 import { LoadingSpinner } from '../components/common/Loading.jsx';
 // PERBAIKAN: Mengganti import default 'ErrorMessage' menjadi named import '{ ErrorMessage }'
 import { ErrorMessage } from '../components/common/ErrorMessage.jsx';
 // PERBAIKAN: Menghapus 'getPackagePrice' dari import helpers
-import { formatCurrency } from '../utils/helpers';
+import { formatCurrency } from '../utils/helpers.js';
 import JamaahForm from '../components/forms/JamaahForm.jsx';
 import JamaahPaymentsModal from '../components/modals/JamaahPaymentsModal.jsx';
 // PERBAIKAN: Menghapus komponen Tabel (Table, Thead, dll.) yang tidak ada di FormUI
 import { Button, Input, Select } from '../components/common/FormUI.jsx';
 // PERBAIKAN: Mengganti import default 'Modal' menjadi named import '{ Modal }'
 import { Modal } from '../components/common/Modal.jsx';
+// --- AKHIR PERBAIKAN ---
 import { FaEdit, FaTrash, FaMoneyBillWave, FaPrint, FaUserPlus } from 'react-icons/fa';
 
 // PERBAIKAN: Menambahkan fungsi getPackagePrice secara lokal
@@ -19,9 +21,28 @@ import { FaEdit, FaTrash, FaMoneyBillWave, FaPrint, FaUserPlus } from 'react-ico
 // berdasarkan struktur data di PackageForm.jsx
 const getPackagePrice = (pkg, room_type) => {
     if (!pkg) return 0;
-    if (room_type === 'quad') return parseFloat(pkg.price_quad || 0);
-    if (room_type === 'triple') return parseFloat(pkg.price_triple || 0);
-    if (room_type === 'double') return parseFloat(pkg.price_double || 0);
+    // Menggunakan kolom 'price' sebagai harga utama jika detail tidak ada
+    if (!pkg.price_details) return parseFloat(pkg.price || 0);
+
+    // Jika ada price_details, coba parse
+    try {
+        let details = pkg.price_details;
+        if (typeof details === 'string') {
+            details = JSON.parse(details);
+        }
+        
+        if (room_type === 'quad' && details.price_quad) return parseFloat(details.price_quad);
+        if (room_type === 'triple' && details.price_triple) return parseFloat(details.price_triple);
+        if (room_type === 'double' && details.price_double) return parseFloat(details.price_double);
+        
+        // Fallback jika room_type tidak cocok atau detail tidak ada
+        if (pkg.price) return parseFloat(pkg.price);
+
+    } catch (e) {
+        // Fallback jika JSON parse gagal, gunakan harga utama
+        if (pkg.price) return parseFloat(pkg.price);
+    }
+    
     return 0; // Default case
 };
 
@@ -91,7 +112,7 @@ const JamaahComponent = ({ openModal }) => {
 
     const getPackageName = (packageId) => {
         const pkg = (packages || []).find(p => p.id === packageId);
-        return pkg ? pkg.package_name : 'N/A';
+        return pkg ? pkg.title : 'N/A'; // Menggunakan title agar lebih deskriptif
     };
 
     return (
@@ -113,7 +134,7 @@ const JamaahComponent = ({ openModal }) => {
                 >
                     <option value="">Semua Paket</option>
                     {(packages || []).map(pkg => (
-                        <option key={pkg.id} value={pkg.id}>{pkg.package_name}</option>
+                        <option key={pkg.id} value={pkg.id}>{pkg.title}</option>
                     ))}
                 </Select>
                 <Button
@@ -147,9 +168,9 @@ const JamaahComponent = ({ openModal }) => {
                     <tbody className="bg-white divide-y divide-gray-200">
                         {filteredJamaah.map(item => {
                             const pkg = (packages || []).find(p => p.id === item.package_id);
-                            // PERBAIKAN: Memanggil fungsi getPackagePrice lokal (hanya room_type)
-                            const price = getPackagePrice(pkg, item.room_type);
-                            const totalPaid = parseFloat(item.total_payments || 0);
+                            // PERBAIKAN: Gunakan total_price dari jamaah jika ada, jika tidak, hitung dari paket
+                            const price = parseFloat(item.total_price) || getPackagePrice(pkg, item.room_type);
+                            const totalPaid = parseFloat(item.amount_paid || 0); // Ambil dari data jamaah (dihitung di API Context)
                             const remaining = price - totalPaid;
 
                             return (
@@ -179,7 +200,7 @@ const JamaahComponent = ({ openModal }) => {
                                             <Button variant="warning" size="sm" onClick={() => openFormModal(item)} title="Edit Jamaah">
                                                 <FaEdit />
                                             </Button>
-                                            {user && user.role === 'admin' && (
+                                            {user && (user.role === 'admin' || user.role === 'administrator') && (
                                                 <Button variant="danger" size="sm" onClick={() => handleDelete(item)} title="Hapus Jamaah">
                                                     <FaTrash />
                                                 </Button>
@@ -212,15 +233,9 @@ const JamaahComponent = ({ openModal }) => {
             {/* Modal Pembayaran */}
             {paymentsModalData && (
                 <JamaahPaymentsModal
-                    isOpen={!!paymentsModalData}
+                    // PERBAIKAN: Mengganti `jamaahData` menjadi `jamaah` agar props sesuai
+                    jamaah={paymentsModalData}
                     onClose={() => setPaymentsModalData(null)}
-                    jamaahData={paymentsModalData}
-                    packagePrice={getPackagePrice(
-                        (packages || []).find(p => p.id === paymentsModalData.package_id),
-                        paymentsModalData.room_type
-                    )}
-                    createOrUpdate={createOrUpdate}
-                    deleteItem={deleteItem}
                 />
             )}
         </div>
