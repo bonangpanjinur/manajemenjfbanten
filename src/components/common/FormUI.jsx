@@ -67,3 +67,20 @@ export const Checkbox = ({ label, className = '', ...props }) => (
         {label && <label className="ml-2 block text-sm text-gray-900">{label}</label>}
     </div>
 );
+
+// --- KOMPONEN BARU (Ditambahkan untuk memperbaiki error build) ---
+
+export const FormGroup = ({ children, className = '' }) => (
+    <div className={`mb-4 ${className}`}>
+        {children}
+    </div>
+);
+
+export const FormLabel = ({ children, htmlFor, className = '' }) => (
+    <label 
+        htmlFor={htmlFor} 
+        className={`block text-sm font-medium text-gray-700 mb-1 ${className}`}
+    >
+        {children}
+    </label>
+);
