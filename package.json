@@ -16,7 +16,10 @@
     "recharts": "^2.1.14"
   },
   "devDependencies": {
-    "@wordpress/scripts": "latest"
+    "@wordpress/scripts": "latest",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.3"
   },
   "author": "Bonang Panji Nur",
   "license": "GPL-2.0-or-later"

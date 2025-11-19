@@ -1,4 +1,6 @@
 <?php
+// File Location: ./umroh-manager-hybrid.php
+
 /**
  * Plugin Name:       Umroh Manager Hybrid
  * Plugin URI:        https://github.com/bonangpanjinur/umroh-manager-hybrid
@@ -34,7 +36,7 @@ require_once(UMH_PLUGIN_PATH . 'admin/dashboard-react.php');
 require_once(UMH_PLUGIN_PATH . 'admin/settings-page.php');
 require_once(UMH_PLUGIN_PATH . 'admin/print-registration.php'); // Halaman Print
 
-// --- PENAMBAHAN: Registrasi Menu Admin ---
+// --- Registrasi Menu Admin ---
 
 /**
  * Mendaftarkan halaman menu admin di sidebar WordPress.
@@ -75,7 +77,6 @@ function umh_register_admin_settings() {
 add_action('admin_init', 'umh_register_admin_settings');
 
 // --- Include API Routes ---
-// File-file ini akan mendaftarkan rute mereka sendiri saat di-load
 require_once(UMH_PLUGIN_PATH . 'includes/api/api-stats.php');
 require_once(UMH_PLUGIN_PATH . 'includes/api/api-users.php');
 require_once(UMH_PLUGIN_PATH . 'includes/api/api-roles.php');
@@ -107,7 +108,6 @@ function umh_enqueue_admin_scripts($hook) {
     $print_page_hook = 'admin_page_umh-print-registration';
 
     // Cek apakah hook adalah salah satu halaman plugin kita
-    // Perhatikan: Slug menu 'umroh-manager-hybrid' akan menghasilkan hook 'toplevel_page_umroh-manager-hybrid'
     if ('toplevel_page_umroh-manager-hybrid' != $hook && 
         'umroh-manager_page_umh-settings' != $hook &&
         $print_page_hook != $hook
@@ -129,6 +129,7 @@ function umh_enqueue_admin_scripts($hook) {
     // Untuk halaman React
     $asset_file = include(UMH_PLUGIN_PATH . 'build/index.asset.php');
 
+    // 1. Enqueue JS React App
     wp_enqueue_script(
         'umh-react-app',
         UMH_PLUGIN_URL . 'build/index.js',
@@ -137,6 +138,18 @@ function umh_enqueue_admin_scripts($hook) {
         true
     );
 
+    // 2. Enqueue CSS Build (Hasil Compile Tailwind)
+    // wp-scripts akan mengenerate file index.css jika ada import CSS di entry point
+    if (file_exists(UMH_PLUGIN_PATH . 'build/index.css')) {
+        wp_enqueue_style(
+            'umh-react-style',
+            UMH_PLUGIN_URL . 'build/index.css',
+            array(),
+            $asset_file['version'] // Gunakan version dari asset file agar cache busting jalan
+        );
+    }
+
+    // 3. Enqueue CSS Manual (Optional, untuk override khusus WP Admin)
     wp_enqueue_style(
         'umh-admin-style',
         UMH_PLUGIN_URL . 'assets/css/admin-style.css',

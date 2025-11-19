@@ -1,22 +1,26 @@
 {
-  "name": "Umroh Manager Hybrid",
-  "short_name": "UMH",
-  "description": "Aplikasi Manajemen Travel Umroh Hybrid",
-  "start_url": "../wp-admin/admin.php?page=umroh-manager-hybrid",
-  "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#007cba",
-  "icons": [
-    {
-      "src": "../assets/images/umh-logo.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "../assets/images/umh-logo.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
-  ]
+  "name": "umroh-manager-hybrid-src",
+  "version": "1.0.0",
+  "description": "Source files for Umroh Manager Hybrid React App",
+  "main": "src/index.jsx",
+  "scripts": {
+    "start": "wp-scripts start",
+    "build": "wp-scripts build"
+  },
+  "dependencies": {
+    "lucide-react": "^0.554.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-icons": "^5.5.0",
+    "react-select": "^5.8.0",
+    "recharts": "^2.1.14"
+  },
+  "devDependencies": {
+    "@wordpress/scripts": "latest",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.3"
+  },
+  "author": "Bonang Panji Nur",
+  "license": "GPL-2.0-or-later"
 }
