@@ -1,132 +1,206 @@
 import React, { useState, useEffect } from 'react';
-import { useApi } from '../context/ApiContext.jsx';
-import { Button, Input } from '../components/common/FormUI.jsx';
-import { Upload, Banknote, FileText } from 'lucide-react';
-import JamaahPaymentsModal from '../components/modals/JamaahPaymentsModal.jsx';
+import { useApi } from '../context/ApiContext';
+import JamaahForm from '../components/forms/JamaahForm';
+import Loading from '../components/common/Loading';
+import Modal from '../components/common/Modal';
 
 const Jamaah = () => {
-    const { jamaahData, fetchJamaah } = useApi();
-    const [search, setSearch] = useState('');
-    const [statusFilter, setStatusFilter] = useState('all');
+    const { getJamaahList, deleteJamaah, getPackages, loading } = useApi();
+    const [jamaahList, setJamaahList] = useState([]);
+    const [packages, setPackages] = useState([]);
     
-    const [isPaymentModalOpen, setPaymentModalOpen] = useState(false);
-    const [selectedJamaahForPay, setSelectedJamaahForPay] = useState(null);
-
-    useEffect(() => {
-        fetchJamaah();
-    }, []);
-
-    const filteredJamaah = jamaahData?.filter(j => {
-        const matchName = j.full_name.toLowerCase().includes(search.toLowerCase());
-        const matchStatus = statusFilter === 'all' || j.payment_status === statusFilter;
-        return matchName && matchStatus;
+    // Filter State
+    const [filters, setFilters] = useState({
+        search: '',
+        package_id: '',
+        payment_status: '',
+        month: ''
     });
 
-    const openPaymentModal = (jamaah) => {
-        setSelectedJamaahForPay(jamaah);
-        setPaymentModalOpen(true);
+    // Modal State
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingData, setEditingData] = useState(null);
+
+    useEffect(() => {
+        fetchInitialData();
+    }, []);
+
+    useEffect(() => {
+        // Debounce search or simple effect for filters
+        const timer = setTimeout(() => {
+            fetchJamaah();
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [filters]);
+
+    const fetchInitialData = async () => {
+        try {
+            const pkgRes = await getPackages({ status: 'active' });
+            setPackages(pkgRes || []);
+            fetchJamaah();
+        } catch (err) {
+            console.error(err);
+        }
     };
 
-    const handleUploadDoc = (id) => {
-        alert("Fitur upload dokumen akan membuka modal upload.");
+    const fetchJamaah = async () => {
+        try {
+            const res = await getJamaahList(filters);
+            setJamaahList(res || []);
+        } catch (err) {
+            console.error(err);
+        }
     };
+
+    const handleDelete = async (id) => {
+        if (!confirm('Yakin hapus data jamaah ini?')) return;
+        try {
+            await deleteJamaah(id);
+            fetchJamaah();
+        } catch (err) {
+            alert(err.message);
+        }
+    };
+
+    const handleEdit = (data) => {
+        setEditingData(data);
+        setIsModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setEditingData(null);
+        fetchJamaah(); // Refresh list after edit/add
+    };
+
+    // Helper: Format Rupiah
+    const formatIDR = (num) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-gray-800">Data Jemaah</h2>
-                <Button>+ Daftar Jemaah Baru</Button>
+        <div className="p-6">
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-2xl font-bold text-gray-800">Data Jamaah</h1>
+                <button 
+                    onClick={() => setIsModalOpen(true)}
+                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition shadow"
+                >
+                    + Input Jamaah Baru
+                </button>
             </div>
 
-            <div className="bg-white p-4 rounded-lg shadow flex gap-4 flex-wrap">
-                <Input 
-                    placeholder="Cari Nama / KTP..." 
-                    value={search} 
-                    onChange={e => setSearch(e.target.value)}
-                    className="w-full md:w-64"
+            {/* Filter Bar */}
+            <div className="bg-white p-4 rounded shadow mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+                <input 
+                    type="text" 
+                    placeholder="Cari Nama / No Paspor..." 
+                    className="border p-2 rounded w-full"
+                    value={filters.search}
+                    onChange={(e) => setFilters({...filters, search: e.target.value})}
                 />
                 <select 
-                    className="border rounded p-2 text-gray-700"
-                    value={statusFilter}
-                    onChange={e => setStatusFilter(e.target.value)}
+                    className="border p-2 rounded w-full"
+                    value={filters.package_id}
+                    onChange={(e) => setFilters({...filters, package_id: e.target.value})}
                 >
-                    <option value="all">Semua Status Pembayaran</option>
-                    <option value="paid">Lunas</option>
-                    <option value="partial">Belum Lunas (Cicil)</option>
+                    <option value="">Semua Paket</option>
+                    {packages.map(pkg => (
+                        <option key={pkg.id} value={pkg.id}>{pkg.name}</option>
+                    ))}
+                </select>
+                <select 
+                    className="border p-2 rounded w-full"
+                    value={filters.payment_status}
+                    onChange={(e) => setFilters({...filters, payment_status: e.target.value})}
+                >
+                    <option value="">Status Pembayaran</option>
+                    <option value="lunas">Lunas</option>
+                    <option value="partial">Belum Lunas (Partial)</option>
                     <option value="unpaid">Belum Bayar</option>
                 </select>
-            </div>
-
-            <div className="bg-white shadow overflow-hidden sm:rounded-lg overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama Lengkap</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Paket</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Tagihan</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sisa</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                        {filteredJamaah?.map(j => {
-                            const sisa = j.total_price - j.amount_paid;
-                            return (
-                                <tr key={j.id}>
-                                    <td className="px-6 py-4 font-medium text-gray-900">
-                                        {j.full_name}
-                                        <div className="text-xs text-gray-500">{j.passport_number || 'No Passport'}</div>
-                                    </td>
-                                    <td className="px-6 py-4 text-gray-500 text-sm">Paket ID: {j.package_id}</td>
-                                    <td className="px-6 py-4 text-sm">Rp {parseInt(j.total_price).toLocaleString()}</td>
-                                    <td className="px-6 py-4 text-sm font-bold text-red-600">
-                                        Rp {sisa.toLocaleString()}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                            ${j.payment_status === 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                                            {j.payment_status === 'paid' ? 'Lunas' : 'Belum Lunas'}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-sm font-medium flex gap-2">
-                                        {j.payment_status !== 'paid' && (
-                                            <button 
-                                                onClick={() => openPaymentModal(j)}
-                                                className="text-white bg-green-600 hover:bg-green-700 px-2 py-1 rounded flex items-center gap-1"
-                                                title="Bayar"
-                                            >
-                                                <Banknote size={16} /> Bayar
-                                            </button>
-                                        )}
-                                        <button 
-                                            onClick={() => handleUploadDoc(j.id)}
-                                            className="text-white bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded flex items-center gap-1"
-                                            title="Upload Dokumen"
-                                        >
-                                            <Upload size={16} />
-                                        </button>
-                                        <button className="text-gray-600 hover:text-gray-900 px-2 py-1">
-                                            <FileText size={16} /> Detail
-                                        </button>
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
-            </div>
-
-            {isPaymentModalOpen && (
-                <JamaahPaymentsModal 
-                    jamaah={selectedJamaahForPay} 
-                    isOpen={isPaymentModalOpen} 
-                    onClose={() => setPaymentModalOpen(false)} 
-                    onSuccess={() => {
-                        fetchJamaah();
-                        setPaymentModalOpen(false);
-                    }}
+                <input 
+                    type="month" 
+                    className="border p-2 rounded w-full"
+                    value={filters.month}
+                    onChange={(e) => setFilters({...filters, month: e.target.value})}
                 />
+            </div>
+
+            {/* Table */}
+            {loading && jamaahList.length === 0 ? <Loading /> : (
+                <div className="bg-white rounded-lg shadow overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                            <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama / Umur</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Paket / Keberangkatan</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status Dokumen</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pembayaran</th>
+                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                            {jamaahList.length === 0 ? (
+                                <tr><td colSpan="5" className="px-6 py-4 text-center text-gray-500">Tidak ada data jamaah.</td></tr>
+                            ) : (
+                                jamaahList.map((row) => (
+                                    <tr key={row.id} className="hover:bg-gray-50">
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm font-medium text-gray-900">{row.full_name}</div>
+                                            <div className="text-xs text-gray-500">{row.gender === 'L' ? 'Laki-laki' : 'Perempuan'} • {row.age} Tahun</div>
+                                            <div className="text-xs text-blue-500 mt-1">{row.phone_number}</div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm text-gray-900 font-semibold">{row.package_name}</div>
+                                            <div className="text-xs text-gray-500">Kamar: {row.selected_room_type}</div>
+                                            <div className="text-xs text-gray-500">PIC: {row.pic_name || '-'}</div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex space-x-1">
+                                                <span title="KTP" className={`w-3 h-3 rounded-full ${row.document_status?.ktp ? 'bg-green-500' : 'bg-gray-300'}`}></span>
+                                                <span title="KK" className={`w-3 h-3 rounded-full ${row.document_status?.kk ? 'bg-green-500' : 'bg-gray-300'}`}></span>
+                                                <span title="Paspor" className={`w-3 h-3 rounded-full ${row.document_status?.passport ? 'bg-green-500' : 'bg-gray-300'}`}></span>
+                                                <span title="Meningitis" className={`w-3 h-3 rounded-full ${row.document_status?.meningitis ? 'bg-green-500' : 'bg-gray-300'}`}></span>
+                                            </div>
+                                            <div className="text-xs text-gray-500 mt-1">
+                                                Kit: <span className={`capitalize font-bold ${row.kit_status === 'sent' ? 'text-green-600' : 'text-yellow-600'}`}>{row.kit_status}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className={`text-xs inline-flex px-2 py-1 rounded-full font-bold ${
+                                                row.payment_status === 'lunas' ? 'bg-green-100 text-green-800' : 
+                                                row.payment_status === 'partial' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
+                                            }`}>
+                                                {row.payment_status === 'lunas' ? 'LUNAS' : row.payment_status === 'partial' ? 'CICILAN' : 'BELUM BAYAR'}
+                                            </div>
+                                            {row.remaining_payment > 0 && (
+                                                <div className="text-xs text-red-500 mt-1">Sisa: {formatIDR(row.remaining_payment)}</div>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4 text-right text-sm font-medium space-x-2">
+                                            <button onClick={() => handleEdit(row)} className="text-blue-600 hover:text-blue-900">Edit</button>
+                                            <button onClick={() => handleDelete(row.id)} className="text-red-600 hover:text-red-900">Hapus</button>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+            {/* Modal Form Full Screen */}
+            {isModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4 overflow-y-auto">
+                    <div className="bg-white rounded-lg w-full max-w-5xl max-h-full overflow-y-auto my-8">
+                         <div className="p-6">
+                            <JamaahForm 
+                                initialData={editingData} 
+                                onSuccess={handleCloseModal} 
+                                onCancel={handleCloseModal} 
+                            />
+                         </div>
+                    </div>
+                </div>
             )}
         </div>
     );

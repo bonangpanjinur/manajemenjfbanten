@@ -1,108 +1,249 @@
 <?php
-if (!defined('ABSPATH')) exit;
+/**
+ * API Handler untuk Modul Keuangan
+ * Menangani Arus Kas (Cash Flow) dan Pembayaran Jamaah
+ */
 
-add_action('rest_api_init', 'umh_register_finance_routes');
-
-function umh_register_finance_routes() {
-    $namespace = 'umh/v1';
-
-    // GET semua transaksi (Kas Umum & Jemaah)
-    register_rest_route($namespace, '/finance', [
-        'methods' => 'GET',
-        'callback' => 'umh_get_finance_logs',
-        'permission_callback' => '__return_true'
-    ]);
-
-    // POST Transaksi Umum (Kas Masuk/Keluar Operasional)
-    register_rest_route($namespace, '/finance/general', [
-        'methods' => 'POST',
-        'callback' => 'umh_create_general_trx',
-        'permission_callback' => function() { return current_user_can('edit_posts'); }
-    ]);
-
-    // POST Pembayaran Jemaah (Khusus)
-    register_rest_route($namespace, '/finance/jamaah-payment', [
-        'methods' => 'POST',
-        'callback' => 'umh_create_jamaah_payment',
-        'permission_callback' => function() { return current_user_can('edit_posts'); }
-    ]);
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
 }
 
-function umh_get_finance_logs() {
-    global $wpdb;
-    // Ambil 100 transaksi terakhir
-    return $wpdb->get_results("SELECT * FROM {$wpdb->prefix}umh_finance ORDER BY transaction_date DESC, id DESC LIMIT 100");
-}
+class UMH_API_Finance {
 
-function umh_create_general_trx($request) {
-    global $wpdb;
-    $p = $request->get_json_params();
+    public function __construct() {
+        add_action( 'rest_api_init', array( $this, 'register_routes' ) );
+    }
 
-    $wpdb->insert($wpdb->prefix . 'umh_finance', [
-        'transaction_date' => $p['date'],
-        'type' => $p['type'], // income / expense
-        'category' => 'General',
-        'amount' => $p['amount'],
-        'description' => $p['description'],
-        'created_at' => current_time('mysql')
-    ]);
+    public function register_routes() {
+        $namespace = 'umh/v1';
 
-    return ['success' => true, 'id' => $wpdb->insert_id];
-}
+        // --- CASH FLOW (ARUS KAS) ---
+        register_rest_route( $namespace, '/finance/cash-flow', array(
+            'methods'             => WP_REST_Server::READABLE,
+            'callback'            => array( $this, 'get_cash_flow' ),
+            'permission_callback' => array( $this, 'check_permission' ),
+        ) );
 
-// Logika Kompleks: Catat di Finance + Update Tagihan Jemaah
-function umh_create_jamaah_payment($request) {
-    global $wpdb;
-    // Support multipart form data (file upload) atau JSON
-    $params = $request->get_params(); 
-    $files = $request->get_file_params();
+        register_rest_route( $namespace, '/finance/cash-flow', array(
+            'methods'             => WP_REST_Server::CREATABLE,
+            'callback'            => array( $this, 'create_cash_transaction' ),
+            'permission_callback' => array( $this, 'check_permission' ),
+        ) );
 
-    $jamaah_id = $params['jamaah_id'];
-    $amount = $params['amount'];
-    $package_id = $params['package_id'];
-    
-    // 1. Upload Bukti (Jika ada)
-    $proof_url = '';
-    if (!empty($files['proof_file'])) {
-        require_once(ABSPATH . 'wp-admin/includes/file.php');
-        $uploaded = wp_handle_upload($files['proof_file'], ['test_form' => false]);
-        if (!isset($uploaded['error'])) {
-            $proof_url = $uploaded['url'];
+        // --- STATISTIK KEUANGAN ---
+        register_rest_route( $namespace, '/finance/stats', array(
+            'methods'             => WP_REST_Server::READABLE,
+            'callback'            => array( $this, 'get_finance_stats' ),
+            'permission_callback' => array( $this, 'check_permission' ),
+        ) );
+
+        // --- PEMBAYARAN JAMAAH ---
+        register_rest_route( $namespace, '/finance/payments', array(
+            'methods'             => WP_REST_Server::READABLE,
+            'callback'            => array( $this, 'get_jamaah_payments' ),
+            'permission_callback' => array( $this, 'check_permission' ),
+        ) );
+
+        register_rest_route( $namespace, '/finance/payments', array(
+            'methods'             => WP_REST_Server::CREATABLE,
+            'callback'            => array( $this, 'create_jamaah_payment' ),
+            'permission_callback' => array( $this, 'check_permission' ),
+        ) );
+    }
+
+    public function check_permission() {
+        return current_user_can( 'manage_options' );
+    }
+
+    // --- 1. CASH FLOW LOGIC ---
+
+    public function get_cash_flow( $request ) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'umh_cash_flow';
+        
+        $where = "WHERE 1=1";
+        $args = array();
+
+        // Filter by Type (in/out)
+        if ( $request->get_param( 'type' ) ) {
+            $where .= " AND type = %s";
+            $args[] = sanitize_text_field( $request->get_param( 'type' ) );
         }
+
+        // Filter by Date Range
+        if ( $request->get_param( 'start_date' ) && $request->get_param( 'end_date' ) ) {
+            $where .= " AND transaction_date BETWEEN %s AND %s";
+            $args[] = $request->get_param( 'start_date' );
+            $args[] = $request->get_param( 'end_date' );
+        }
+
+        $query = "SELECT * FROM $table $where ORDER BY transaction_date DESC, id DESC LIMIT 100";
+        
+        if ( ! empty( $args ) ) {
+            $results = $wpdb->get_results( $wpdb->prepare( $query, $args ) );
+        } else {
+            $results = $wpdb->get_results( $query );
+        }
+
+        return rest_ensure_response( $results );
     }
 
-    // 2. Insert ke Tabel Finance
-    $wpdb->insert($wpdb->prefix . 'umh_finance', [
-        'transaction_date' => current_time('mysql'),
-        'type' => 'income',
-        'category' => 'Pembayaran Jemaah',
-        'amount' => $amount,
-        'description' => "Pembayaran Umroh (Paket ID: $package_id)",
-        'jamaah_id' => $jamaah_id,
-        'proof_url' => $proof_url,
-        'created_at' => current_time('mysql')
-    ]);
+    public function create_cash_transaction( $request ) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'umh_cash_flow';
 
-    // 3. Update Data Jemaah (Total Bayar & Status)
-    $jamaah = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}umh_jamaah WHERE id = $jamaah_id");
-    $new_amount_paid = $jamaah->amount_paid + $amount;
-    
-    // Tentukan status lunas/belum
-    $payment_status = 'partial';
-    if ($new_amount_paid >= $jamaah->total_price) {
-        $payment_status = 'paid';
-    } elseif ($new_amount_paid == 0) {
-        $payment_status = 'unpaid';
+        $type = sanitize_text_field( $request->get_param( 'type' ) ); // 'in' or 'out'
+        $amount = (float) $request->get_param( 'amount' );
+        $category = sanitize_text_field( $request->get_param( 'category' ) );
+        
+        if ( $amount <= 0 ) {
+            return new WP_Error( 'invalid_amount', 'Nominal harus lebih dari 0', array( 'status' => 400 ) );
+        }
+
+        // Validasi Saldo jika Pengeluaran
+        if ( $type === 'out' ) {
+            $current_balance = $this->calculate_current_balance();
+            if ( $amount > $current_balance ) {
+                return new WP_Error( 'insufficient_funds', 'Saldo kas tidak mencukupi. Sisa saldo: ' . number_format($current_balance), array( 'status' => 400 ) );
+            }
+        }
+
+        $inserted = $wpdb->insert(
+            $table,
+            array(
+                'type' => $type,
+                'category' => $category,
+                'amount' => $amount,
+                'transaction_date' => $request->get_param( 'transaction_date' ) ?: current_time( 'mysql' ),
+                'description' => sanitize_textarea_field( $request->get_param( 'description' ) ),
+                'proof_file' => esc_url_raw( $request->get_param( 'proof_file' ) ),
+                'balance_after' => 0 // Placeholder, logic saldo kompleks bisa ditambahkan jika perlu history saldo per baris
+            )
+        );
+
+        if ( $inserted ) {
+            return rest_ensure_response( array( 'message' => 'Transaksi berhasil dicatat' ) );
+        }
+        return new WP_Error( 'db_error', 'Gagal menyimpan transaksi', array( 'status' => 500 ) );
     }
 
-    $wpdb->update($wpdb->prefix . 'umh_jamaah', 
-        [
-            'amount_paid' => $new_amount_paid,
-            'payment_status' => $payment_status,
-            'package_id' => $package_id // Update paket jika berubah
-        ],
-        ['id' => $jamaah_id]
-    );
+    // --- 2. JAMAAH PAYMENTS LOGIC ---
 
-    return ['success' => true, 'new_balance' => $new_amount_paid, 'status' => $payment_status];
+    public function get_jamaah_payments( $request ) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'umh_payments';
+        $table_jamaah = $wpdb->prefix . 'umh_jamaah';
+        
+        // Join untuk dapat nama jamaah
+        $query = "
+            SELECT p.*, j.full_name, j.passport_number 
+            FROM $table p
+            JOIN $table_jamaah j ON p.jamaah_id = j.id
+            ORDER BY p.payment_date DESC
+        ";
+
+        $results = $wpdb->get_results( $query );
+        return rest_ensure_response( $results );
+    }
+
+    public function create_jamaah_payment( $request ) {
+        global $wpdb;
+        $table_payments = $wpdb->prefix . 'umh_payments';
+        $table_jamaah = $wpdb->prefix . 'umh_jamaah';
+        $table_cash = $wpdb->prefix . 'umh_cash_flow';
+
+        $jamaah_id = (int) $request->get_param( 'jamaah_id' );
+        $amount = (float) $request->get_param( 'amount' );
+        $date = $request->get_param( 'payment_date' ) ?: date('Y-m-d');
+        $method = sanitize_text_field( $request->get_param( 'payment_method' ) );
+
+        if ( $amount <= 0 ) return new WP_Error( 'invalid', 'Nominal salah', array( 'status' => 400 ) );
+
+        // 1. Ambil Data Jamaah Saat Ini
+        $jamaah = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $table_jamaah WHERE id = %d", $jamaah_id ) );
+        if ( ! $jamaah ) return new WP_Error( 'not_found', 'Jamaah tidak ditemukan', array( 'status' => 404 ) );
+
+        // 2. Insert Riwayat Pembayaran
+        $wpdb->insert(
+            $table_payments,
+            array(
+                'jamaah_id' => $jamaah_id,
+                'amount' => $amount,
+                'payment_date' => $date,
+                'payment_method' => $method,
+                'proof_file' => esc_url_raw( $request->get_param( 'proof_file' ) ),
+                'notes' => sanitize_textarea_field( $request->get_param( 'notes' ) ),
+                'verified_by' => get_current_user_id()
+            )
+        );
+        $payment_id = $wpdb->insert_id;
+
+        // 3. Update Status Jamaah
+        $new_total_paid = (float)$jamaah->total_paid + $amount;
+        $price = (float)$jamaah->package_price;
+        
+        $new_status = 'partial';
+        if ( $new_total_paid >= $price ) {
+            $new_status = 'lunas';
+        } else if ( $new_total_paid > 0 ) {
+            $new_status = 'partial';
+        }
+
+        $wpdb->update(
+            $table_jamaah,
+            array( 
+                'total_paid' => $new_total_paid,
+                'payment_status' => $new_status 
+            ),
+            array( 'id' => $jamaah_id )
+        );
+
+        // 4. Catat Otomatis di Cash Flow (Pemasukan)
+        $wpdb->insert(
+            $table_cash,
+            array(
+                'type' => 'in',
+                'category' => 'Pembayaran Jamaah',
+                'amount' => $amount,
+                'transaction_date' => $date,
+                'description' => "Pembayaran dari {$jamaah->full_name} (ID: {$jamaah_id}) via $method",
+                'reference_id' => $payment_id
+            )
+        );
+
+        return rest_ensure_response( array( 
+            'message' => 'Pembayaran berhasil disimpan',
+            'new_status' => $new_status,
+            'new_total' => $new_total_paid
+        ) );
+    }
+
+    // --- 3. HELPERS & STATS ---
+
+    public function get_finance_stats() {
+        global $wpdb;
+        $table = $wpdb->prefix . 'umh_cash_flow';
+
+        $in = $wpdb->get_var( "SELECT SUM(amount) FROM $table WHERE type = 'in'" );
+        $out = $wpdb->get_var( "SELECT SUM(amount) FROM $table WHERE type = 'out'" );
+        
+        $balance = (float)$in - (float)$out;
+
+        return rest_ensure_response( array(
+            'total_in' => (float)$in,
+            'total_out' => (float)$out,
+            'balance' => $balance
+        ) );
+    }
+
+    private function calculate_current_balance() {
+        global $wpdb;
+        $table = $wpdb->prefix . 'umh_cash_flow';
+        $in = $wpdb->get_var( "SELECT SUM(amount) FROM $table WHERE type = 'in'" );
+        $out = $wpdb->get_var( "SELECT SUM(amount) FROM $table WHERE type = 'out'" );
+        return (float)$in - (float)$out;
+    }
+
 }
+
+new UMH_API_Finance();

@@ -1,103 +1,122 @@
 import React, { useState, useEffect } from 'react';
 import { useApi } from '../context/ApiContext';
-import { Button, Input, Textarea, Select } from '../components/common/FormUI';
-// Anda mungkin perlu install 'react-select' untuk multi-select maskapai/hotel
-// npm install react-select
+import PackageForm from '../components/forms/PackageForm';
+import Loading from '../components/common/Loading';
+import Modal from '../components/common/Modal';
 
 const Packages = () => {
-    const [isEditing, setIsEditing] = useState(false);
-    // ... listing logic ...
+    const { getPackages, deletePackage, loading } = useApi();
+    const [packages, setPackages] = useState([]);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingPackage, setEditingPackage] = useState(null);
+
+    useEffect(() => {
+        fetchPackages();
+    }, []);
+
+    const fetchPackages = async () => {
+        try {
+            const res = await getPackages();
+            setPackages(res || []);
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const handleEdit = (pkg) => {
+        setEditingPackage(pkg);
+        setIsModalOpen(true);
+    };
+
+    const handleDelete = async (id) => {
+        if (!confirm('Hapus paket ini? Data jamaah terkait mungkin akan error.')) return;
+        try {
+            await deletePackage(id);
+            fetchPackages();
+        } catch (err) {
+            alert("Gagal hapus: " + err.message);
+        }
+    };
+
+    const closeModal = () => {
+        setIsModalOpen(false);
+        setEditingPackage(null);
+    };
+
+    // Helper: Format Harga Terendah
+    const getLowestPrice = (variants) => {
+        if (!variants || variants.length === 0) return '-';
+        const prices = variants.map(v => parseFloat(v.price));
+        const min = Math.min(...prices);
+        return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(min);
+    };
+
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between">
-                <h2 className="text-2xl font-bold text-gray-800">Manajemen Paket</h2>
-                <Button onClick={() => setIsEditing(true)}>Buat Paket Baru</Button>
+        <div className="p-6">
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-2xl font-bold text-gray-800">Manajemen Paket Umroh</h1>
+                <button 
+                    onClick={() => setIsModalOpen(true)}
+                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition shadow"
+                >
+                    + Buat Paket Baru
+                </button>
             </div>
-            {isEditing ? <PackageForm onCancel={() => setIsEditing(false)} /> : <PackageList />}
-        </div>
-    );
-};
 
-const PackageForm = ({ onCancel }) => {
-    const { masterData } = useApi(); // Asumsi ada data maskapai & hotel di context
-    const [form, setForm] = useState({
-        name: '',
-        duration_days: 9,
-        total_seats: 45,
-        pricing: [{ type: 'Quad', price: 0 }, { type: 'Triple', price: 0 }, { type: 'Double', price: 0 }],
-        dates: [''],
-        airlines: [], // Array ID
-        hotels: [], // Array ID
-    });
-
-    const addDate = () => setForm({ ...form, dates: [...form.dates, ''] });
-    const updateDate = (idx, val) => {
-        const newDates = [...form.dates];
-        newDates[idx] = val;
-        setForm({ ...form, dates: newDates });
-    };
-    const updatePrice = (idx, val) => {
-        const newPricing = [...form.pricing];
-        newPricing[idx].price = val;
-        setForm({ ...form, pricing: newPricing });
-    };
-
-    return (
-        <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-xl font-bold mb-4">Form Paket Umroh</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Input label="Nama Paket" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
-                <Input label="Durasi (Hari)" type="number" value={form.duration_days} onChange={e => setForm({...form, duration_days: e.target.value})} />
-                
-                <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Varian Harga & Kamar</label>
-                    <div className="grid grid-cols-3 gap-4">
-                        {form.pricing.map((variant, idx) => (
-                            <div key={idx} className="border p-3 rounded">
-                                <label className="block text-xs font-bold mb-1">{variant.type}</label>
-                                <Input type="number" value={variant.price} onChange={e => updatePrice(idx, e.target.value)} placeholder="Harga" />
+            {loading ? <Loading /> : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {packages.length === 0 && <p className="col-span-3 text-center text-gray-500 py-10">Belum ada paket dibuat.</p>}
+                    
+                    {packages.map(pkg => (
+                        <div key={pkg.id} className="bg-white rounded-lg shadow hover:shadow-lg transition border border-gray-100 overflow-hidden">
+                            <div className="bg-blue-50 p-4 border-b border-blue-100 flex justify-between items-start">
+                                <div>
+                                    <span className="text-xs font-bold uppercase text-blue-600 tracking-wide">{pkg.category_name || 'Umroh'}</span>
+                                    <h3 className="text-lg font-bold text-gray-800 mt-1">{pkg.name}</h3>
+                                </div>
+                                <span className={`px-2 py-1 rounded text-xs font-bold ${pkg.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                                    {pkg.status === 'active' ? 'Open' : pkg.status}
+                                </span>
                             </div>
-                        ))}
-                    </div>
-                </div>
+                            
+                            <div className="p-4 space-y-3">
+                                <div className="flex items-center text-sm text-gray-600">
+                                    <span className="w-6 text-center mr-2">✈️</span>
+                                    <span>{pkg.departure_date} (Maskapai ID: {pkg.airline_id})</span>
+                                </div>
+                                <div className="flex items-center text-sm text-gray-600">
+                                    <span className="w-6 text-center mr-2">🏨</span>
+                                    <span>{Array.isArray(pkg.hotels) ? pkg.hotels.length : 0} Hotel Terpilih</span>
+                                </div>
+                                <div className="flex items-center text-sm text-gray-600">
+                                    <span className="w-6 text-center mr-2">💰</span>
+                                    <span>Mulai {getLowestPrice(pkg.pricing_variants)}</span>
+                                </div>
+                            </div>
 
-                <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Tanggal Keberangkatan</label>
-                    {form.dates.map((date, idx) => (
-                        <div key={idx} className="flex gap-2 mb-2">
-                            <Input type="date" value={date} onChange={e => updateDate(idx, e.target.value)} />
+                            <div className="bg-gray-50 p-3 flex justify-between border-t">
+                                <button onClick={() => handleEdit(pkg)} className="text-blue-600 hover:text-blue-800 text-sm font-medium">Edit Detail</button>
+                                <button onClick={() => handleDelete(pkg.id)} className="text-red-600 hover:text-red-800 text-sm font-medium">Hapus</button>
+                            </div>
                         </div>
                     ))}
-                    <Button variant="secondary" onClick={addDate} size="sm">+ Tambah Tanggal</Button>
                 </div>
+            )}
 
-                <Input label="Total Seat" type="number" value={form.total_seats} onChange={e => setForm({...form, total_seats: e.target.value})} />
-                
-                {/* Implementasi Multi Select untuk Maskapai & Hotel disini */}
-                <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700">Maskapai (Pilih Lebih dari satu)</label>
-                    <select multiple className="w-full border rounded p-2 h-24" onChange={e => {
-                        const selected = Array.from(e.target.selectedOptions, option => option.value);
-                        setForm({...form, airlines: selected});
-                    }}>
-                        {masterData?.airlines?.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                    </select>
+            {/* Modal Full Screen untuk Form yang Kompleks */}
+            {isModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+                    <div className="w-full max-w-4xl">
+                        <PackageForm 
+                            initialData={editingPackage} 
+                            onSuccess={() => { closeModal(); fetchPackages(); }} 
+                            onCancel={closeModal} 
+                        />
+                    </div>
                 </div>
-
-                <div className="md:col-span-2 flex justify-end gap-4 mt-4">
-                    <Button variant="secondary" onClick={onCancel}>Batal</Button>
-                    <Button>Simpan Paket</Button>
-                </div>
-            </div>
+            )}
         </div>
     );
 };
-
-const PackageList = () => (
-    <div className="bg-white p-4 shadow rounded">
-        <p>Tabel list paket dengan filter...</p>
-        {/* Implementasi tabel similar to marketing */}
-    </div>
-);
 
 export default Packages;
