@@ -1,104 +1,84 @@
-// Lokasi: src/components/forms/UserForm.jsx
-
 import React, { useState, useEffect } from 'react';
-// --- PERBAIKAN: Menambahkan kembali ekstensi .jsx untuk resolver ---
-import { useApi } from '../../context/ApiContext.jsx'; 
-import { Input, Select } from '../common/FormUI.jsx'; 
-// --- PERBAIKAN: Mengganti impor default ke impor named (dan menambah .jsx) ---
-import { LoadingSpinner } from '../common/Loading.jsx'; 
+import { useApi } from '../../context/ApiContext.jsx';
+import { Input, Select } from '../common/FormUI.jsx';
 import { ErrorMessage } from '../common/ErrorMessage.jsx';
-// --- AKHIR PERBAIKAN ---
 
-/**
- * Form untuk menambah atau mengedit User.
- * Menerima props 'data' untuk mode edit dan 'onSuccess' callback.
- */
 const UserForm = ({ data, onSuccess }) => {
-    const api = useApi(); 
+    const api = useApi();
+    const { data: apiData, loading: apiLoading } = api;
     
-    // State untuk form data
     const [formData, setFormData] = useState({
-        name: '',
+        full_name: '',
         email: '',
         password: '',
-        role: 'marketing_staff', // Default role
+        role: 'marketing_staff',
     });
     
-    // State untuk proses submission
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
 
-    // Cek apakah mode edit (jika ada 'data' dan 'data.id')
     const isEditMode = Boolean(data && data.id);
 
-    // useEffect untuk populate form jika mode edit
     useEffect(() => {
         if (isEditMode && data) {
-            // Jika mode edit, isi form dengan data yang ada
             setFormData({
-                name: data.name || '',
+                full_name: data.full_name || '',
                 email: data.email || '',
                 role: data.role || 'marketing_staff',
-                password: '', // Password dikosongkan, diisi hanya jika ingin diubah
+                password: '', 
             });
         }
-    }, [data, isEditMode]); // Dependency: data dan isEditMode
+    }, [data, isEditMode]);
 
-    // Handler untuk perubahan input
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    // Handler untuk submit form
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setError(null); // Reset error setiap kali submit
+        setError(null);
         setIsSubmitting(true);
 
-        // Siapkan payload
         const payload = { ...formData };
+        // PERBAIKAN: Menyesuaikan nama field dengan API Users (full_name, email, password)
+        
         if (isEditMode) {
             payload.id = data.id;
-            // Jika password tidak diisi saat edit, jangan kirim field password
-            // API akan mengerti bahwa password tidak diubah
-            if (!payload.password) { 
-                delete payload.password;
-            }
+            if (!payload.password) delete payload.password;
         }
 
         try {
-            // Panggil API (create atau update)
-            await api.createOrUpdate('user', payload); // Menggunakan endpoint 'user'
-            onSuccess(); // Panggil callback sukses (misal: tutup modal, refresh data)
+            // PERBAIKAN: Menggunakan endpoint 'users' (jamak)
+            await api.createOrUpdate('users', payload, isEditMode ? data.id : null);
+            onSuccess();
         } catch (err) {
-            setError(err.message || 'Gagal menyimpan data. Silakan coba lagi.');
-            console.error(err);
+            setError(err.message || 'Gagal menyimpan data.');
         } finally {
-            setIsSubmitting(false); // Selesai submitting
+            setIsSubmitting(false);
         }
     };
 
-    // Ambil data dari API context (terutama untuk roles)
-    const { data: apiData, loading: apiLoading } = api;
-    const roleOptions = apiData.roles || [];
+    // Ambil roles dari API atau hardcode sebagai fallback
+    const roleOptions = apiData.roles && apiData.roles.length > 0 
+        ? apiData.roles 
+        : [
+            { role_key: 'marketing_staff', display_name: 'Marketing Staff' },
+            { role_key: 'finance_staff', display_name: 'Finance Staff' },
+            { role_key: 'hr_staff', display_name: 'HR Staff' },
+            { role_key: 'admin_staff', display_name: 'Admin Staff' }
+        ];
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
-            
-            {/* Tampilkan loading global jika data context (roles) sedang dimuat */}
-            {/* {apiLoading && <LoadingSpinner />} */} 
-            {/* Note: Mungkin lebih baik nonaktifkan form/tombol saja daripada loading blocking */}
-
-            {/* Tampilkan error jika ada */}
             {error && <ErrorMessage message={error} />}
             
             <Input
-                label="Nama"
-                id="name"
-                name="name"
+                label="Nama Lengkap"
+                id="full_name"
+                name="full_name"
                 type="text"
-                value={formData.name}
+                value={formData.full_name}
                 onChange={handleChange}
                 required
             />
@@ -111,7 +91,7 @@ const UserForm = ({ data, onSuccess }) => {
                 value={formData.email}
                 onChange={handleChange}
                 required
-                disabled={isEditMode} // Email tidak bisa diubah saat edit
+                disabled={isEditMode}
             />
             
             <Input
@@ -121,51 +101,32 @@ const UserForm = ({ data, onSuccess }) => {
                 type="password"
                 value={formData.password}
                 onChange={handleChange}
-                required={!isEditMode} // Wajib untuk user baru
+                required={!isEditMode}
             />
 
             <Select
-                label="Role"
+                label="Role / Jabatan"
                 id="role"
                 name="role"
                 value={formData.role}
                 onChange={handleChange}
                 required
-                disabled={apiLoading} // Disable saat roles sedang loading
             >
-                {/* Tampilkan loading saat fetching roles */}
-                {apiLoading ? (
-                    <option>Loading roles...</option>
-                ) : (
-                    <>
-                        <option value="" disabled>Pilih Role</option>
-                        
-                        {/* Map dari roleOptions (jika ada dari API) */}
-                        {roleOptions.map(role => (
-                            <option key={role.role_key} value={role.role_key}>
-                                {role.display_name}
-                            </option>
-                        ))}
-                        
-                        {/* Fallback jika API gagal (sesuai snippet) */}
-                        {roleOptions.length === 0 && !apiLoading && (
-                            <>
-                                <option value="marketing_staff">Marketing Staff</option>
-                                <option value="finance_staff">Finance Staff</option>
-                                <option value="hr_staff">HR Staff</option>
-                            </>
-                        )}
-                    </>
-                )}
+                <option value="" disabled>Pilih Role</option>
+                {roleOptions.map(role => (
+                    <option key={role.role_key || role.id} value={role.role_key || role.name}>
+                        {role.display_name || role.name}
+                    </option>
+                ))}
             </Select>
 
-            <div className="pt-2">
-                <button 
+            <div className="pt-2 flex justify-end">
+                 <button 
                     type="submit" 
                     disabled={isSubmitting || apiLoading}
-                    className="w-full px-4 py-2 font-semibold text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    className="px-4 py-2 font-semibold text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
-                    {isSubmitting ? 'Menyimpan...' : (isEditMode ? 'Update User' : 'Tambah User')}
+                    {isSubmitting ? 'Menyimpan...' : (isEditMode ? 'Update Staff' : 'Tambah Staff')}
                 </button>
             </div>
         </form>

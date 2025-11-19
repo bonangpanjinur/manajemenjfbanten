@@ -1,140 +1,84 @@
-import React, { useState, useMemo } from 'react';
-// PERBAIKAN: Menambahkan ekstensi .jsx ke semua impor
+import React, { useState } from 'react';
 import { useApi } from '../context/ApiContext.jsx';
-import { LoadingScreen, LoadingSpinner } from '../components/common/Loading.jsx';
-import { ErrorMessage } from '../components/common/ErrorMessage.jsx';
+import { LoadingSpinner } from '../components/common/Loading.jsx';
 import { Modal } from '../components/common/Modal.jsx';
 import UserForm from '../components/forms/UserForm.jsx';
-import { Button, Input } from '../components/common/FormUI.jsx';
-// AKHIR PERBAIKAN
-import { Plus, Edit, Trash2, UserCheck, UserX, Filter } from 'lucide-react';
+import { Plus, Edit, Trash2, User } from 'lucide-react';
 
-const HRComponent = () => {
-    const { data, loading, error, createOrUpdate, deleteItem } = useApi();
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [selectedItem, setSelectedItem] = useState(null);
-    const [filter, setFilter] = useState('');
+const HR = () => {
+    // Menggunakan 'users' sebagai sumber data HR
+    const { data, loading, deleteItem } = useApi();
+    const staffList = data.users || [];
 
-    const openModal = (item = null) => {
-        setSelectedItem(item);
-        setIsModalOpen(true);
-    };
-
-    const closeModal = () => {
-        setSelectedItem(null);
-        setIsModalOpen(false);
-    };
+    const [modalState, setModalState] = useState({ isOpen: false, data: null });
 
     const handleDelete = async (id) => {
-        if (window.confirm('Apakah Anda yakin ingin menghapus data staff ini?')) {
+        if (confirm('Hapus akses staff ini?')) {
             try {
-                await deleteItem('hr', id);
-            } catch (err) {
-                alert('Gagal menghapus: ' + err.message);
-            }
+                await deleteItem('users', id);
+            } catch (e) { alert(e.message); }
         }
     };
 
-    const filteredData = useMemo(() => {
-        return data.hr.filter(item =>
-            item.full_name.toLowerCase().includes(filter.toLowerCase()) ||
-            item.user_email.toLowerCase().includes(filter.toLowerCase()) ||
-            item.role_name.toLowerCase().includes(filter.toLowerCase())
-        );
-    }, [data.hr, filter]);
-
-    if (loading && !data.hr.length) {
-        // PERBAIKAN: Gunakan LoadingScreen
-        return <LoadingScreen message="Memuat data HR..." />;
-    }
-
-    if (error) {
-        return <ErrorMessage title="Gagal Memuat" message={error} />;
-    }
+    if (loading && staffList.length === 0) return <LoadingSpinner />;
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col md:flex-row justify-between items-center">
-                <h1 className="text-3xl font-bold text-gray-800">Manajemen Staff (HR)</h1>
-                <Button onClick={() => openModal()} className="mt-4 md:mt-0">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Tambah Staff
-                </Button>
+        <div className="p-6 space-y-6">
+            <div className="flex justify-between items-center">
+                <h1 className="text-2xl font-bold text-gray-800">Manajemen Staff (HR)</h1>
+                <button 
+                    onClick={() => setModalState({ isOpen: true, data: null })} 
+                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center"
+                >
+                    <Plus className="w-4 h-4 mr-2"/> Tambah Staff
+                </button>
             </div>
 
-            {/* Filter dan Tabel */}
-            <div className="bg-white p-6 rounded-lg shadow">
-                <div className="flex items-center mb-4">
-                    <Filter className="w-5 h-5 text-gray-500 mr-2" />
-                    <Input
-                        type="text"
-                        placeholder="Cari berdasarkan nama, email, atau role..."
-                        value={filter}
-                        onChange={(e) => setFilter(e.target.value)}
-                        className="max-w-sm"
-                    />
-                </div>
-                
-                <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Lengkap</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                <th scope="col" className="relative px-6 py-3">
-                                    <span className="sr-only">Aksi</span>
-                                </th>
+            <div className="bg-white rounded shadow overflow-hidden">
+                <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                        <tr>
+                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Nama</th>
+                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Email</th>
+                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Role</th>
+                            <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                        {staffList.map(user => (
+                            <tr key={user.id} className="hover:bg-gray-50">
+                                <td className="px-6 py-4 flex items-center">
+                                    <div className="bg-gray-200 p-2 rounded-full mr-3"><User className="w-4 h-4 text-gray-600"/></div>
+                                    <span className="font-medium">{user.full_name || user.display_name}</span>
+                                </td>
+                                <td className="px-6 py-4 text-sm text-gray-600">{user.user_email || user.email}</td>
+                                <td className="px-6 py-4">
+                                    <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full capitalize">
+                                        {user.role?.replace('_', ' ')}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-4 text-right space-x-2">
+                                    <button onClick={() => setModalState({ isOpen: true, data: user })} className="text-blue-600"><Edit className="w-4 h-4"/></button>
+                                    <button onClick={() => handleDelete(user.id)} className="text-red-600"><Trash2 className="w-4 h-4"/></button>
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {loading && (
-                                <tr>
-                                    <td colSpan="5" className="text-center p-4"><LoadingSpinner /></td>
-                                </tr>
-                            )}
-                            {!loading && filteredData.length === 0 && (
-                                <tr>
-                                    <td colSpan="5" className="text-center p-4 text-gray-500">Data tidak ditemukan.</td>
-                                </tr>
-                            )}
-                            {!loading && filteredData.map((item) => (
-                                <tr key={item.ID}>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.full_name}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.user_email}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.role_name}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${item.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                            {item.status === 'active' ? <UserCheck className="w-4 h-4 mr-1" /> : <UserX className="w-4 h-4 mr-1" />}
-                                            {item.status}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                                        <Button variant="icon" size="sm" onClick={() => openModal(item)}>
-                                            <Edit className="w-4 h-4" />
-                                        </Button>
-                                        <Button variant="icon" size="sm" color="danger" onClick={() => handleDelete(item.ID)}>
-                                            <Trash2 className="w-4 h-4" />
-                                        </Button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                        ))}
+                    </tbody>
+                </table>
             </div>
 
-            {isModalOpen && (
-                // PERBAIKAN: Gunakan Modal
-                <Modal title={selectedItem ? 'Edit Staff' : 'Tambah Staff'} onClose={closeModal}>
-                    <div className="p-6">
-                        <UserForm data={selectedItem} onClose={closeModal} />
-                    </div>
-                </Modal>
-            )}
+            <Modal 
+                title={modalState.data ? 'Edit Staff' : 'Tambah Staff Baru'} 
+                isOpen={modalState.isOpen} 
+                onClose={() => setModalState({ isOpen: false, data: null })}
+            >
+                <UserForm 
+                    data={modalState.data} 
+                    onSuccess={() => setModalState({ isOpen: false, data: null })} 
+                />
+            </Modal>
         </div>
     );
 };
 
-export default HRComponent;
+export default HR;

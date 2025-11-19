@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import apiFetch from '@wordpress/api-fetch';
-import { useAuth } from './AuthContext';
+import { useAuth } from './AuthContext.jsx'; // Pastikan ekstensi file benar
 
 const ApiContext = createContext();
 
@@ -13,24 +13,35 @@ export const ApiProvider = ({ children }) => {
         jamaah: [],
         finance: [],
         marketing: [],
-        hr: [],
-        users: [],
+        hr: [], // Staff list
+        users: [], // Synced with HR
         sub_agents: [],
         roles: [],
         logs: [],
-        stats: {} // Tambahkan ini
+        stats: {},
+        accounts: [],
+        categories: []
     });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    // Daftar endpoint yang akan diambil saat inisialisasi
     const endpoints = [
-        'packages', 'jamaah', 'finance', 'categories', 'accounts', 
-        'marketing', 'hr', 'users', 'roles', 'logs', 'tasks', 'sub_agents', 'stats' // Tambah stats
+        'packages', 
+        'jamaah', 
+        'finance', 
+        'categories', 
+        'finance_accounts', // Backend endpoint
+        'marketing', 
+        'users', // Backend endpoint untuk staff/hr
+        'roles', 
+        'logs', 
+        'sub_agents', 
+        'stats'
     ];
 
-    // Fungsi untuk fetch semua data (Initial Load)
-    // Menggunakan Promise.allSettled agar satu error tidak membatalkan semua
     const fetchAllData = useCallback(async () => {
+        // Pastikan user login sebelum fetch
         if (!currentUser) {
             setLoading(false);
             return;
@@ -52,111 +63,119 @@ export const ApiProvider = ({ children }) => {
             
             results.forEach(res => {
                 if (res.status === 'fulfilled') {
-                    newData[res.endpoint] = res.value;
+                    // Mapping endpoint ke state key jika berbeda
+                    if (res.endpoint === 'finance_accounts') {
+                        newData['accounts'] = res.value;
+                    } else if (res.endpoint === 'users') {
+                        newData['users'] = res.value;
+                        newData['hr'] = res.value; // Sync HR dengan Users
+                    } else {
+                        newData[res.endpoint] = res.value;
+                    }
                 } else {
-                    console.warn(`Gagal memuat ${res.endpoint}:`, res.reason);
-                    // Opsional: Set error state spesifik jika perlu
+                    console.warn(`Warning: Failed to fetch ${res.endpoint}`, res.reason);
                 }
             });
 
-            // Kalkulasi Relasi Sederhana (Client Side Calculation)
-            // Note: Sebaiknya ini dipindah ke backend jika data besar
-            if (newData.jamaah && newData.jamaah_payments) {
-                newData.jamaah = newData.jamaah.map(j => {
-                    const payments = Array.isArray(newData.jamaah_payments) 
-                        ? newData.jamaah_payments.filter(p => p.jamaah_id === j.id && p.status === 'paid')
-                        : [];
-                    const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
-                    return { ...j, amount_paid: totalPaid }; // Update data lokal
-                });
-            }
-
             setData(newData);
-            
         } catch (err) {
             console.error('Critical API Error:', err);
-            setError(err.message || 'Terjadi kesalahan jaringan.');
+            setError(err.message || 'Gagal terhubung ke server.');
         } finally {
             setLoading(false);
         }
-    }, [currentUser]);
+    }, [currentUser]); // Dependencies
 
     useEffect(() => {
         fetchAllData();
     }, [fetchAllData]);
 
-    // Fungsi Create/Update
+    // CRUD: Create or Update
     const createOrUpdate = async (endpoint, itemData, id = null) => {
         const method = id ? 'PUT' : 'POST';
+        // Handle special path cases if any
         const path = id ? `/umh/v1/${endpoint}/${id}` : `/umh/v1/${endpoint}`;
 
         try {
             const response = await apiFetch({ path, method, data: itemData });
             
-            // Optimistic UI Update
+            // Update Local State (Optimistic UI)
+            // Tentukan key state berdasarkan endpoint
+            let stateKey = endpoint;
+            if (endpoint === 'finance_accounts') stateKey = 'accounts';
+            
             setData(prevData => {
-                const currentList = prevData[endpoint] || [];
+                const currentList = prevData[stateKey] || [];
                 let newList;
+                
+                // Jika update
                 if (id) {
-                    newList = currentList.map(item => (item.id === id ? response : item));
+                    newList = currentList.map(item => 
+                        (item.id === id || item.ID === id) ? response : item
+                    );
                 } else {
-                    newList = [response, ...currentList]; // Tambah ke atas
+                    // Jika create (tambah ke atas)
+                    newList = [response, ...currentList];
                 }
-                return { ...prevData, [endpoint]: newList };
-            });
 
-            // Opsional: Refresh data jika perlu relasi server-side yang kompleks
-            // fetchAllData(); 
+                // Khusus Users, update juga HR
+                if (stateKey === 'users') {
+                    return { ...prevData, users: newList, hr: newList };
+                }
+
+                return { ...prevData, [stateKey]: newList };
+            });
             
             return response;
         } catch (err) {
-            console.error(`Failed to ${method} ${endpoint}:`, err);
-            throw err;
+            console.error(`API Error (${method} ${endpoint}):`, err);
+            throw new Error(err.message || 'Terjadi kesalahan saat menyimpan data.');
         }
     };
 
-    // Fungsi Delete
+    // CRUD: Delete
     const deleteItem = async (endpoint, id) => {
         try {
             await apiFetch({ path: `/umh/v1/${endpoint}/${id}`, method: 'DELETE' });
             
+            let stateKey = endpoint;
+            if (endpoint === 'finance_accounts') stateKey = 'accounts';
+
             setData(prevData => {
-                const currentList = prevData[endpoint] || [];
-                const newList = currentList.filter(item => item.id !== id && item.ID !== id); // Handle 'id' vs 'ID'
-                return { ...prevData, [endpoint]: newList };
+                const currentList = prevData[stateKey] || [];
+                const newList = currentList.filter(item => item.id !== id && item.ID !== id);
+                
+                if (stateKey === 'users') {
+                    return { ...prevData, users: newList, hr: newList };
+                }
+
+                return { ...prevData, [stateKey]: newList };
             });
         } catch (err) {
-            console.error(`Failed to DELETE ${endpoint}:`, err);
-            throw err;
+            console.error(`API Error (DELETE ${endpoint}):`, err);
+            throw new Error(err.message || 'Gagal menghapus data.');
         }
     };
 
-    // Fungsi untuk fetch resource spesifik (untuk refresh parsial)
-    const fetchResource = async (endpoint) => {
+    // Helper: Refresh Single Resource
+    const refreshData = async (resourceName) => {
         try {
-            const res = await apiFetch({ path: `/umh/v1/${endpoint}` });
-            setData(prev => ({ ...prev, [endpoint]: res }));
-        } catch (err) {
-            console.error(`Gagal refresh ${endpoint}`, err);
-        }
-    };
-    
-    // Khusus pembayaran
-    const updatePaymentStatus = async (paymentId, status) => {
-        try {
-             const res = await apiFetch({ 
-                path: `/umh/v1/jamaah/payments/${paymentId}`,
-                method: 'PUT',
-                data: { status }
+            // Mapping resource name ke endpoint path
+            let path = resourceName;
+            if (resourceName === 'accounts') path = 'finance_accounts';
+            if (resourceName === 'hr') path = 'users';
+
+            const res = await apiFetch({ path: `/umh/v1/${path}` });
+            
+            setData(prev => {
+                const newState = { ...prev, [resourceName]: res };
+                // Sync users/hr
+                if (resourceName === 'users') newState.hr = res;
+                if (resourceName === 'hr') newState.users = res;
+                return newState;
             });
-            // Refresh jamaah dan payments untuk sinkronisasi saldo
-            await Promise.all([
-                fetchResource('jamaah'),
-                fetchResource('jamaah_payments') // Asumsi endpoint ini ada di list utama
-            ]);
-            return res;
         } catch (err) {
-            throw err;
+            console.error(`Gagal refresh ${resourceName}`, err);
         }
     };
 
@@ -166,10 +185,7 @@ export const ApiProvider = ({ children }) => {
         error,
         createOrUpdate,
         deleteItem,
-        refreshData: fetchAllData,
-        fetchResource,
-        updatePaymentStatus,
-        fetchLogs: () => fetchResource('logs')
+        refreshData
     };
 
     return (

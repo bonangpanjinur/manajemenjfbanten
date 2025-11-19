@@ -1,86 +1,102 @@
-import React, { useState, useEffect } from 'react';
-import { formatDateForInput } from '../../utils/helpers.js'; // .js ditambahkan
-import { ModalFooter } from '../common/Modal.jsx'; // .jsx ditambahkan
-import { Input, Select, FormGroup, FormLabel } from '../common/FormUI.jsx'; // .jsx ditambahkan
+import React, { useState } from 'react';
+import { Button, Input, Select, Textarea } from '../common/FormUI.jsx';
 
-const FinanceForm = ({ initialData, onSubmit, onCancel, accounts }) => {
+const FinanceForm = ({ initialData, accounts = [], onSubmit, onCancel }) => {
+    const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
-        transaction_date: formatDateForInput(new Date()),
-        description: '',
-        transaction_type: 'expense',
-        amount: '',
-        account_id: '',
+        transaction_date: initialData?.transaction_date || new Date().toISOString().split('T')[0],
+        description: initialData?.description || '',
+        amount: initialData?.amount || '',
+        type: initialData?.type || 'expense',
+        account_id: initialData?.account_id || (accounts.length > 0 ? accounts[0].id : ''),
+        category: initialData?.category || 'Operasional',
     });
 
-    useEffect(() => {
-        if (initialData) {
-            setFormData(prev => ({
-                ...prev,
-                ...initialData,
-                transaction_date: formatDateForInput(initialData.transaction_date)
-            }));
-        } else {
-            // Reset form
-            setFormData({
-                transaction_date: formatDateForInput(new Date()),
-                description: '',
-                transaction_type: 'expense',
-                amount: '',
-                account_id: '',
-            });
-        }
-    }, [initialData]);
-
     const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value,
-        }));
+        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        onSubmit(formData);
+        setLoading(true);
+        try {
+            await onSubmit(formData);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
-        <form onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormGroup>
-                    <FormLabel htmlFor="transaction_date">Tanggal</FormLabel>
-                    <Input type="date" name="transaction_date" id="transaction_date" value={formData.transaction_date} onChange={handleChange} required />
-                </FormGroup>
-
-                <FormGroup>
-                    <FormLabel htmlFor="account_id">Akun</FormLabel>
-                    <Select name="account_id" id="account_id" value={formData.account_id} onChange={handleChange} required>
-                        <option value="">Pilih Akun Kas</option>
-                        {accounts.map(acc => (
-                            <option key={acc.id} value={acc.id}>{acc.name}</option>
-                        ))}
-                    </Select>
-                </FormGroup>
-
-                <FormGroup>
-                    <FormLabel htmlFor="transaction_type">Jenis Transaksi</FormLabel>
-                    <Select name="transaction_type" id="transaction_type" value={formData.transaction_type} onChange={handleChange} required>
-                        <option value="expense">Debit (Pengeluaran)</option>
-                        <option value="income">Kredit (Pemasukan)</option>
-                    </Select>
-                </FormGroup>
-
-                <FormGroup>
-                    <FormLabel htmlFor="amount">Jumlah (Rp)</FormLabel>
-                    <Input type="number" name="amount" id="amount" value={formData.amount} onChange={handleChange} required />
-                </FormGroup>
-
-                <FormGroup className="md:col-span-2">
-                    <FormLabel htmlFor="description">Deskripsi</FormLabel>
-                    <Input type="text" name="description" id="description" value={formData.description} onChange={handleChange} />
-                </FormGroup>
+        <form onSubmit={handleSubmit} className="space-y-4 p-2">
+            <div className="grid grid-cols-2 gap-4">
+                <Input 
+                    label="Tanggal Transaksi" 
+                    type="date" 
+                    name="transaction_date" 
+                    value={formData.transaction_date} 
+                    onChange={handleChange} 
+                    required 
+                />
+                <Select 
+                    label="Jenis Transaksi" 
+                    name="type" 
+                    value={formData.type} 
+                    onChange={handleChange}
+                >
+                    <option value="income">Pemasukan (Income)</option>
+                    <option value="expense">Pengeluaran (Expense)</option>
+                </Select>
             </div>
-            <ModalFooter onCancel={onCancel} />
+
+            <div className="grid grid-cols-2 gap-4">
+                <Input 
+                    label="Nominal (IDR)" 
+                    type="number" 
+                    name="amount" 
+                    value={formData.amount} 
+                    onChange={handleChange} 
+                    required 
+                />
+                <Select 
+                    label="Akun / Dompet" 
+                    name="account_id" 
+                    value={formData.account_id} 
+                    onChange={handleChange}
+                    required
+                >
+                    <option value="">Pilih Akun</option>
+                    {accounts.map(acc => (
+                        <option key={acc.id} value={acc.id}>
+                            {acc.account_name} ({acc.bank_name})
+                        </option>
+                    ))}
+                </Select>
+            </div>
+
+            <Input 
+                label="Kategori" 
+                name="category" 
+                value={formData.category} 
+                onChange={handleChange} 
+                placeholder="Contoh: Transportasi, Akomodasi, DP Jamaah"
+            />
+
+            <Textarea 
+                label="Keterangan / Deskripsi" 
+                name="description" 
+                value={formData.description} 
+                onChange={handleChange} 
+                required 
+            />
+
+            <div className="flex justify-end gap-2 pt-4 border-t mt-4">
+                <Button type="button" variant="secondary" onClick={onCancel}>Batal</Button>
+                <Button type="submit" disabled={loading}>
+                    {loading ? 'Menyimpan...' : 'Simpan Transaksi'}
+                </Button>
+            </div>
         </form>
     );
 };

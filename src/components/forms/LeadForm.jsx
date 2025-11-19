@@ -1,125 +1,66 @@
-import React, { useState, useEffect } from 'react';
-// PERBAIKAN: Path impor 2 level ke atas
-import { useApi } from '../../context/ApiContext';
-// PERBAIKAN: Path impor 1 level ke atas
-import { Input, Textarea, Button, Select } from '../common/FormUI';
-// PERBAIKAN: Impor bernama (named import) dan path 1 level ke atas
-import { ErrorMessage } from '../common/ErrorMessage';
-import { LoadingSpinner as Loading } from '../common/Loading';
-// AKHIR PERBAIKAN
+import React, { useState } from 'react';
+import { useApi } from '../../context/ApiContext.jsx';
+import { Input, Select, Button, Textarea } from '../common/FormUI.jsx';
 
 const LeadForm = ({ data, onClose }) => {
-    const { createOrUpdate, loading: apiLoading, error: apiError } = useApi();
-    
-    const [formData, setFormData] = useState(
-        data || {
-            name: '',
-            email: '',
-            phone: '',
-            source: 'Website',
-            status: 'new',
-            notes: '',
-        }
-    );
-    const [error, setError] = useState(null);
+    const { createOrUpdate } = useApi();
+    const [loading, setLoading] = useState(false);
 
-    // Sinkronkan error dari API
-    useEffect(() => {
-        if (apiError) {
-            setError(apiError);
-        }
-    }, [apiError]);
+    const [formData, setFormData] = useState({
+        name: data?.name || '',
+        email: data?.email || '',
+        phone: data?.phone || '',
+        source: data?.source || 'social_media',
+        status: data?.status || 'new',
+        notes: data?.notes || '',
+    });
 
-    // Update form state saat ada perubahan
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-    };
+    const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
-    // Handle submit form
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setError(null);
-        
-        const finalData = { ...formData };
-        // Tambahkan ID jika ini adalah update
-        if (data && data.id) {
-            finalData.id = data.id;
-        }
-
+        setLoading(true);
         try {
-            // 'marketing' adalah key untuk endpoint API leads
-            await createOrUpdate('marketing', finalData);
-            onClose(); // Tutup modal jika sukses
-        } catch (err) {
-            setError(err.message || 'Gagal menyimpan lead.');
+            await createOrUpdate('marketing', formData, data?.id);
+            onClose();
+        } catch (error) {
+            alert(error.message);
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-            {error && <ErrorMessage message={error} />}
+        <form onSubmit={handleSubmit} className="space-y-4 p-2">
+            <Input label="Nama Prospek" name="name" value={formData.name} onChange={handleChange} required />
             
-            <Input
-                label="Nama"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                required
-            />
-            <Input
-                label="Email"
-                name="email"
-                type="email"
-                value={formData.email}
-                onChange={handleChange}
-            />
-            <Input
-                label="Telepon"
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                required
-            />
-            <Select
-                label="Sumber Lead"
-                name="source"
-                value={formData.source}
-                onChange={handleChange}
-            >
-                <option value="Website">Website</option>
-                <option value="Walk-in">Walk-in</option>
-                <option value="Referral">Referral</option>
-                <option value="Social Media">Social Media</option>
-                <option value="Other">Lainnya</option>
-            </Select>
-            <Select
-                label="Status"
-                name="status"
-                value={formData.status}
-                onChange={handleChange}
-            >
-                <option value="new">Baru</option>
-                <option value="contacted">Dihubungi</option>
-                <option value="qualified">Kualifikasi</option>
-                <option value="lost">Gagal</option>
-                <option value="converted">Konversi</option>
-            </Select>
-            <Textarea
-                label="Catatan"
-                name="notes"
-                value={formData.notes}
-                onChange={handleChange}
-                rows={4}
-            />
-            
-            <div className="flex justify-end space-x-2 pt-4 border-t">
-                <Button type="button" variant="secondary" onClick={onClose} disabled={apiLoading}>
-                    Batal
-                </Button>
-                <Button type="submit" disabled={apiLoading}>
-                    {apiLoading ? <Loading /> : (data ? 'Update' : 'Simpan')}
-                </Button>
+            <div className="grid grid-cols-2 gap-4">
+                <Input label="No. WhatsApp" name="phone" value={formData.phone} onChange={handleChange} required />
+                <Input label="Email" type="email" name="email" value={formData.email} onChange={handleChange} />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+                <Select label="Sumber" name="source" value={formData.source} onChange={handleChange}>
+                    <option value="social_media">Media Sosial (IG/FB)</option>
+                    <option value="website">Website</option>
+                    <option value="referral">Referral / Teman</option>
+                    <option value="walk_in">Datang Langsung</option>
+                    <option value="agent">Agen</option>
+                </Select>
+                <Select label="Status Lead" name="status" value={formData.status} onChange={handleChange}>
+                    <option value="new">Baru</option>
+                    <option value="contacted">Sudah Dihubungi</option>
+                    <option value="qualified">Potensial (Qualified)</option>
+                    <option value="lost">Batal / Lost</option>
+                    <option value="converted">Closing (Jadi Jemaah)</option>
+                </Select>
+            </div>
+
+            <Textarea label="Catatan Tambahan" name="notes" value={formData.notes} onChange={handleChange} rows={3} />
+
+            <div className="flex justify-end gap-2 pt-4">
+                <Button type="button" variant="secondary" onClick={onClose}>Batal</Button>
+                <Button type="submit" disabled={loading}>{loading ? 'Simpan...' : 'Simpan Lead'}</Button>
             </div>
         </form>
     );

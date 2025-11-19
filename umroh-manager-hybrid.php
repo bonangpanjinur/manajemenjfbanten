@@ -3,80 +3,68 @@
 
 /**
  * Plugin Name:       Umroh Manager Hybrid
- * Plugin URI:        https://github.com/bonangpanjinur/umroh-manager-hybrid
- * Description:       A hybrid plugin (PHP Backend + React Frontend) for managing Umroh packages, jamaah, and finances within the WordPress admin.
- * Version:           1.0.0
+ * Description:       Plugin manajemen umroh lengkap (Paket, Jamaah, Keuangan, HR, Marketing, Sub Agen).
+ * Version:           1.0.1
  * Author:            Bonang Panji Nur
- * Author URI:        https://bonang.me
- * License:           GPL v2 or later
- * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       umroh-manager-hybrid
- * Domain Path:       /languages
  */
 
 if (!defined('ABSPATH')) {
-    exit; // Exit if accessed directly
+    exit; 
 }
 
-// Define Constants
 define('UMH_PLUGIN_PATH', plugin_dir_path(__FILE__));
 define('UMH_PLUGIN_URL', plugin_dir_url(__FILE__));
-define('UMH_PLUGIN_VERSION', '1.0.0');
+define('UMH_PLUGIN_VERSION', '1.0.1');
 
-// Includes
+// ------------------------------------------------------------------------
+// 1. Core Includes & Utilities
+// ------------------------------------------------------------------------
 require_once(UMH_PLUGIN_PATH . 'includes/db-schema.php');
 require_once(UMH_PLUGIN_PATH . 'includes/utils.php');
 require_once(UMH_PLUGIN_PATH . 'includes/class-umh-crud-controller.php');
+require_once(UMH_PLUGIN_PATH . 'includes/cors.php');
 
-// Activation Hook
+// ------------------------------------------------------------------------
+// 2. Activation Hook (Database Creation)
+// ------------------------------------------------------------------------
 register_activation_hook(__FILE__, 'umh_create_tables');
 
-// Admin Menu & Settings
+// ------------------------------------------------------------------------
+// 3. Admin Pages & Menu
+// ------------------------------------------------------------------------
 require_once(UMH_PLUGIN_PATH . 'admin/dashboard-react.php');
 require_once(UMH_PLUGIN_PATH . 'admin/settings-page.php');
-require_once(UMH_PLUGIN_PATH . 'admin/print-registration.php'); // Halaman Print
+require_once(UMH_PLUGIN_PATH . 'admin/print-registration.php');
 
-// --- Registrasi Menu Admin ---
-
-/**
- * Mendaftarkan halaman menu admin di sidebar WordPress.
- */
 function umh_register_admin_menu() {
-    // 1. Halaman Dashboard Utama (React App)
+    // Menu Utama (React App)
     add_menu_page(
-        __('Umroh Manager Dashboard', 'umroh-manager-hybrid'), // Judul Halaman
-        __('Umroh Manager', 'umroh-manager-hybrid'),          // Judul Menu
-        'manage_options',                                     // Kapabilitas (minimal)
-        'umroh-manager-hybrid',                               // Menu Slug
-        'umh_render_react_dashboard',                         // Fungsi callback
-        'dashicons-airplane',                                 // Ikon
-        20                                                    // Posisi
+        'Umroh Manager', 
+        'Umroh Manager', 
+        'manage_options', 
+        'umroh-manager-hybrid', 
+        'umh_render_react_dashboard', 
+        'dashicons-airplane', 
+        20
     );
-
-    // 2. Halaman Pengaturan (Submenu)
+    
+    // Submenu Pengaturan
     add_submenu_page(
-        'umroh-manager-hybrid',                               // Parent slug
-        __('Pengaturan', 'umroh-manager-hybrid'),             // Judul Halaman
-        __('Pengaturan', 'umroh-manager-hybrid'),             // Judul Menu
-        'manage_options',                                     // Kapabilitas
-        'umh-settings',                                       // Menu Slug
-        'umh_render_settings_page'                            // Fungsi callback
+        'umroh-manager-hybrid',
+        'Pengaturan',
+        'Pengaturan',
+        'manage_options',
+        'umh-settings',
+        'umh_render_settings_page'
     );
 }
 add_action('admin_menu', 'umh_register_admin_menu');
 
-/**
- * Mendaftarkan fields untuk halaman pengaturan.
- */
-function umh_register_admin_settings() {
-    if (class_exists('UMH_Settings_Page')) {
-        $settings_page = new UMH_Settings_Page();
-        $settings_page->register_settings();
-    }
-}
-add_action('admin_init', 'umh_register_admin_settings');
-
-// --- Include API Routes ---
+// ------------------------------------------------------------------------
+// 4. API Routes Includes
+// ------------------------------------------------------------------------
+// Pastikan semua file API di-load agar endpoint tersedia
 require_once(UMH_PLUGIN_PATH . 'includes/api/api-stats.php');
 require_once(UMH_PLUGIN_PATH . 'includes/api/api-users.php');
 require_once(UMH_PLUGIN_PATH . 'includes/api/api-roles.php');
@@ -95,41 +83,42 @@ require_once(UMH_PLUGIN_PATH . 'includes/api/api-uploads.php');
 require_once(UMH_PLUGIN_PATH . 'includes/api/api-logs.php');
 require_once(UMH_PLUGIN_PATH . 'includes/api/api-export.php');
 require_once(UMH_PLUGIN_PATH . 'includes/api/api-print.php');
+require_once(UMH_PLUGIN_PATH . 'includes/api/api-sub-agents.php'); // Baru: Sub Agen API
 
-// CORS Handling
-require_once(UMH_PLUGIN_PATH . 'includes/cors.php');
-
-/**
- * Enqueue scripts and styles for the admin dashboard.
- */
+// ------------------------------------------------------------------------
+// 5. Asset Enqueue (React & CSS)
+// ------------------------------------------------------------------------
 function umh_enqueue_admin_scripts($hook) {
+    $allowed_hooks = [
+        'toplevel_page_umroh-manager-hybrid',
+        'umroh-manager_page_umh-settings',
+        'admin_page_umh-print-registration'
+    ];
+
+    if (!in_array($hook, $allowed_hooks)) {
+        return;
+    }
+
+    // Khusus Halaman Print
+    if ($hook === 'admin_page_umh-print-registration') {
+        wp_enqueue_style('umh-print-style', UMH_PLUGIN_URL . 'assets/css/admin-style.css', [], UMH_PLUGIN_VERSION);
+        return;
+    }
+
+    // Cek keberadaan file asset (build)
+    $asset_file_path = UMH_PLUGIN_PATH . 'build/index.asset.php';
     
-    // Tentukan hook untuk halaman print
-    $print_page_hook = 'admin_page_umh-print-registration';
-
-    // Cek apakah hook adalah salah satu halaman plugin kita
-    if ('toplevel_page_umroh-manager-hybrid' != $hook && 
-        'umroh-manager_page_umh-settings' != $hook &&
-        $print_page_hook != $hook
-    ) {
-        return;
+    if (file_exists($asset_file_path)) {
+        $asset_file = include($asset_file_path);
+    } else {
+        // Fallback jika belum di-build
+        $asset_file = [
+            'dependencies' => ['wp-element', 'wp-i18n', 'wp-api-fetch'],
+            'version' => UMH_PLUGIN_VERSION
+        ];
     }
 
-    // Khusus untuk halaman print, load CSS print saja
-    if ($print_page_hook == $hook) {
-        wp_enqueue_style(
-            'umh-print-style',
-            UMH_PLUGIN_URL . 'assets/css/admin-style.css',
-            array(),
-            UMH_PLUGIN_VERSION
-        );
-        return;
-    }
-
-    // Untuk halaman React
-    $asset_file = include(UMH_PLUGIN_PATH . 'build/index.asset.php');
-
-    // 1. Enqueue JS React App
+    // Enqueue React App
     wp_enqueue_script(
         'umh-react-app',
         UMH_PLUGIN_URL . 'build/index.js',
@@ -138,26 +127,19 @@ function umh_enqueue_admin_scripts($hook) {
         true
     );
 
-    // 2. Enqueue CSS Build (Hasil Compile Tailwind)
-    // wp-scripts akan mengenerate file index.css jika ada import CSS di entry point
+    // Enqueue Styles
     if (file_exists(UMH_PLUGIN_PATH . 'build/index.css')) {
-        wp_enqueue_style(
-            'umh-react-style',
-            UMH_PLUGIN_URL . 'build/index.css',
-            array(),
-            $asset_file['version'] // Gunakan version dari asset file agar cache busting jalan
-        );
+        wp_enqueue_style('umh-react-style', UMH_PLUGIN_URL . 'build/index.css', [], $asset_file['version']);
+    }
+    
+    // Custom Admin CSS (Optional override)
+    if (file_exists(UMH_PLUGIN_PATH . 'assets/css/admin-style.css')) {
+        wp_enqueue_style('umh-admin-style', UMH_PLUGIN_URL . 'assets/css/admin-style.css', [], UMH_PLUGIN_VERSION);
     }
 
-    // 3. Enqueue CSS Manual (Optional, untuk override khusus WP Admin)
-    wp_enqueue_style(
-        'umh-admin-style',
-        UMH_PLUGIN_URL . 'assets/css/admin-style.css',
-        array(),
-        UMH_PLUGIN_VERSION
-    );
-
-    // Loloskan data dari PHP ke React
-    umh_localize_script();
+    // Kirim data ke JS (Nonce, URL, dll) - Fungsi ini ada di includes/utils.php
+    if (function_exists('umh_localize_script')) {
+        umh_localize_script();
+    }
 }
 add_action('admin_enqueue_scripts', 'umh_enqueue_admin_scripts');
