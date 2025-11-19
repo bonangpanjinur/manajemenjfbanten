@@ -1,108 +1,88 @@
 import React from 'react';
-import { useApi } from '../context/ApiContext.jsx';
-import { LoadingSpinner } from '../components/common/Loading.jsx';
-import { StatCard } from '../components/common/StatCard.jsx';
-import { formatCurrency } from '../utils/helpers.js';
-import { Users, Package, TrendingUp, AlertCircle } from 'lucide-react';
+import { useApi } from '../context/ApiContext';
+import { StatCard } from '../components/common/StatCard';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { FaUsers, FaMoneyBillWave, FaPlane } from 'react-icons/fa';
 
 const Dashboard = () => {
-    const { data, loading } = useApi();
-    
-    // Ambil data dari context, gunakan fallback nilai 0 jika data belum siap
-    const stats = data.stats || {};
-    const jamaah = data.jamaah || [];
-    const packages = data.packages || [];
-    const finance = data.finance || [];
+    const { data } = useApi();
+    const { stats, user } = data; // stats di-fetch dari api-stats.php
 
-    // Hitung manual ringkasan sederhana jika API stats belum tersedia
-    const totalJamaah = jamaah.length;
-    const activePackages = packages.filter(p => p.status === 'available').length;
-    const totalIncome = finance.filter(f => f.type === 'income').reduce((acc, curr) => acc + parseFloat(curr.amount), 0);
-    const totalExpense = finance.filter(f => f.type === 'expense').reduce((acc, curr) => acc + parseFloat(curr.amount), 0);
+    // Contoh data dummy jika API belum siap (untuk visualisasi)
+    const chartData = stats?.monthly_income || [
+        { name: 'Jan', income: 4000, expense: 2400 },
+        { name: 'Feb', income: 3000, expense: 1398 },
+        { name: 'Mar', income: 2000, expense: 9800 },
+        { name: 'Apr', income: 2780, expense: 3908 },
+    ];
 
-    if (loading && !data.packages) return <LoadingSpinner />;
+    const pieData = [
+        { name: 'Lunas', value: 400 },
+        { name: 'Belum Lunas', value: 300 },
+    ];
+    const COLORS = ['#0088FE', '#FF8042'];
+
+    const isOwner = user?.role === 'owner';
 
     return (
-        <div className="p-6 space-y-6">
-            <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
+        <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-gray-800">Dashboard Overview</h2>
             
-            {/* Grid Statistik Utama */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard 
-                    title="Total Jemaah" 
-                    value={totalJamaah} 
-                    icon={<Users className="text-blue-600" />} 
-                    color="bg-blue-50" 
-                />
-                <StatCard 
-                    title="Paket Aktif" 
-                    value={activePackages} 
-                    icon={<Package className="text-green-600" />} 
-                    color="bg-green-50" 
-                />
-                <StatCard 
-                    title="Pemasukan" 
-                    value={formatCurrency(totalIncome)} 
-                    icon={<TrendingUp className="text-emerald-600" />} 
-                    color="bg-emerald-50" 
-                />
-                <StatCard 
-                    title="Pengeluaran" 
-                    value={formatCurrency(totalExpense)} 
-                    icon={<AlertCircle className="text-red-600" />} 
-                    color="bg-red-50" 
-                />
+            {/* Top Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <StatCard title="Total Jemaah" value={stats?.total_jamaah || 0} icon={<FaUsers />} color="blue" />
+                <StatCard title="Paket Aktif" value={stats?.active_packages || 0} icon={<FaPlane />} color="green" />
+                {isOwner && (
+                    <StatCard title="Total Pendapatan" value={`Rp ${(stats?.total_revenue || 0).toLocaleString()}`} icon={<FaMoneyBillWave />} color="yellow" />
+                )}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Widget Jemaah Terbaru */}
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h3 className="text-lg font-semibold text-gray-700 mb-4">Jemaah Terbaru</h3>
-                    <div className="overflow-hidden">
-                        {jamaah.length === 0 ? (
-                            <p className="text-gray-500 italic">Belum ada data jemaah.</p>
-                        ) : (
-                            <ul className="divide-y divide-gray-100">
-                                {jamaah.slice(0, 5).map(j => (
-                                    <li key={j.id} className="py-3 flex justify-between items-center">
-                                        <div>
-                                            <p className="font-medium text-gray-800">{j.full_name}</p>
-                                            <p className="text-xs text-gray-500">{j.passport_number || 'No Passport'}</p>
-                                        </div>
-                                        <span className={`text-xs px-2 py-1 rounded-full ${j.status === 'registered' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
-                                            {j.status}
-                                        </span>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
+            {/* Charts Section - Visible to Owner/Admin */}
+            {isOwner && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="bg-white p-4 rounded-lg shadow">
+                        <h3 className="text-lg font-semibold mb-4">Arus Kas Bulanan</h3>
+                        <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={chartData}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="name" />
+                                    <YAxis />
+                                    <Tooltip />
+                                    <Legend />
+                                    <Bar dataKey="income" fill="#82ca9d" name="Pemasukan" />
+                                    <Bar dataKey="expense" fill="#8884d8" name="Pengeluaran" />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
                     </div>
-                </div>
 
-                {/* Widget Keuangan Terakhir */}
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h3 className="text-lg font-semibold text-gray-700 mb-4">Transaksi Terakhir</h3>
-                    <div className="overflow-hidden">
-                         {finance.length === 0 ? (
-                            <p className="text-gray-500 italic">Belum ada transaksi.</p>
-                        ) : (
-                            <ul className="divide-y divide-gray-100">
-                                {finance.slice(0, 5).map(f => (
-                                    <li key={f.id} className="py-3 flex justify-between items-center">
-                                        <div>
-                                            <p className="font-medium text-gray-800">{f.description}</p>
-                                            <p className="text-xs text-gray-500">{f.transaction_date}</p>
-                                        </div>
-                                        <span className={`font-bold ${f.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-                                            {f.type === 'income' ? '+' : '-'} {formatCurrency(f.amount)}
-                                        </span>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
+                    <div className="bg-white p-4 rounded-lg shadow">
+                        <h3 className="text-lg font-semibold mb-4">Status Pembayaran Jemaah</h3>
+                        <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie data={pieData} cx="50%" cy="50%" outerRadius={80} fill="#8884d8" dataKey="value" label>
+                                        {pieData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip />
+                                    <Legend />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
+
+            {/* Employee Specific View */}
+            {!isOwner && (
+                <div className="bg-white p-6 rounded-lg shadow">
+                    <h3 className="text-lg font-bold">Tugas & Notifikasi Anda</h3>
+                    <p className="text-gray-600">Selamat datang kembali. Silakan cek menu divisi Anda untuk tugas terbaru.</p>
+                </div>
+            )}
         </div>
     );
 };

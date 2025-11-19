@@ -1,124 +1,133 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApi } from '../context/ApiContext.jsx';
-import { LoadingSpinner } from '../components/common/Loading.jsx';
-import { Modal } from '../components/common/Modal.jsx';
-import JamaahForm from '../components/forms/JamaahForm.jsx';
-import { formatCurrency } from '../utils/helpers.js';
-import { Plus, Edit, Trash2, Search, User } from 'lucide-react';
-
-// PERBAIKAN: Import dari '../components/common/FormUI.jsx' bukan '../common/FormUI.jsx'
-import { Button, Input, Select } from '../components/common/FormUI.jsx';
-// -----------------------------------------------------------
-
-import JamaahPaymentsModal from '../components/modals/JamaahPaymentsModal.jsx'; 
-// Pastikan path modal pembayaran juga benar jika Anda menggunakannya
-// Jika file ini belum ada, bisa di-comment dulu atau dibuatkan.
+import { Button, Input } from '../components/common/FormUI.jsx';
+import { Upload, Banknote, FileText } from 'lucide-react';
+import JamaahPaymentsModal from '../components/modals/JamaahPaymentsModal.jsx';
 
 const Jamaah = () => {
-    const { data, loading, deleteItem, refreshData } = useApi();
-    const jamaahList = data.jamaah || [];
-    const packages = data.packages || [];
+    const { jamaahData, fetchJamaah } = useApi();
+    const [search, setSearch] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all');
+    
+    const [isPaymentModalOpen, setPaymentModalOpen] = useState(false);
+    const [selectedJamaahForPay, setSelectedJamaahForPay] = useState(null);
 
-    const [modal, setModal] = useState({ open: false, item: null });
-    const [paymentModal, setPaymentModal] = useState({ open: false, item: null });
-    const [filter, setFilter] = useState('');
+    useEffect(() => {
+        fetchJamaah();
+    }, []);
 
-    const filtered = useMemo(() => jamaahList.filter(j => j.full_name.toLowerCase().includes(filter.toLowerCase())), [jamaahList, filter]);
+    const filteredJamaah = jamaahData?.filter(j => {
+        const matchName = j.full_name.toLowerCase().includes(search.toLowerCase());
+        const matchStatus = statusFilter === 'all' || j.payment_status === statusFilter;
+        return matchName && matchStatus;
+    });
 
-    const handleDelete = async (id) => {
-        if (confirm('Hapus data jemaah ini?')) {
-            await deleteItem('jamaah', id);
-            refreshData('jamaah');
-        }
+    const openPaymentModal = (jamaah) => {
+        setSelectedJamaahForPay(jamaah);
+        setPaymentModalOpen(true);
     };
 
-    const getPackageName = (id) => packages.find(p => p.id == id)?.name || 'Paket Tidak Ditemukan';
-
-    if (loading && jamaahList.length === 0) return <LoadingSpinner />;
+    const handleUploadDoc = (id) => {
+        alert("Fitur upload dokumen akan membuka modal upload.");
+    };
 
     return (
-        <div className="p-6 space-y-6">
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                <h1 className="text-2xl font-bold text-gray-800">Data Jemaah</h1>
-                <Button onClick={() => setModal({ open: true, item: null })} className="flex items-center">
-                    <Plus className="w-4 h-4 mr-2"/> Tambah Jemaah
-                </Button>
+        <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-gray-800">Data Jemaah</h2>
+                <Button>+ Daftar Jemaah Baru</Button>
             </div>
 
-            <div className="bg-white rounded shadow overflow-hidden">
-                <div className="p-4 border-b relative">
-                    <Search className="absolute top-7 left-7 w-4 h-4 text-gray-400"/>
-                    <input className="pl-10 p-2 border rounded w-full md:w-64" placeholder="Cari nama jemaah..." value={filter} onChange={e=>setFilter(e.target.value)} />
-                </div>
-                <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Nama</th>
-                                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Paket</th>
-                                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Status Bayar</th>
-                                <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200">
-                            {filtered.map(item => {
-                                const paid = parseFloat(item.amount_paid || 0);
-                                const total = parseFloat(item.total_price || 0);
-                                const isLunas = paid >= total && total > 0;
-
-                                return (
-                                    <tr key={item.id} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center">
-                                                <div className="bg-blue-100 p-2 rounded-full mr-3 text-blue-600 font-bold w-10 h-10 flex items-center justify-center">
-                                                    {item.full_name.charAt(0)}
-                                                </div>
-                                                <div>
-                                                    <div className="font-medium">{item.full_name}</div>
-                                                    <div className="text-xs text-gray-500">{item.passport_number}</div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-600">{getPackageName(item.package_id)}</td>
-                                        <td className="px-6 py-4">
-                                            <div className="text-sm">
-                                                <span className={`font-bold ${isLunas ? 'text-green-600' : 'text-orange-500'}`}>
-                                                    {isLunas ? 'Lunas' : 'Belum Lunas'}
-                                                </span>
-                                                <div className="text-xs text-gray-500">
-                                                    {formatCurrency(paid)} / {formatCurrency(total)}
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-right space-x-2">
-                                            <Button variant="icon" onClick={() => setModal({ open: true, item: item })}><Edit className="w-4 h-4 text-blue-600"/></Button>
-                                            <Button variant="icon" onClick={() => handleDelete(item.id)}><Trash2 className="w-4 h-4 text-red-600"/></Button>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
+            <div className="bg-white p-4 rounded-lg shadow flex gap-4 flex-wrap">
+                <Input 
+                    placeholder="Cari Nama / KTP..." 
+                    value={search} 
+                    onChange={e => setSearch(e.target.value)}
+                    className="w-full md:w-64"
+                />
+                <select 
+                    className="border rounded p-2 text-gray-700"
+                    value={statusFilter}
+                    onChange={e => setStatusFilter(e.target.value)}
+                >
+                    <option value="all">Semua Status Pembayaran</option>
+                    <option value="paid">Lunas</option>
+                    <option value="partial">Belum Lunas (Cicil)</option>
+                    <option value="unpaid">Belum Bayar</option>
+                </select>
             </div>
 
-            <Modal 
-                title={modal.item ? 'Edit Jemaah' : 'Pendaftaran Jemaah'} 
-                isOpen={modal.open} 
-                onClose={() => setModal({ open: false, item: null })}
-                size="lg"
-            >
-                <JamaahForm 
-                    initialData={modal.item} 
-                    packages={packages}
-                    onCancel={() => setModal({ open: false, item: null })}
-                    // Kita pass refreshData agar setelah simpan, list terupdate
+            <div className="bg-white shadow overflow-hidden sm:rounded-lg overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                        <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama Lengkap</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Paket</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Tagihan</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sisa</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                        {filteredJamaah?.map(j => {
+                            const sisa = j.total_price - j.amount_paid;
+                            return (
+                                <tr key={j.id}>
+                                    <td className="px-6 py-4 font-medium text-gray-900">
+                                        {j.full_name}
+                                        <div className="text-xs text-gray-500">{j.passport_number || 'No Passport'}</div>
+                                    </td>
+                                    <td className="px-6 py-4 text-gray-500 text-sm">Paket ID: {j.package_id}</td>
+                                    <td className="px-6 py-4 text-sm">Rp {parseInt(j.total_price).toLocaleString()}</td>
+                                    <td className="px-6 py-4 text-sm font-bold text-red-600">
+                                        Rp {sisa.toLocaleString()}
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                            ${j.payment_status === 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                            {j.payment_status === 'paid' ? 'Lunas' : 'Belum Lunas'}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-sm font-medium flex gap-2">
+                                        {j.payment_status !== 'paid' && (
+                                            <button 
+                                                onClick={() => openPaymentModal(j)}
+                                                className="text-white bg-green-600 hover:bg-green-700 px-2 py-1 rounded flex items-center gap-1"
+                                                title="Bayar"
+                                            >
+                                                <Banknote size={16} /> Bayar
+                                            </button>
+                                        )}
+                                        <button 
+                                            onClick={() => handleUploadDoc(j.id)}
+                                            className="text-white bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded flex items-center gap-1"
+                                            title="Upload Dokumen"
+                                        >
+                                            <Upload size={16} />
+                                        </button>
+                                        <button className="text-gray-600 hover:text-gray-900 px-2 py-1">
+                                            <FileText size={16} /> Detail
+                                        </button>
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
+
+            {isPaymentModalOpen && (
+                <JamaahPaymentsModal 
+                    jamaah={selectedJamaahForPay} 
+                    isOpen={isPaymentModalOpen} 
+                    onClose={() => setPaymentModalOpen(false)} 
                     onSuccess={() => {
-                        setModal({ open: false, item: null });
-                        refreshData('jamaah');
+                        fetchJamaah();
+                        setPaymentModalOpen(false);
                     }}
                 />
-            </Modal>
+            )}
         </div>
     );
 };

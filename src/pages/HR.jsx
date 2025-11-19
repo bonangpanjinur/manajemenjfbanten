@@ -1,81 +1,66 @@
 import React, { useState } from 'react';
-import { useApi } from '../context/ApiContext.jsx';
-import { LoadingSpinner } from '../components/common/Loading.jsx';
-import { Modal } from '../components/common/Modal.jsx';
-import UserForm from '../components/forms/UserForm.jsx';
-import { Plus, Edit, Trash2, User } from 'lucide-react';
+import { useApi } from '../context/ApiContext';
+import { Modal } from '../components/common/Modal';
+import { Button, Input, Select } from '../components/common/FormUI';
 
 const HR = () => {
-    // Menggunakan 'users' sebagai sumber data HR
-    const { data, loading, deleteItem } = useApi();
-    const staffList = data.users || [];
+    const { staff, updateStaffRole } = useApi(); // Asumsi user staff di load di context
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedStaff, setSelectedStaff] = useState(null);
 
-    const [modalState, setModalState] = useState({ isOpen: false, data: null });
-
-    const handleDelete = async (id) => {
-        if (confirm('Hapus akses staff ini?')) {
-            try {
-                await deleteItem('users', id);
-            } catch (e) { alert(e.message); }
-        }
+    const openPermissionModal = (staffMember) => {
+        setSelectedStaff(staffMember);
+        setIsModalOpen(true);
     };
 
-    if (loading && staffList.length === 0) return <LoadingSpinner />;
-
     return (
-        <div className="p-6 space-y-6">
-            <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-gray-800">Manajemen Staff (HR)</h1>
-                <button 
-                    onClick={() => setModalState({ isOpen: true, data: null })} 
-                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center"
-                >
-                    <Plus className="w-4 h-4 mr-2"/> Tambah Staff
-                </button>
-            </div>
-
-            <div className="bg-white rounded shadow overflow-hidden">
+        <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-gray-800">Manajemen Staff (HR)</h2>
+            
+            <div className="bg-white shadow rounded overflow-hidden">
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Nama</th>
-                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Email</th>
-                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Role</th>
-                            <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Aksi</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hak Akses</th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Aksi</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-200">
-                        {staffList.map(user => (
-                            <tr key={user.id} className="hover:bg-gray-50">
-                                <td className="px-6 py-4 flex items-center">
-                                    <div className="bg-gray-200 p-2 rounded-full mr-3"><User className="w-4 h-4 text-gray-600"/></div>
-                                    <span className="font-medium">{user.full_name || user.display_name}</span>
-                                </td>
-                                <td className="px-6 py-4 text-sm text-gray-600">{user.user_email || user.email}</td>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                        {staff?.map(s => (
+                            <tr key={s.id}>
+                                <td className="px-6 py-4 font-medium text-gray-900">{s.full_name}</td>
                                 <td className="px-6 py-4">
-                                    <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full capitalize">
-                                        {user.role?.replace('_', ' ')}
-                                    </span>
+                                    {/* Fix: Warna teks dropdown harus kontras */}
+                                    <span className="bg-blue-100 text-blue-800 py-1 px-2 rounded text-xs">{s.role}</span>
                                 </td>
-                                <td className="px-6 py-4 text-right space-x-2">
-                                    <button onClick={() => setModalState({ isOpen: true, data: user })} className="text-blue-600"><Edit className="w-4 h-4"/></button>
-                                    <button onClick={() => handleDelete(user.id)} className="text-red-600"><Trash2 className="w-4 h-4"/></button>
+                                <td className="px-6 py-4 text-sm text-gray-500">
+                                    <button onClick={() => openPermissionModal(s)} className="text-blue-600 hover:underline">Atur Hak Akses</button>
                                 </td>
+                                <td className="px-6 py-4 text-right text-sm">Edit | Hapus</td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
             </div>
 
-            <Modal 
-                title={modalState.data ? 'Edit Staff' : 'Tambah Staff Baru'} 
-                isOpen={modalState.isOpen} 
-                onClose={() => setModalState({ isOpen: false, data: null })}
-            >
-                <UserForm 
-                    data={modalState.data} 
-                    onSuccess={() => setModalState({ isOpen: false, data: null })} 
-                />
+            {/* Modal Pengaturan Hak Akses */}
+            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={`Hak Akses: ${selectedStaff?.full_name}`}>
+                <div className="space-y-4">
+                    <p className="text-sm text-gray-600">Centang fitur yang dapat diakses oleh staff ini.</p>
+                    <div className="grid grid-cols-2 gap-2">
+                        {['Dashboard', 'Keuangan', 'Marketing', 'Paket', 'Jemaah', 'HR'].map(feature => (
+                            <label key={feature} className="flex items-center space-x-2">
+                                <input type="checkbox" className="rounded text-blue-600 focus:ring-blue-500" />
+                                <span className="text-gray-700">{feature}</span>
+                            </label>
+                        ))}
+                    </div>
+                    <div className="flex justify-end mt-4">
+                        <Button onClick={() => setIsModalOpen(false)}>Simpan Akses</Button>
+                    </div>
+                </div>
             </Modal>
         </div>
     );

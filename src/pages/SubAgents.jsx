@@ -1,106 +1,75 @@
-import React, { useState, useMemo } from 'react';
-import { useApi } from '../context/ApiContext.jsx';
-import { LoadingSpinner } from '../components/common/Loading.jsx';
-import { Modal } from '../components/common/Modal.jsx';
-import SubAgentForm from '../components/forms/SubAgentForm.jsx';
-import { Plus, Edit, Trash2, UserCheck } from 'lucide-react';
+import React, { useState } from 'react';
+import { useApi } from '../context/ApiContext';
+import { Modal } from '../components/common/Modal';
+import { Button, Input, Textarea } from '../components/common/FormUI';
 
 const SubAgents = () => {
-    const { data, loading, deleteItem } = useApi();
-    const agents = data.sub_agents || [];
+    const { agents, createAgent } = useApi();
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [form, setForm] = useState({
+        name: '', phone: '', email: '',
+        province: '', city: '', district: '', village: '',
+        address_full: '', join_date: ''
+    });
 
-    const [modal, setModal] = useState({ open: false, item: null });
-    const [filter, setFilter] = useState('');
-
-    const filtered = useMemo(() => agents.filter(a => a.name.toLowerCase().includes(filter.toLowerCase())), [agents, filter]);
-
-    const handleDelete = async (id) => {
-        if (confirm('Hapus sub agen ini?')) await deleteItem('sub_agents', id);
+    const handleSubmit = () => {
+        createAgent(form);
+        setIsModalOpen(false);
     };
 
-    if (loading && agents.length === 0) return <LoadingSpinner />;
-
     return (
-        <div className="p-6 space-y-6">
-            <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-gray-800">Sub Agen</h1>
-                <button onClick={() => setModal({ open: true, item: null })} className="bg-blue-600 text-white px-4 py-2 rounded flex items-center hover:bg-blue-700">
-                    <Plus className="w-4 h-4 mr-2"/> Tambah Agen
-                </button>
+        <div className="space-y-6">
+            <div className="flex justify-between">
+                <h2 className="text-2xl font-bold text-gray-800">Sub Agen</h2>
+                <Button onClick={() => setIsModalOpen(true)}>Tambah Agen</Button>
             </div>
 
-            <div className="bg-white rounded shadow overflow-hidden">
-                <input className="m-4 p-2 border rounded w-64" placeholder="Cari agen..." value={filter} onChange={e=>setFilter(e.target.value)} />
+            {/* Table Listing */}
+            <div className="bg-white shadow overflow-hidden sm:rounded-lg">
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Nama</th>
-                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Kontak</th>
-                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Lokasi</th>
-                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Status</th>
-                            <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase">Aksi</th>
+                            <th className="px-6 py-3 text-left text-xs uppercase font-medium text-gray-500">Nama</th>
+                            <th className="px-6 py-3 text-left text-xs uppercase font-medium text-gray-500">Kota</th>
+                            <th className="px-6 py-3 text-left text-xs uppercase font-medium text-gray-500">Bergabung</th>
+                            <th className="px-6 py-3 text-left text-xs uppercase font-medium text-gray-500">Aksi</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-200">
-                        {filtered.map(agent => (
-                            <tr key={agent.id} className="hover:bg-gray-50">
-                                <td className="px-6 py-4 font-medium">{agent.name}</td>
-                                <td className="px-6 py-4 text-sm text-gray-600">
-                                    <div>{agent.phone}</div>
-                                    <div className="text-xs text-gray-400">{agent.email}</div>
-                                </td>
-                                <td className="px-6 py-4 text-sm">{agent.city || '-'}</td>
-                                <td className="px-6 py-4">
-                                    <span className={`px-2 py-1 text-xs rounded-full ${agent.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100'}`}>
-                                        {agent.status}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 text-right space-x-2">
-                                    <button onClick={() => setModal({ open: true, item: agent })} className="text-blue-600"><Edit className="w-4 h-4"/></button>
-                                    <button onClick={() => handleDelete(agent.id)} className="text-red-600"><Trash2 className="w-4 h-4"/></button>
-                                </td>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                        {agents?.map(agent => (
+                            <tr key={agent.id}>
+                                <td className="px-6 py-4 font-medium text-gray-900">{agent.name}</td>
+                                <td className="px-6 py-4 text-gray-500">{agent.city}, {agent.province}</td>
+                                <td className="px-6 py-4 text-gray-500">{agent.join_date}</td>
+                                <td className="px-6 py-4 text-blue-600 cursor-pointer">Detail</td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
             </div>
 
-            <Modal 
-                title={modal.item ? 'Edit Sub Agen' : 'Tambah Sub Agen'} 
-                isOpen={modal.open} 
-                onClose={() => setModal({ open: false, item: null })}
-            >
-                {/* Gunakan callback wrapper untuk props form */}
-                <SubAgentForm 
-                    initialData={modal.item} 
-                    onSave={async (formData) => {
-                        const { createOrUpdate } = useApi(); // Hook rule: must be top level, but assuming SubAgentForm handles submit logic internally or passed via props. 
-                        // Better pattern: SubAgentForm calls context internally or passed handler.
-                        // Let's assume SubAgentForm expects onSave to return promise.
-                        // But wait, hooks inside callback is bad.
-                        // Solution: Pass handler from parent.
-                    }}
-                    // Re-implementing handler properly below:
-                    onCancel={() => setModal({ open: false, item: null })}
-                    // Pass parent handler:
-                    externalSubmit={async (data) => {
-                        // We need createOrUpdate here
-                        // But can't use hook in callback
-                        // So we use the one from component scope
-                        const { createOrUpdate } = useApi(); // ERROR: Hook inside callback
-                    }}
-                />
-                {/* Correct approach: Render form and let it handle submission using context */}
-                 <SubAgentForm 
-                    initialData={modal.item}
-                    onSave={async (data) => {
-                        // We pass the data handling to the form usually, 
-                        // OR pass a function that calls the context function defined in PARENT scope.
-                         // Actually SubAgentForm should import useApi internally.
-                    }} 
-                    onCancel={() => setModal({ open: false, item: null })}
-                    closeModal={() => setModal({ open: false, item: null })}
-                 />
+            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Tambah Sub Agen">
+                <div className="space-y-4">
+                    <Input label="Nama Agen" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
+                    <div className="grid grid-cols-2 gap-4">
+                        <Input label="No HP" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} />
+                        <Input label="Email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <Input label="Provinsi" value={form.province} onChange={e => setForm({...form, province: e.target.value})} />
+                        <Input label="Kab/Kota" value={form.city} onChange={e => setForm({...form, city: e.target.value})} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <Input label="Kecamatan" value={form.district} onChange={e => setForm({...form, district: e.target.value})} />
+                        <Input label="Desa/Kel" value={form.village} onChange={e => setForm({...form, village: e.target.value})} />
+                    </div>
+                    <Textarea label="Alamat Lengkap" value={form.address_full} onChange={e => setForm({...form, address_full: e.target.value})} />
+                    <Input type="date" label="Tanggal Bergabung" value={form.join_date} onChange={e => setForm({...form, join_date: e.target.value})} />
+                    
+                    <div className="flex justify-end mt-4">
+                        <Button onClick={handleSubmit}>Simpan Agen</Button>
+                    </div>
+                </div>
             </Modal>
         </div>
     );

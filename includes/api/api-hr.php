@@ -1,80 +1,43 @@
 <?php
-// Lokasi: includes/api/api-hr.php
+if (!defined('ABSPATH')) exit;
 
-if (!defined('ABSPATH')) {
-    exit; // Exit if accessed directly
-}
+add_action('rest_api_init', function() {
+    // GET List Staff
+    register_rest_route('umh/v1', '/hr/staff', [
+        'methods' => 'GET',
+        'callback' => 'umh_get_staff_list',
+        'permission_callback' => function() { return current_user_can('list_users'); }
+    ]);
 
-/**
- * Register API routes for HR.
- *
- * @param string $namespace The API namespace.
- */
-function umh_register_hr_api_routes($namespace) {
-    global $wpdb;
-    $table_name = $wpdb->prefix . 'umh_hr';
-    $item_name = 'hr'; // 'hr'
-
-    // --- PERBAIKAN (Kategori 3, Poin 2): Tentukan Izin ---
-    // Dikelola oleh HR Staff, Admin, dan Owner
-    $permissions = array(
-        'get_items' => ['owner', 'admin_staff', 'hr_staff'],
-        'create_item' => ['owner', 'admin_staff', 'hr_staff'],
-        'get_item' => ['owner', 'admin_staff', 'hr_staff'],
-        'update_item' => ['owner', 'admin_staff', 'hr_staff'],
-        'delete_item' => ['owner', 'admin_staff'], // Hanya owner/admin yang bisa hapus
-    );
-    // --- AKHIR PERBAIKAN ---
-
-    // Buat instance CRUD controller
-    $crud_controller = new UMH_CRUD_Controller($table_name, $item_name, $permissions);
-
-    // Register routes
-    register_rest_route($namespace, "/{$item_name}", array(
-        array(
-            'methods'             => WP_REST_Server::READABLE,
-            'callback'            => array($crud_controller, 'get_items'),
-            'permission_callback' => function ($request) use ($permissions) {
-                return umh_check_api_permission($request, $permissions['get_items']);
-            },
-        ),
-        array(
-            'methods'             => WP_REST_Server::CREATABLE,
-            'callback'            => array($crud_controller, 'create_item'),
-            'permission_callback' => function ($request) use ($permissions) {
-                return umh_check_api_permission($request, $permissions['create_item']);
-            },
-            'args' => $crud_controller->get_endpoint_args_for_item_schema(WP_REST_Server::CREATABLE),
-        ),
-    ));
-
-    register_rest_route($namespace, "/{$item_name}/(?P<id>\d+)", array(
-        array(
-            'methods'             => WP_REST_Server::READABLE,
-            'callback'            => array($crud_controller, 'get_item'),
-            'permission_callback' => function ($request) use ($permissions) {
-                return umh_check_api_permission($request, $permissions['get_item']);
-            },
-        ),
-        array(
-            'methods'             => WP_REST_Server::EDITABLE,
-            'callback'            => array($crud_controller, 'update_item'),
-            'permission_callback' => function ($request) use ($permissions) {
-                return umh_check_api_permission($request, $permissions['update_item']);
-            },
-            'args' => $crud_controller->get_endpoint_args_for_item_schema(WP_REST_Server::EDITABLE),
-        ),
-        array(
-            'methods'             => WP_REST_Server::DELETABLE,
-            'callback'            => array($crud_controller, 'delete_item'),
-            'permission_callback' => function ($request) use ($permissions) {
-                return umh_check_api_permission($request, $permissions['delete_item']);
-            },
-        ),
-    ));
-}
-
-// Hook pendaftaran routes
-add_action('rest_api_init', function () {
-    umh_register_hr_api_routes('umh/v1');
+    // UPDATE Permission
+    register_rest_route('umh/v1', '/hr/staff/(?P<id>\d+)/permissions', [
+        'methods' => 'POST',
+        'callback' => 'umh_update_staff_permissions',
+        'permission_callback' => function() { return current_user_can('promote_users'); }
+    ]);
 });
+
+function umh_get_staff_list() {
+    global $wpdb;
+    // Mengambil data dari tabel umh_hr join dengan wp_users
+    $sql = "SELECT h.*, u.display_name as full_name, u.user_email 
+            FROM {$wpdb->prefix}umh_hr h 
+            JOIN {$wpdb->prefix}users u ON h.user_id = u.ID";
+    return $wpdb->get_results($sql);
+}
+
+function umh_update_staff_permissions($request) {
+    global $wpdb;
+    $id = $request['id'];
+    $params = $request->get_json_params();
+    
+    $permissions_json = json_encode($params['permissions']); // ['dashboard', 'finance', etc]
+
+    $updated = $wpdb->update(
+        $wpdb->prefix . 'umh_hr',
+        ['permissions' => $permissions_json],
+        ['id' => $id]
+    );
+
+    return ['success' => (bool)$updated];
+}

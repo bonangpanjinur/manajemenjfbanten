@@ -1,173 +1,108 @@
 <?php
-// File: includes/api/api-finance.php
-// Menggunakan CRUD Controller untuk mengelola Keuangan.
+if (!defined('ABSPATH')) exit;
 
-if (!defined('ABSPATH')) {
-    exit; // Exit if accessed directly
-}
+add_action('rest_api_init', 'umh_register_finance_routes');
 
-/**
- * Register API routes for Finance.
- */
-function umh_register_finance_api_routes() {
+function umh_register_finance_routes() {
     $namespace = 'umh/v1';
 
-    // === 1. Transaksi Keuangan Utama ===
-    $finance_schema = [
-        'transaction_date' => ['type' => 'string', 'format' => 'date', 'required' => true],
-        'description' => ['type' => 'string', 'required' => false, 'sanitize_callback' => 'sanitize_textarea_field'],
-        // PERBAIKAN: Mengganti nama 'transaction_type' menjadi 'type' agar cocok dengan DB
-        'type' => ['type' => 'string', 'required' => true, 'enum' => ['income', 'expense']],
-        'amount' => ['type' => 'number', 'required' => true],
-        'category_id' => ['type' => 'integer', 'required' => false, 'sanitize_callback' => 'absint'],
-        'account_id' => ['type' => 'integer', 'required' => true, 'sanitize_callback' => 'absint'],
-        'jamaah_id' => ['type' => 'integer', 'required' => false, 'sanitize_callback' => 'absint'],
-        'user_id' => ['type' => 'integer', 'required' => false, 'sanitize_callback' => 'absint'], // Diisi oleh controller
-        'status' => ['type' => 'string', 'required' => false, 'default' => 'completed', 'enum' => ['pending', 'completed']],
-    ];
+    // GET semua transaksi (Kas Umum & Jemaah)
+    register_rest_route($namespace, '/finance', [
+        'methods' => 'GET',
+        'callback' => 'umh_get_finance_logs',
+        'permission_callback' => '__return_true'
+    ]);
 
-    $finance_permissions = [
-        'get_items'    => ['owner', 'admin_staff', 'finance_staff'],
-        'get_item'     => ['owner', 'admin_staff', 'finance_staff'],
-        'create_item'  => ['owner', 'admin_staff', 'finance_staff'],
-        'update_item'  => ['owner', 'admin_staff', 'finance_staff'],
-        'delete_item'  => ['owner', 'admin_staff', 'finance_staff'],
-    ];
+    // POST Transaksi Umum (Kas Masuk/Keluar Operasional)
+    register_rest_route($namespace, '/finance/general', [
+        'methods' => 'POST',
+        'callback' => 'umh_create_general_trx',
+        'permission_callback' => function() { return current_user_can('edit_posts'); }
+    ]);
 
-    $finance_table_name = $GLOBALS['wpdb']->prefix . 'umh_finance';
-    $finance_item_name = 'finance'; // Endpoint: /finance
-
-    $finance_controller = new UMH_CRUD_Controller($finance_table_name, $finance_item_name, $finance_permissions);
-
-    // Register routes for /finance
-    register_rest_route($namespace, "/{$finance_item_name}", array(
-        array(
-            'methods'             => WP_REST_Server::READABLE,
-            'callback'            => array($finance_controller, 'get_items'),
-            // --- PERBAIKAN (Kategori 1): Menggunakan anonymous function ---
-            'permission_callback' => function ($request) use ($finance_permissions) {
-                return umh_check_api_permission($request, $finance_permissions['get_items']);
-            },
-            // --- AKHIR PERBAIKAN ---
-        ),
-        array(
-            'methods'             => WP_REST_Server::CREATABLE,
-            'callback'            => array($finance_controller, 'create_item'),
-            // --- PERBAIKAN (Kategori 1): Menggunakan anonymous function ---
-            'permission_callback' => function ($request) use ($finance_permissions) {
-                return umh_check_api_permission($request, $finance_permissions['create_item']);
-            },
-            // --- AKHIR PERBAIKAN ---
-            'args' => $finance_controller->get_endpoint_args_for_item_schema(WP_REST_Server::CREATABLE),
-        ),
-    ));
-
-    register_rest_route($namespace, "/{$finance_item_name}/(?P<id>\d+)", array(
-        array(
-            'methods'             => WP_REST_Server::READABLE,
-            'callback'            => array($finance_controller, 'get_item'),
-            // --- PERBAIKAN (Kategori 1): Menggunakan anonymous function ---
-            'permission_callback' => function ($request) use ($finance_permissions) {
-                return umh_check_api_permission($request, $finance_permissions['get_item']);
-            },
-            // --- AKHIR PERBAIKAN ---
-        ),
-        array(
-            'methods'             => WP_REST_Server::EDITABLE,
-            'callback'            => array($finance_controller, 'update_item'),
-            // --- PERBAIKAN (Kategori 1): Menggunakan anonymous function ---
-            'permission_callback' => function ($request) use ($finance_permissions) {
-                return umh_check_api_permission($request, $finance_permissions['update_item']);
-            },
-            // --- AKHIR PERBAIKAN ---
-            'args' => $finance_controller->get_endpoint_args_for_item_schema(WP_REST_Server::EDITABLE),
-        ),
-        array(
-            'methods'             => WP_REST_Server::DELETABLE,
-            'callback'            => array($finance_controller, 'delete_item'),
-            // --- PERBAIKAN (Kategori 1): Menggunakan anonymous function ---
-            'permission_callback' => function ($request) use ($finance_permissions) {
-                return umh_check_api_permission($request, $finance_permissions['delete_item']);
-            },
-            // --- AKHIR PERBAIKAN ---
-        ),
-    ));
-
-
-    // === 2. Akun Keuangan (Petty Cash, dll) ===
-    $accounts_schema = [
-        'name' => ['type' => 'string', 'required' => true, 'sanitize_callback' => 'sanitize_text_field'],
-        'description' => ['type' => 'string', 'required' => false, 'sanitize_callback' => 'sanitize_textarea_field'],
-    ];
-    
-    $accounts_permissions = [
-        'get_items'    => ['owner', 'admin_staff', 'finance_staff'], // Staf boleh lihat
-        'get_item'     => ['owner', 'admin_staff', 'finance_staff'],
-        'create_item'  => ['owner', 'admin_staff'], // Diubah agar admin bisa buat
-        'update_item'  => ['owner', 'admin_staff'],
-        'delete_item'  => ['owner'],
-    ];
-
-    $accounts_table_name = $GLOBALS['wpdb']->prefix . 'umh_finance_accounts';
-    // PERBAIKAN: item_name harus 'finance_account' agar endpoint jadi /finance_accounts
-    $accounts_item_name = 'finance_account'; // Endpoint: /finance_accounts
-
-    $accounts_controller = new UMH_CRUD_Controller($accounts_table_name, $accounts_item_name, $accounts_permissions);
-    
-    // Register routes for /finance_accounts
-    register_rest_route($namespace, "/{$accounts_item_name}s", array( // Menjadi /finance_accounts
-        array(
-            'methods'             => WP_REST_Server::READABLE,
-            'callback'            => array($accounts_controller, 'get_items'),
-            // --- PERBAIKAN (Kategori 1): Menggunakan anonymous function ---
-            'permission_callback' => function ($request) use ($accounts_permissions) {
-                return umh_check_api_permission($request, $accounts_permissions['get_items']);
-            },
-            // --- AKHIR PERBAIKAN ---
-        ),
-        array(
-            'methods'             => WP_REST_Server::CREATABLE,
-            'callback'            => array($accounts_controller, 'create_item'),
-            // --- PERBAIKAN (Kategori 1): Menggunakan anonymous function ---
-            'permission_callback' => function ($request) use ($accounts_permissions) {
-                return umh_check_api_permission($request, $accounts_permissions['create_item']);
-            },
-            // --- AKHIR PERBAIKAN ---
-            'args' => $accounts_controller->get_endpoint_args_for_item_schema(WP_REST_Server::CREATABLE),
-        ),
-    ));
-    
-    register_rest_route($namespace, "/{$accounts_item_name}s/(?P<id>\d+)", array( // Menjadi /finance_accounts/(id)
-        array(
-            'methods'             => WP_REST_Server::READABLE,
-            'callback'            => array($accounts_controller, 'get_item'),
-            // --- PERBAIKAN (Kategori 1): Menggunakan anonymous function ---
-            'permission_callback' => function ($request) use ($accounts_permissions) {
-                return umh_check_api_permission($request, $accounts_permissions['get_item']);
-            },
-            // --- AKHIR PERBAIKAN ---
-        ),
-        array(
-            'methods'             => WP_REST_Server::EDITABLE,
-            'callback'            => array($accounts_controller, 'update_item'),
-            // --- PERBAIKAN (Kategori 1): Menggunakan anonymous function ---
-            'permission_callback' => function ($request) use ($accounts_permissions) {
-                return umh_check_api_permission($request, $accounts_permissions['update_item']);
-            },
-            // --- AKHIR PERBAIKAN ---
-            'args' => $accounts_controller->get_endpoint_args_for_item_schema(WP_REST_Server::EDITABLE),
-        ),
-        array(
-            'methods'             => WP_REST_Server::DELETABLE,
-            'callback'            => array($accounts_controller, 'delete_item'),
-            // --- PERBAIKAN (Kategori 1): Menggunakan anonymous function ---
-            'permission_callback' => function ($request) use ($accounts_permissions) {
-                return umh_check_api_permission($request, $accounts_permissions['delete_item']);
-            },
-            // --- AKHIR PERBAIKAN ---
-        ),
-    ));
+    // POST Pembayaran Jemaah (Khusus)
+    register_rest_route($namespace, '/finance/jamaah-payment', [
+        'methods' => 'POST',
+        'callback' => 'umh_create_jamaah_payment',
+        'permission_callback' => function() { return current_user_can('edit_posts'); }
+    ]);
 }
 
-// Hook pendaftaran routes
-add_action('rest_api_init', 'umh_register_finance_api_routes');
+function umh_get_finance_logs() {
+    global $wpdb;
+    // Ambil 100 transaksi terakhir
+    return $wpdb->get_results("SELECT * FROM {$wpdb->prefix}umh_finance ORDER BY transaction_date DESC, id DESC LIMIT 100");
+}
+
+function umh_create_general_trx($request) {
+    global $wpdb;
+    $p = $request->get_json_params();
+
+    $wpdb->insert($wpdb->prefix . 'umh_finance', [
+        'transaction_date' => $p['date'],
+        'type' => $p['type'], // income / expense
+        'category' => 'General',
+        'amount' => $p['amount'],
+        'description' => $p['description'],
+        'created_at' => current_time('mysql')
+    ]);
+
+    return ['success' => true, 'id' => $wpdb->insert_id];
+}
+
+// Logika Kompleks: Catat di Finance + Update Tagihan Jemaah
+function umh_create_jamaah_payment($request) {
+    global $wpdb;
+    // Support multipart form data (file upload) atau JSON
+    $params = $request->get_params(); 
+    $files = $request->get_file_params();
+
+    $jamaah_id = $params['jamaah_id'];
+    $amount = $params['amount'];
+    $package_id = $params['package_id'];
+    
+    // 1. Upload Bukti (Jika ada)
+    $proof_url = '';
+    if (!empty($files['proof_file'])) {
+        require_once(ABSPATH . 'wp-admin/includes/file.php');
+        $uploaded = wp_handle_upload($files['proof_file'], ['test_form' => false]);
+        if (!isset($uploaded['error'])) {
+            $proof_url = $uploaded['url'];
+        }
+    }
+
+    // 2. Insert ke Tabel Finance
+    $wpdb->insert($wpdb->prefix . 'umh_finance', [
+        'transaction_date' => current_time('mysql'),
+        'type' => 'income',
+        'category' => 'Pembayaran Jemaah',
+        'amount' => $amount,
+        'description' => "Pembayaran Umroh (Paket ID: $package_id)",
+        'jamaah_id' => $jamaah_id,
+        'proof_url' => $proof_url,
+        'created_at' => current_time('mysql')
+    ]);
+
+    // 3. Update Data Jemaah (Total Bayar & Status)
+    $jamaah = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}umh_jamaah WHERE id = $jamaah_id");
+    $new_amount_paid = $jamaah->amount_paid + $amount;
+    
+    // Tentukan status lunas/belum
+    $payment_status = 'partial';
+    if ($new_amount_paid >= $jamaah->total_price) {
+        $payment_status = 'paid';
+    } elseif ($new_amount_paid == 0) {
+        $payment_status = 'unpaid';
+    }
+
+    $wpdb->update($wpdb->prefix . 'umh_jamaah', 
+        [
+            'amount_paid' => $new_amount_paid,
+            'payment_status' => $payment_status,
+            'package_id' => $package_id // Update paket jika berubah
+        ],
+        ['id' => $jamaah_id]
+    );
+
+    return ['success' => true, 'new_balance' => $new_amount_paid, 'status' => $payment_status];
+}

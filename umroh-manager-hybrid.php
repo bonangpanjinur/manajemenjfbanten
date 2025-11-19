@@ -1,124 +1,72 @@
 <?php
-// File Location: ./umroh-manager-hybrid.php
+/*
+Plugin Name: Umroh Manager Hybrid
+Description: Sistem Manajemen Travel Umroh
+Version: 1.1.0
+Author: Bonang Panji Nur
+*/
 
-/**
- * Plugin Name:       Umroh Manager Hybrid
- * Description:       Plugin manajemen umroh lengkap (Paket, Jamaah, Keuangan, HR, Marketing, Sub Agen).
- * Version:           1.0.1
- * Author:            Bonang Panji Nur
- * Text Domain:       umroh-manager-hybrid
- */
-
-if (!defined('ABSPATH')) {
-    exit; 
-}
+if (!defined('ABSPATH')) exit;
 
 define('UMH_PLUGIN_PATH', plugin_dir_path(__FILE__));
 define('UMH_PLUGIN_URL', plugin_dir_url(__FILE__));
-define('UMH_PLUGIN_VERSION', '1.0.1');
 
-// ------------------------------------------------------------------------
-// 1. Core Includes & Utilities
-// ------------------------------------------------------------------------
-require_once(UMH_PLUGIN_PATH . 'includes/db-schema.php');
-require_once(UMH_PLUGIN_PATH . 'includes/utils.php');
-require_once(UMH_PLUGIN_PATH . 'includes/class-umh-crud-controller.php');
-require_once(UMH_PLUGIN_PATH . 'includes/cors.php');
+// 1. Core Includes (Database & Utils)
+require_once UMH_PLUGIN_PATH . 'includes/db-schema.php';
+require_once UMH_PLUGIN_PATH . 'includes/utils.php';
+require_once UMH_PLUGIN_PATH . 'includes/class-umh-crud-controller.php';
+require_once UMH_PLUGIN_PATH . 'includes/cors.php';
 
-// ------------------------------------------------------------------------
-// 2. Activation Hook (Database Creation)
-// ------------------------------------------------------------------------
+// 2. API Includes (Memuat SEMUA API agar tidak ada fitur hilang)
+// -- API Utama
+require_once UMH_PLUGIN_PATH . 'includes/api/api-users.php';
+require_once UMH_PLUGIN_PATH . 'includes/api/api-packages.php';
+require_once UMH_PLUGIN_PATH . 'includes/api/api-jamaah.php';
+require_once UMH_PLUGIN_PATH . 'includes/api/api-finance.php';
+require_once UMH_PLUGIN_PATH . 'includes/api/api-marketing.php';
+require_once UMH_PLUGIN_PATH . 'includes/api/api-sub-agents.php';
+require_once UMH_PLUGIN_PATH . 'includes/api/api-hr.php';
+require_once UMH_PLUGIN_PATH . 'includes/api/api-stats.php';
+
+// -- API Fitur Pendukung (Penting agar fitur lama tetap jalan)
+require_once UMH_PLUGIN_PATH . 'includes/api/api-uploads.php';       // Untuk upload file
+require_once UMH_PLUGIN_PATH . 'includes/api/api-tasks.php';         // Manajemen tugas
+require_once UMH_PLUGIN_PATH . 'includes/api/api-roles.php';         // Role manajemen
+require_once UMH_PLUGIN_PATH . 'includes/api/api-print.php';         // Fitur Cetak/Print
+require_once UMH_PLUGIN_PATH . 'includes/api/api-logs.php';          // Log aktivitas
+require_once UMH_PLUGIN_PATH . 'includes/api/api-export.php';        // Export Excel/PDF
+require_once UMH_PLUGIN_PATH . 'includes/api/api-departures.php';    // Keberangkatan
+require_once UMH_PLUGIN_PATH . 'includes/api/api-categories.php';    // Kategori
+
+// -- API Khusus (Legacy & Baru)
+// Kita tetap load api-jamaah-payments.php jika ada logika history pembayaran spesifik di sana
+if (file_exists(UMH_PLUGIN_PATH . 'includes/api/api-jamaah-payments.php')) {
+    require_once UMH_PLUGIN_PATH . 'includes/api/api-jamaah-payments.php';
+}
+
+// API Master Data (BARU - Untuk Maskapai & Hotel)
+// Catatan: Jika api-hotels.php & api-flights.php lama masih dipakai di frontend lama, biarkan di-load.
+// Namun Master Data baru akan menggunakan endpoint baru di api-master-data.php
+require_once UMH_PLUGIN_PATH . 'includes/api/api-master-data.php'; 
+if (file_exists(UMH_PLUGIN_PATH . 'includes/api/api-hotels.php')) {
+    require_once UMH_PLUGIN_PATH . 'includes/api/api-hotels.php';
+}
+if (file_exists(UMH_PLUGIN_PATH . 'includes/api/api-flights.php')) {
+    require_once UMH_PLUGIN_PATH . 'includes/api/api-flights.php';
+}
+
+// 3. Activation Hook (Membuat Tabel Database)
 register_activation_hook(__FILE__, 'umh_create_tables');
 
-// ------------------------------------------------------------------------
-// 3. Admin Pages & Menu
-// ------------------------------------------------------------------------
-require_once(UMH_PLUGIN_PATH . 'admin/dashboard-react.php');
-require_once(UMH_PLUGIN_PATH . 'admin/settings-page.php');
-require_once(UMH_PLUGIN_PATH . 'admin/print-registration.php');
+// 4. Admin Menu & React Integration
+require_once UMH_PLUGIN_PATH . 'admin/dashboard-react.php';
 
-function umh_register_admin_menu() {
-    // Menu Utama (React App)
-    add_menu_page(
-        'Umroh Manager', 
-        'Umroh Manager', 
-        'manage_options', 
-        'umroh-manager-hybrid', 
-        'umh_render_react_dashboard', 
-        'dashicons-airplane', 
-        20
-    );
-    
-    // Submenu Pengaturan
-    add_submenu_page(
-        'umroh-manager-hybrid',
-        'Pengaturan',
-        'Pengaturan',
-        'manage_options',
-        'umh-settings',
-        'umh_render_settings_page'
-    );
-}
-add_action('admin_menu', 'umh_register_admin_menu');
+function umh_enqueue_scripts($hook) {
+    // Hanya load di halaman plugin ini
+    if ($hook != 'toplevel_page_umroh-manager-hybrid') return;
 
-// ------------------------------------------------------------------------
-// 4. API Routes Includes
-// ------------------------------------------------------------------------
-// Pastikan semua file API di-load agar endpoint tersedia
-require_once(UMH_PLUGIN_PATH . 'includes/api/api-stats.php');
-require_once(UMH_PLUGIN_PATH . 'includes/api/api-users.php');
-require_once(UMH_PLUGIN_PATH . 'includes/api/api-roles.php');
-require_once(UMH_PLUGIN_PATH . 'includes/api/api-hr.php');
-require_once(UMH_PLUGIN_PATH . 'includes/api/api-packages.php');
-require_once(UMH_PLUGIN_PATH . 'includes/api/api-departures.php');
-require_once(UMH_PLUGIN_PATH . 'includes/api/api-hotels.php');
-require_once(UMH_PLUGIN_PATH . 'includes/api/api-flights.php');
-require_once(UMH_PLUGIN_PATH . 'includes/api/api-jamaah.php');
-require_once(UMH_PLUGIN_PATH . 'includes/api/api-jamaah-payments.php');
-require_once(UMH_PLUGIN_PATH . 'includes/api/api-finance.php');
-require_once(UMH_PLUGIN_PATH . 'includes/api/api-categories.php');
-require_once(UMH_PLUGIN_PATH . 'includes/api/api-marketing.php');
-require_once(UMH_PLUGIN_PATH . 'includes/api/api-tasks.php');
-require_once(UMH_PLUGIN_PATH . 'includes/api/api-uploads.php');
-require_once(UMH_PLUGIN_PATH . 'includes/api/api-logs.php');
-require_once(UMH_PLUGIN_PATH . 'includes/api/api-export.php');
-require_once(UMH_PLUGIN_PATH . 'includes/api/api-print.php');
-require_once(UMH_PLUGIN_PATH . 'includes/api/api-sub-agents.php'); // Baru: Sub Agen API
+    $asset_file = include(UMH_PLUGIN_PATH . 'build/index.asset.php');
 
-// ------------------------------------------------------------------------
-// 5. Asset Enqueue (React & CSS)
-// ------------------------------------------------------------------------
-function umh_enqueue_admin_scripts($hook) {
-    $allowed_hooks = [
-        'toplevel_page_umroh-manager-hybrid',
-        'umroh-manager_page_umh-settings',
-        'admin_page_umh-print-registration'
-    ];
-
-    if (!in_array($hook, $allowed_hooks)) {
-        return;
-    }
-
-    // Khusus Halaman Print
-    if ($hook === 'admin_page_umh-print-registration') {
-        wp_enqueue_style('umh-print-style', UMH_PLUGIN_URL . 'assets/css/admin-style.css', [], UMH_PLUGIN_VERSION);
-        return;
-    }
-
-    // Cek keberadaan file asset (build)
-    $asset_file_path = UMH_PLUGIN_PATH . 'build/index.asset.php';
-    
-    if (file_exists($asset_file_path)) {
-        $asset_file = include($asset_file_path);
-    } else {
-        // Fallback jika belum di-build
-        $asset_file = [
-            'dependencies' => ['wp-element', 'wp-i18n', 'wp-api-fetch'],
-            'version' => UMH_PLUGIN_VERSION
-        ];
-    }
-
-    // Enqueue React App
     wp_enqueue_script(
         'umh-react-app',
         UMH_PLUGIN_URL . 'build/index.js',
@@ -126,20 +74,28 @@ function umh_enqueue_admin_scripts($hook) {
         $asset_file['version'],
         true
     );
-
-    // Enqueue Styles
-    if (file_exists(UMH_PLUGIN_PATH . 'build/index.css')) {
-        wp_enqueue_style('umh-react-style', UMH_PLUGIN_URL . 'build/index.css', [], $asset_file['version']);
+    
+    // Siapkan data user saat ini untuk dikirim ke React
+    $current_user = wp_get_current_user();
+    
+    // Logika Role Sederhana (Fallback jika tabel HR belum ada data)
+    $role = 'staff';
+    if (in_array('administrator', $current_user->roles)) {
+        $role = 'owner';
     }
     
-    // Custom Admin CSS (Optional override)
-    if (file_exists(UMH_PLUGIN_PATH . 'assets/css/admin-style.css')) {
-        wp_enqueue_style('umh-admin-style', UMH_PLUGIN_URL . 'assets/css/admin-style.css', [], UMH_PLUGIN_VERSION);
-    }
+    wp_localize_script('umh-react-app', 'umh_wp_data', [
+        'api_url' => rest_url('umh/v1/'),
+        'nonce' => wp_create_nonce('wp_rest'),
+        'user' => [
+            'id' => $current_user->ID,
+            'name' => $current_user->display_name,
+            'email' => $current_user->user_email,
+            'role' => $role
+        ],
+        'plugin_url' => UMH_PLUGIN_URL
+    ]);
 
-    // Kirim data ke JS (Nonce, URL, dll) - Fungsi ini ada di includes/utils.php
-    if (function_exists('umh_localize_script')) {
-        umh_localize_script();
-    }
+    wp_enqueue_style('umh-style', UMH_PLUGIN_URL . 'build/index.css');
 }
-add_action('admin_enqueue_scripts', 'umh_enqueue_admin_scripts');
+add_action('admin_enqueue_scripts', 'umh_enqueue_scripts');
