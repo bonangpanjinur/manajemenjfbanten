@@ -1,123 +1,73 @@
 <?php
-/**
- * API Handler untuk Statistik Dashboard
- * Endpoint: /wp-json/umh/v1/stats/dashboard
- */
-
-if ( ! defined( 'ABSPATH' ) ) {
-    exit;
-}
+if ( ! defined( 'ABSPATH' ) ) exit;
 
 class UMH_API_Stats {
-
     public function __construct() {
         add_action( 'rest_api_init', array( $this, 'register_routes' ) );
     }
 
     public function register_routes() {
-        $namespace = 'umh/v1';
-        
-        register_rest_route( $namespace, '/stats/dashboard', array(
-            'methods'             => WP_REST_Server::READABLE,
-            'callback'            => array( $this, 'get_dashboard_stats' ),
-            'permission_callback' => array( $this, 'check_permission' ),
+        register_rest_route( 'umh/v1', '/stats/dashboard', array(
+            'methods'  => 'GET',
+            'callback' => array( $this, 'get_dashboard_stats' ),
+            'permission_callback' => function() { return is_user_logged_in(); }
         ) );
-    }
-
-    public function check_permission() {
-        return is_user_logged_in(); // Semua user login bisa akses, nanti data difilter berdasarkan role
     }
 
     public function get_dashboard_stats( $request ) {
         global $wpdb;
-        $user = wp_get_current_user();
-        $is_admin_or_owner = in_array( 'administrator', (array) $user->roles ) || in_array( 'umh_owner', (array) $user->roles ); // Asumsi role owner
-
-        $data = array(
-            'cards' => array(),
-            'chart' => array(),
-            'upcoming' => array(),
-            'alerts' => array()
-        );
-
-        // 1. STATISTIK KARTU UTAMA
-        $tbl_jamaah = $wpdb->prefix . 'umh_jamaah';
-        $tbl_finance = $wpdb->prefix . 'umh_cash_flow';
-        $tbl_packages = $wpdb->prefix . 'umh_packages';
-
-        // Total Jamaah Aktif (Belum berangkat atau baru pulang)
-        $data['cards']['total_jamaah'] = (int) $wpdb->get_var( "SELECT COUNT(*) FROM $tbl_jamaah" );
         
-        // Jamaah Bulan Ini
-        $current_month = date('Y-m');
-        $data['cards']['new_jamaah_month'] = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $tbl_jamaah WHERE created_at LIKE %s", $current_month . '%' ) );
-
-        // Sisa Kursi (Paket Aktif)
-        // Ini logic sederhana, idealnya hitung kuota per paket dikurang jumlah jamaah
-        $data['cards']['active_packages'] = (int) $wpdb->get_var( "SELECT COUNT(*) FROM $tbl_packages WHERE status = 'active'" );
-
-        // KHUSUS ADMIN/OWNER: Data Keuangan
-        if ( $is_admin_or_owner ) {
-            $in = $wpdb->get_var( "SELECT SUM(amount) FROM $tbl_finance WHERE type = 'in'" );
-            $out = $wpdb->get_var( "SELECT SUM(amount) FROM $tbl_finance WHERE type = 'out'" );
-            
-            $data['cards']['revenue'] = (float) $in;
-            $data['cards']['expense'] = (float) $out;
-            $data['cards']['profit'] = (float) ($in - $out);
-        }
-
-        // 2. GRAFIK PENDAFTARAN JAMAAH (6 Bulan Terakhir)
-        // Query Group By Month
-        $chart_sql = "
-            SELECT DATE_FORMAT(created_at, '%Y-%m') as month, COUNT(*) as count 
-            FROM $tbl_jamaah 
+        // Data Cards
+        $jamaah_count = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}umh_jamaah");
+        $new_jamaah = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}umh_jamaah WHERE MONTH(created_at) = MONTH(CURRENT_DATE())");
+        $income = $wpdb->get_var("SELECT SUM(amount) FROM {$wpdb->prefix}umh_cash_flow WHERE type='in'");
+        $expense = $wpdb->get_var("SELECT SUM(amount) FROM {$wpdb->prefix}umh_cash_flow WHERE type='out'");
+        
+        // Chart Data (6 Bulan Terakhir)
+        $chart_data = $wpdb->get_results("
+            SELECT DATE_FORMAT(created_at, '%M') as month, COUNT(*) as count 
+            FROM {$wpdb->prefix}umh_jamaah 
             WHERE created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
-            GROUP BY month 
-            ORDER BY month ASC
-        ";
-        $chart_results = $wpdb->get_results( $chart_sql );
-        
-        // Format data untuk chart frontend
-        $data['chart'] = $chart_results;
+            GROUP BY MONTH(created_at) ORDER BY created_at ASC
+        ");
 
-        // 3. KEBERANGKATAN TERDEKAT (Upcoming Departures)
-        $upcoming_sql = "
-            SELECT id, name, departure_date, airline_id, status 
-            FROM $tbl_packages 
-            WHERE departure_date >= CURDATE() AND status = 'active'
-            ORDER BY departure_date ASC 
-            LIMIT 5
-        ";
-        $upcoming_pkgs = $wpdb->get_results( $upcoming_sql );
+        // Upcoming Departures
+        $upcoming = $wpdb->get_results("
+            SELECT p.name, p.departure_date, 
+            (SELECT name FROM {$wpdb->prefix}umh_master_data WHERE id = p.airline_id) as airline_name,
+            (SELECT COUNT(*) FROM {$wpdb->prefix}umh_jamaah WHERE package_id = p.id) as jamaah_count
+            FROM {$wpdb->prefix}umh_packages p
+            WHERE p.departure_date >= CURDATE() AND p.status = 'active'
+            ORDER BY p.departure_date ASC LIMIT 5
+        ");
+
+        // Poin 10: Tasks untuk User yang sedang login
+        $current_user_id = get_current_user_id();
+        // Cari employee_id dari wp_user_id
+        $employee = $wpdb->get_row($wpdb->prepare("SELECT id FROM {$wpdb->prefix}umh_employees WHERE wp_user_id = %d", $current_user_id));
         
-        foreach($upcoming_pkgs as $pkg) {
-            // Hitung jamaah per paket
-            $pkg->jamaah_count = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $tbl_jamaah WHERE package_id = %d", $pkg->id ) );
-            // Ambil nama maskapai
-            $pkg->airline_name = $this->get_master_name($pkg->airline_id, 'airline');
+        $my_tasks = [];
+        if ($employee) {
+            $my_tasks = $wpdb->get_results($wpdb->prepare("
+                SELECT * FROM {$wpdb->prefix}umh_tasks 
+                WHERE employee_id = %d AND status != 'completed'
+                ORDER BY due_date ASC
+            ", $employee->id));
         }
-        $data['upcoming'] = $upcoming_pkgs;
 
-        // 4. ALERT SYSTEM (Paspor Expired & Belum Lunas H-30)
-        // Cek paspor expired dalam 6 bulan ke depan
-        $passport_alert_sql = "
-            SELECT id, full_name, passport_expiry_date, 'passport_warning' as type
-            FROM $tbl_jamaah 
-            WHERE passport_expiry_date IS NOT NULL 
-            AND passport_expiry_date <= DATE_ADD(CURDATE(), INTERVAL 6 MONTH)
-            AND passport_expiry_date >= CURDATE()
-            LIMIT 5
-        ";
-        $data['alerts'] = $wpdb->get_results( $passport_alert_sql );
-
-        return rest_ensure_response( $data );
-    }
-
-    private function get_master_name($id, $type) {
-        global $wpdb;
-        if(!$id) return '-';
-        return $wpdb->get_var( $wpdb->prepare( "SELECT name FROM {$wpdb->prefix}umh_master_data WHERE id = %d AND type = %s", $id, $type ) ) ?: '-';
+        return rest_ensure_response(array(
+            'cards' => array(
+                'total_jamaah' => (int)$jamaah_count,
+                'new_jamaah_month' => (int)$new_jamaah,
+                'revenue' => (float)$income,
+                'profit' => (float)$income - (float)$expense,
+                'expense' => (float)$expense,
+                'active_packages' => count($upcoming)
+            ),
+            'chart' => $chart_data,
+            'upcoming' => $upcoming,
+            'my_tasks' => $my_tasks
+        ));
     }
 }
-
 new UMH_API_Stats();

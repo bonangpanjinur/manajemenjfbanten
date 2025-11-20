@@ -16,7 +16,6 @@ function umh_render_react_dashboard() {
     echo '<div id="umh-admin-app"></div>';
 }
 
-
 /**
  * Meloloskan data dari PHP (WordPress) ke JavaScript (React)
  * menggunakan wp_localize_script.
@@ -25,43 +24,30 @@ function umh_render_react_dashboard() {
  */
 function umh_localize_script() {
     
+    $user_data = [
+        'id' => 0,
+        'name' => 'Guest',
+        'role' => 'none',
+        'error' => '',
+    ];
+
     // Pastikan fungsi helper tersedia (dari includes/utils.php)
-    if (!function_exists('umh_get_current_user_context')) { 
-         wp_localize_script('umh-react-app', 'umh_wp_data', [
-            'api_url' => esc_url_raw(rest_url('umh/v1/')),
-            'nonce'   => wp_create_nonce('wp_rest'),
-            'user'    => [
-                'id' => 0,
-                'name' => 'Error User',
-                'role' => 'none',
-                'error' => 'Gagal memuat data user (utils.php tidak termuat).',
-            ],
-            'printUrl' => esc_url_raw(admin_url('admin.php?page=umh-print-registration')),
-            // --- PENAMBAHAN: Tambahkan data yang hilang ---
-            'adminUrl' => esc_url_raw(admin_url()),
-            'is_wp_admin' => false,
-            // --- AKHIR PENAMBAHAN ---
-        ]);
-        return;
+    if (function_exists('umh_get_current_user_context')) {
+        $user_data = umh_get_current_user_context();
+    } else {
+        $user_data['error'] = 'utils.php tidak termuat';
     }
 
-    // Ambil data user yang sedang login
-    $user_data = umh_get_current_user_context(); 
+    // Cek apakah user adalah admin WP (untuk hak akses khusus di UI)
+    $is_wp_admin = (isset($user_data['role']) && $user_data['role'] === 'administrator');
 
-    // --- PENAMBAHAN: Cek apakah user adalah admin WP ---
-    $is_wp_admin = ($user_data['role'] === 'administrator');
-    // --- AKHIR PENAMBAHAN ---
-
-    // Kirim data ke script 'umh-react-app' (handle dari wp_enqueue_script)
-    // Data ini akan tersedia di JavaScript sebagai object window.umh_wp_data
+    // --- PENTING: Nama objek harus 'umh_wp_data' sesuai dengan src/context/ApiContext.jsx ---
     wp_localize_script('umh-react-app', 'umh_wp_data', [
         'api_url'  => esc_url_raw(rest_url('umh/v1/')),
         'nonce'    => wp_create_nonce('wp_rest'),
-        'user'     => $user_data, // Data user yang login (id, name, role)
-        'printUrl' => esc_url_raw(admin_url('admin.php?page=umh-print-registration')), // URL untuk cetak
-        // --- PENAMBAHAN: Tambahkan data yang hilang ---
+        'user'     => $user_data, // Data user yang login
+        'printUrl' => esc_url_raw(admin_url('admin.php?page=umh-print-registration')),
         'adminUrl' => esc_url_raw(admin_url()),
         'is_wp_admin' => $is_wp_admin,
-        // --- AKHIR PENAMBAHAN ---
     ]);
 }

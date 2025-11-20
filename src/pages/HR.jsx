@@ -1,157 +1,114 @@
 import React, { useState, useEffect } from 'react';
 import { useApi } from '../context/ApiContext';
-import { useAuth } from '../context/AuthContext';
-import Modal from '../components/common/Modal'; // PERBAIKAN: Import Default (Tanpa Kurung Kurawal)
 import Loading from '../components/common/Loading';
-import UserForm from '../components/forms/UserForm'; // Pastikan path ini benar
-import { FaUserPlus, FaEdit, FaTrash, FaUserTie } from 'react-icons/fa';
 
 const HR = () => {
-    const { getEmployees, createOrUpdate, apiCall, loading } = useApi();
+    const { apiCall, loading } = useApi();
+    const [activeTab, setActiveTab] = useState('staff'); // staff, attendance, payroll
     const [employees, setEmployees] = useState([]);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [selectedEmployee, setSelectedEmployee] = useState(null);
-    const [localLoading, setLocalLoading] = useState(true); // Loading state lokal halaman ini
-
-    // Fetch Data Pegawai
-    const fetchData = async () => {
-        setLocalLoading(true);
-        try {
-            // Kita gunakan getEmployees dari context, atau fallback ke manual fetch jika belum ada
-            const res = await getEmployees ? getEmployees() : apiCall('/hr/employees');
-            setEmployees(Array.isArray(res) ? res : (res.data || []));
-        } catch (error) {
-            console.error("Gagal memuat data HR:", error);
-        } finally {
-            setLocalLoading(false);
-        }
-    };
+    const [payroll, setPayroll] = useState([]);
 
     useEffect(() => {
-        fetchData();
-    }, []);
+        if (activeTab === 'staff' || activeTab === 'attendance') {
+            apiCall('/hr/employees').then(res => setEmployees(res || []));
+        }
+        if (activeTab === 'payroll') {
+            apiCall('/hr/payroll').then(res => setPayroll(res || []));
+        }
+    }, [activeTab]);
 
-    const handleCreate = () => {
-        setSelectedEmployee(null);
-        setIsModalOpen(true);
-    };
-
-    const handleEdit = (emp) => {
-        setSelectedEmployee(emp);
-        setIsModalOpen(true);
-    };
-
-    const handleDelete = async (id) => {
-        if (window.confirm('Apakah Anda yakin ingin menghapus data pegawai ini?')) {
-            try {
-                await apiCall(`/users/${id}`, 'DELETE');
-                fetchData(); // Refresh data
-            } catch (error) {
-                alert('Gagal menghapus: ' + error.message);
-            }
+    // Handle Checkbox Absensi
+    const handleAttendanceSubmit = async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const data = employees.map(emp => ({
+            id: emp.id,
+            status: form[`status_${emp.id}`].value
+        }));
+        
+        try {
+            await apiCall('/hr/attendance', 'POST', { 
+                date: new Date().toISOString().split('T')[0],
+                employees: data 
+            });
+            alert('Absensi tersimpan!');
+        } catch (err) {
+            alert('Gagal simpan absensi');
         }
     };
-
-    const handleFormSuccess = () => {
-        setIsModalOpen(false);
-        fetchData();
-    };
-
-    if (localLoading && employees.length === 0) return <Loading text="Memuat Data Pegawai..." />;
 
     return (
         <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Manajemen HR & Staff</h1>
-                    <p className="text-sm text-gray-500">Kelola data pengguna dan hak akses sistem.</p>
-                </div>
-                <button 
-                    onClick={handleCreate}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition shadow-sm"
-                >
-                    <FaUserPlus /> Tambah Pegawai
-                </button>
+            <h1 className="text-2xl font-bold mb-6">Manajemen HR</h1>
+            
+            <div className="flex space-x-4 mb-6 border-b">
+                <button onClick={() => setActiveTab('staff')} className={`pb-2 px-4 ${activeTab==='staff' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500'}`}>Data Karyawan</button>
+                <button onClick={() => setActiveTab('attendance')} className={`pb-2 px-4 ${activeTab==='attendance' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500'}`}>Absensi Harian</button>
+                <button onClick={() => setActiveTab('payroll')} className={`pb-2 px-4 ${activeTab==='payroll' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500'}`}>Gaji & Kasbon</button>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead className="bg-gray-50 text-gray-600 uppercase text-xs font-bold">
-                            <tr>
-                                <th className="p-4 border-b">Nama Lengkap</th>
-                                <th className="p-4 border-b">Email / Username</th>
-                                <th className="p-4 border-b">Role / Jabatan</th>
-                                <th className="p-4 border-b">Status</th>
-                                <th className="p-4 border-b text-right">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {employees.length > 0 ? (
-                                employees.map((emp) => (
-                                    <tr key={emp.id} className="hover:bg-gray-50 transition">
-                                        <td className="p-4 font-medium text-gray-800 flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                                                <FaUserTie />
-                                            </div>
-                                            {emp.display_name || emp.user_login}
-                                        </td>
-                                        <td className="p-4 text-gray-600">{emp.user_email}</td>
-                                        <td className="p-4">
-                                            <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs uppercase font-bold border border-gray-200">
-                                                {(emp.roles && emp.roles[0]) ? emp.roles[0].replace('_', ' ') : 'User'}
-                                            </span>
-                                        </td>
-                                        <td className="p-4">
-                                            <span className="text-green-600 text-xs font-bold bg-green-50 px-2 py-1 rounded">
-                                                Aktif
-                                            </span>
-                                        </td>
-                                        <td className="p-4 text-right">
-                                            <div className="flex justify-end gap-2">
-                                                <button 
-                                                    onClick={() => handleEdit(emp)}
-                                                    className="p-2 text-blue-600 hover:bg-blue-50 rounded transition"
-                                                    title="Edit"
-                                                >
-                                                    <FaEdit />
-                                                </button>
-                                                <button 
-                                                    onClick={() => handleDelete(emp.id)}
-                                                    className="p-2 text-red-600 hover:bg-red-50 rounded transition"
-                                                    title="Hapus"
-                                                >
-                                                    <FaTrash />
-                                                </button>
-                                            </div>
-                                        </td>
+            {loading ? <Loading /> : (
+                <>
+                    {activeTab === 'attendance' && (
+                        <form onSubmit={handleAttendanceSubmit} className="bg-white p-6 rounded shadow">
+                            <h3 className="font-bold mb-4">Absensi Hari Ini ({new Date().toLocaleDateString()})</h3>
+                            <table className="w-full">
+                                <thead>
+                                    <tr className="text-left border-b"><th className="p-2">Nama</th><th className="p-2">Status</th></tr>
+                                </thead>
+                                <tbody>
+                                    {employees.map(emp => (
+                                        <tr key={emp.id} className="border-b">
+                                            <td className="p-2">{emp.display_name}</td>
+                                            <td className="p-2">
+                                                <select name={`status_${emp.id}`} className="border p-1 rounded">
+                                                    <option value="present">Hadir (Checklist)</option>
+                                                    <option value="absent">Alpha/Absen</option>
+                                                    <option value="sick">Sakit</option>
+                                                    <option value="permission">Izin</option>
+                                                </select>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                            <button className="mt-4 bg-blue-600 text-white px-4 py-2 rounded">Simpan Absensi</button>
+                        </form>
+                    )}
+
+                    {activeTab === 'payroll' && (
+                        <div className="bg-white p-6 rounded shadow">
+                            <h3 className="font-bold mb-4">Estimasi Gaji Bulan Ini</h3>
+                            <table className="w-full text-sm">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="p-3 text-left">Nama</th>
+                                        <th className="p-3 text-right">Gaji Pokok</th>
+                                        <th className="p-3 text-right">Potongan Absen</th>
+                                        <th className="p-3 text-right">Potongan Kasbon</th>
+                                        <th className="p-3 text-right">Total Terima</th>
                                     </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan="5" className="p-8 text-center text-gray-500">
-                                        Belum ada data pegawai. Silakan tambah baru.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            {/* Modal Form */}
-            <Modal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                title={selectedEmployee ? "Edit Data Pegawai" : "Tambah Pegawai Baru"}
-                size="lg"
-            >
-                <UserForm 
-                    initialData={selectedEmployee}
-                    onSuccess={handleFormSuccess}
-                    onCancel={() => setIsModalOpen(false)}
-                />
-            </Modal>
+                                </thead>
+                                <tbody>
+                                    {payroll.map((pay, idx) => (
+                                        <tr key={idx} className="border-b">
+                                            <td className="p-3">{pay.name}</td>
+                                            <td className="p-3 text-right">{parseInt(pay.basic).toLocaleString()}</td>
+                                            <td className="p-3 text-right text-red-500">-{pay.absent_deduction.toLocaleString()} ({pay.absent_days} hari)</td>
+                                            <td className="p-3 text-right text-red-500">-{pay.cashbond.toLocaleString()}</td>
+                                            <td className="p-3 text-right font-bold text-green-600">{pay.net_salary.toLocaleString()}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                    
+                    {activeTab === 'staff' && (
+                         <div className="text-center text-gray-500 py-10">Gunakan tombol "Tambah Pegawai" di pojok kanan atas untuk menambah data (Fitur sudah ada sebelumnya).</div>
+                    )}
+                </>
+            )}
         </div>
     );
 };
