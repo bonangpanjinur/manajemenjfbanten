@@ -1,93 +1,76 @@
 <?php
-// Lokasi: includes/api/api-categories.php
+// File Location: includes/api/api-categories.php
 
-if (!defined('ABSPATH')) {
-    exit; // Exit if accessed directly
+if ( ! defined( 'ABSPATH' ) ) exit;
+
+class UMH_API_Categories {
+    public function __construct() {
+        add_action( 'rest_api_init', array( $this, 'register_routes' ) );
+    }
+
+    public function register_routes() {
+        register_rest_route( 'umh/v1', '/categories', array(
+            'methods'             => 'GET',
+            'callback'            => array( $this, 'get_items' ),
+            'permission_callback' => '__return_true',
+        ) );
+        register_rest_route( 'umh/v1', '/categories', array(
+            'methods'             => 'POST',
+            'callback'            => array( $this, 'create_item' ),
+            'permission_callback' => '__return_true',
+        ) );
+        register_rest_route( 'umh/v1', '/categories/(?P<id>\d+)', array(
+            'methods'             => 'DELETE',
+            'callback'            => array( $this, 'delete_item' ),
+            'permission_callback' => '__return_true',
+        ) );
+    }
+
+    public function get_items() {
+        global $wpdb;
+        $table = $wpdb->prefix . 'umh_categories';
+        $results = $wpdb->get_results( "SELECT * FROM $table ORDER BY parent_id ASC, name ASC" );
+        return rest_ensure_response( $results );
+    }
+
+    public function create_item( $request ) {
+        global $wpdb;
+        $params = $request->get_json_params();
+        $table = $wpdb->prefix . 'umh_categories';
+
+        $name = sanitize_text_field( $params['name'] );
+        $parent_id = isset($params['parent_id']) ? intval($params['parent_id']) : 0;
+        $slug = sanitize_title( $name );
+
+        if ( empty( $name ) ) {
+            return new WP_Error( 'missing_name', 'Nama kategori wajib diisi', array( 'status' => 400 ) );
+        }
+
+        $wpdb->insert( $table, array( 
+            'name' => $name, 
+            'parent_id' => $parent_id,
+            'slug' => $slug,
+            'created_at' => current_time('mysql')
+        ));
+
+        return rest_ensure_response( array( 'id' => $wpdb->insert_id, 'message' => 'Kategori berhasil dibuat' ) );
+    }
+
+    public function delete_item( $request ) {
+        global $wpdb;
+        $id = $request['id'];
+        $table = $wpdb->prefix . 'umh_categories';
+
+        // Cek jika digunakan di paket
+        $check = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->prefix}umh_packages WHERE category_id = %d OR sub_category_id = %d", $id, $id ) );
+        
+        if ( $check > 0 ) {
+            return new WP_Error( 'used_data', 'Kategori sedang digunakan oleh Paket dan tidak bisa dihapus.', array( 'status' => 400 ) );
+        }
+
+        $wpdb->delete( $table, array( 'id' => $id ) );
+        return rest_ensure_response( array( 'message' => 'Kategori dihapus' ) );
+    }
 }
 
-/**
- * Register API routes for Finance Categories.
- *
- * @param string $namespace The API namespace.
- */
-function umh_register_categories_api_routes($namespace) {
-    global $wpdb;
-    $table_name = $wpdb->prefix . 'umh_categories';
-    
-    // --- PERBAIKAN (Kategori 2): ---
-    // Mengganti $item_name dari 'category' menjadi 'categories'
-    // agar route yang terdaftar adalah '/categories' BUKAN '/categorys'
-    $item_name = 'categories'; 
-    // --- AKHIR PERBAIKAN ---
-
-    // Tentukan Izin
-    $permissions = array(
-        'get_items' => ['owner', 'admin_staff', 'finance_staff'],
-        'create_item' => ['owner', 'admin_staff', 'finance_staff'],
-        'get_item' => ['owner', 'admin_staff', 'finance_staff'],
-        'update_item' => ['owner', 'admin_staff', 'finance_staff'],
-        'delete_item' => ['owner', 'admin_staff', 'finance_staff'],
-    );
-
-    // Buat instance CRUD controller
-    $crud_controller = new UMH_CRUD_Controller($table_name, $item_name, $permissions);
-
-    // Register routes
-    register_rest_route($namespace, "/{$item_name}", array( // Akan menjadi /categories
-        array(
-            'methods'             => WP_REST_Server::READABLE,
-            'callback'            => array($crud_controller, 'get_items'),
-            // --- PERBAIKAN (Kategori 1): Menggunakan anonymous function ---
-            'permission_callback' => function ($request) use ($permissions) {
-                return umh_check_api_permission($request, $permissions['get_items']);
-            },
-            // --- AKHIR PERBAIKAN ---
-        ),
-        array(
-            'methods'             => WP_REST_Server::CREATABLE,
-            'callback'            => array($crud_controller, 'create_item'),
-            // --- PERBAIKAN (Kategori 1): Menggunakan anonymous function ---
-            'permission_callback' => function ($request) use ($permissions) {
-                return umh_check_api_permission($request, $permissions['create_item']);
-            },
-            // --- AKHIR PERBAIKAN ---
-            'args' => $crud_controller->get_endpoint_args_for_item_schema(WP_REST_Server::CREATABLE),
-        ),
-    ));
-
-    register_rest_route($namespace, "/{$item_name}/(?P<id>\d+)", array( // Akan menjadi /categories/(id)
-        array(
-            'methods'             => WP_REST_Server::READABLE,
-            'callback'            => array($crud_controller, 'get_item'),
-            // --- PERBAIKAN (Kategori 1): Menggunakan anonymous function ---
-            'permission_callback' => function ($request) use ($permissions) {
-                return umh_check_api_permission($request, $permissions['get_item']);
-            },
-            // --- AKHIR PERBAIKAN ---
-        ),
-        array(
-            'methods'             => WP_REST_Server::EDITABLE,
-            'callback'            => array($crud_controller, 'update_item'),
-            // --- PERBAIKAN (Kategori 1): Menggunakan anonymous function ---
-            'permission_callback' => function ($request) use ($permissions) {
-                return umh_check_api_permission($request, $permissions['update_item']);
-            },
-            // --- AKHIR PERBAIKAN ---
-            'args' => $crud_controller->get_endpoint_args_for_item_schema(WP_REST_Server::EDITABLE),
-        ),
-        array(
-            'methods'             => WP_REST_Server::DELETABLE,
-            'callback'            => array($crud_controller, 'delete_item'),
-            // --- PERBAIKAN (Kategori 1): Menggunakan anonymous function ---
-            'permission_callback' => function ($request) use ($permissions) {
-                return umh_check_api_permission($request, $permissions['delete_item']);
-            },
-            // --- AKHIR PERBAIKAN ---
-        ),
-    ));
-}
-
-// Hook pendaftaran routes
-add_action('rest_api_init', function () {
-    umh_register_categories_api_routes('umh/v1');
-});
+new UMH_API_Categories();

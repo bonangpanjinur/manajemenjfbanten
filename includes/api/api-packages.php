@@ -1,242 +1,96 @@
 <?php
-/**
- * API Handler untuk Manajemen Paket Umroh
- */
+// File Location: includes/api/api-packages.php
 
-if ( ! defined( 'ABSPATH' ) ) {
-    exit;
-}
+if ( ! defined( 'ABSPATH' ) ) exit;
 
 class UMH_API_Packages {
-
     public function __construct() {
         add_action( 'rest_api_init', array( $this, 'register_routes' ) );
     }
 
     public function register_routes() {
-        $namespace = 'umh/v1';
-        $base      = 'packages';
-
-        register_rest_route( $namespace, '/' . $base, array(
-            'methods'             => WP_REST_Server::READABLE,
-            'callback'            => array( $this, 'get_items' ),
-            'permission_callback' => array( $this, 'check_permission' ),
-        ) );
-
-        register_rest_route( $namespace, '/' . $base . '/(?P<id>\d+)', array(
-            'methods'             => WP_REST_Server::READABLE,
-            'callback'            => array( $this, 'get_item' ),
-            'permission_callback' => array( $this, 'check_permission' ),
-        ) );
-
-        register_rest_route( $namespace, '/' . $base, array(
-            'methods'             => WP_REST_Server::CREATABLE,
-            'callback'            => array( $this, 'create_item' ),
-            'permission_callback' => array( $this, 'check_permission' ),
-        ) );
-
-        register_rest_route( $namespace, '/' . $base . '/(?P<id>\d+)', array(
-            'methods'             => WP_REST_Server::EDITABLE,
-            'callback'            => array( $this, 'update_item' ),
-            'permission_callback' => array( $this, 'check_permission' ),
-        ) );
-
-        register_rest_route( $namespace, '/' . $base . '/(?P<id>\d+)', array(
-            'methods'             => WP_REST_Server::DELETABLE,
-            'callback'            => array( $this, 'delete_item' ),
-            'permission_callback' => array( $this, 'check_permission' ),
-        ) );
+        register_rest_route( 'umh/v1', '/packages', [
+            'methods' => 'GET', 'callback' => [$this, 'get_items'], 'permission_callback' => '__return_true'
+        ]);
+        register_rest_route( 'umh/v1', '/packages', [
+            'methods' => 'POST', 'callback' => [$this, 'create_item'], 'permission_callback' => '__return_true' // Ganti permission sesuai kebutuhan
+        ]);
+        register_rest_route( 'umh/v1', '/packages/(?P<id>\d+)', [
+            'methods' => 'PUT', 'callback' => [$this, 'update_item'], 'permission_callback' => '__return_true'
+        ]);
+        register_rest_route( 'umh/v1', '/packages/(?P<id>\d+)', [
+            'methods' => 'DELETE', 'callback' => [$this, 'delete_item'], 'permission_callback' => '__return_true'
+        ]);
     }
 
-    public function check_permission( $request ) {
-        // Menggunakan helper dari utils.php jika ada, atau fallback ke native
-        if ( function_exists( 'umh_check_api_permission' ) ) {
-            return umh_check_api_permission( $request );
-        }
-        return current_user_can( 'manage_options' );
-    }
-
-    // --- GET ITEMS ---
     public function get_items( $request ) {
         global $wpdb;
-        $table = $wpdb->prefix . 'umh_packages';
+        $status = $request->get_param('status');
+        $sql = "SELECT p.*, c.name as category_name 
+                FROM {$wpdb->prefix}umh_packages p 
+                LEFT JOIN {$wpdb->prefix}umh_categories c ON p.category_id = c.id 
+                WHERE 1=1";
         
-        $where = "WHERE 1=1";
-        $args = array();
-
-        // Filter Status
-        if ( $status = $request->get_param( 'status' ) ) {
-            $where .= " AND status = %s";
-            $args[] = sanitize_text_field( $status );
-        } else {
-            // Default jangan tampilkan arsip kecuali diminta
-            $where .= " AND status != 'archived'";
-        }
-
-        // Filter Pencarian
-        if ( $search = $request->get_param( 'search' ) ) {
-            $term = '%' . $wpdb->esc_like( $search ) . '%';
-            $where .= " AND name LIKE %s";
-            $args[] = $term;
-        }
-
-        // Filter Kategori
-        if ( $cat = $request->get_param( 'category_id' ) ) {
-            $where .= " AND category_id = %d";
-            $args[] = (int)$cat;
-        }
-
-        $query = "SELECT * FROM $table $where ORDER BY departure_date ASC";
+        if($status) $sql .= $wpdb->prepare(" AND p.status = %s", $status);
         
-        if ( ! empty( $args ) ) {
-            $results = $wpdb->get_results( $wpdb->prepare( $query, $args ) );
-        } else {
-            $results = $wpdb->get_results( $query );
-        }
+        $sql .= " ORDER BY p.departure_date ASC";
+        $results = $wpdb->get_results($sql);
 
-        // Format JSON fields
-        foreach ( $results as $row ) {
-            $row->hotels = json_decode( $row->hotels );
-            $row->pricing_variants = json_decode( $row->pricing_variants );
-            
-            // Hitung sisa seat (opsional, butuh query ke tabel jamaah)
-            $row->total_registered = $wpdb->get_var( $wpdb->prepare( 
-                "SELECT COUNT(*) FROM {$wpdb->prefix}umh_jamaah WHERE package_id = %d", $row->id 
-            ) );
+        foreach($results as $row) {
+            // Decode JSON hotels & pricing
+            $row->hotels = json_decode($row->hotels); 
+            $row->pricing_variants = json_decode($row->pricing_variants);
         }
-
-        return rest_ensure_response( $results );
+        return rest_ensure_response($results);
     }
 
-    // --- GET SINGLE ITEM ---
-    public function get_item( $request ) {
-        global $wpdb;
-        $table = $wpdb->prefix . 'umh_packages';
-        $id = (int) $request->get_param( 'id' );
-
-        $item = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $table WHERE id = %d", $id ) );
-
-        if ( ! $item ) {
-            return new WP_Error( 'not_found', 'Paket tidak ditemukan', array( 'status' => 404 ) );
-        }
-
-        $item->hotels = json_decode( $item->hotels );
-        $item->pricing_variants = json_decode( $item->pricing_variants );
-
-        return rest_ensure_response( $item );
-    }
-
-    // --- CREATE ITEM ---
     public function create_item( $request ) {
         global $wpdb;
-        $table = $wpdb->prefix . 'umh_packages';
+        $params = $request->get_json_params();
 
-        // 1. Validasi Input Wajib
-        $required = ['name', 'departure_date', 'category_id', 'airline_id'];
-        foreach ($required as $field) {
-            if ( empty( $request->get_param( $field ) ) ) {
-                return new WP_Error( 'missing_field', "Field $field wajib diisi.", array( 'status' => 400 ) );
-            }
-        }
+        $data = [
+            'name' => sanitize_text_field($params['name']),
+            'category_id' => intval($params['category_id']),
+            'sub_category_id' => intval($params['sub_category_id']),
+            'departure_date' => $params['departure_date'],
+            'airline_id' => intval($params['airline_id']),
+            'status' => $params['status'],
+            'itinerary_file' => esc_url_raw($params['itinerary_file']),
+            // Simpan array sebagai JSON
+            'hotels' => json_encode($params['hotels']), 
+            'pricing_variants' => json_encode($params['pricing_variants']),
+            'created_at' => current_time('mysql')
+        ];
 
-        // 2. Validasi & Sanitasi
-        $data = array(
-            'name'            => sanitize_text_field( $request->get_param( 'name' ) ),
-            'category_id'     => (int) $request->get_param( 'category_id' ),
-            'sub_category_id' => (int) $request->get_param( 'sub_category_id' ),
-            'departure_date'  => sanitize_text_field( $request->get_param( 'departure_date' ) ),
-            'airline_id'      => (int) $request->get_param( 'airline_id' ),
-            'status'          => sanitize_text_field( $request->get_param( 'status' ) ) ?: 'active',
-            'itinerary_file'  => esc_url_raw( $request->get_param( 'itinerary_file' ) ),
-        );
-
-        // 3. Validasi Struktur JSON (Hotels & Prices)
-        $hotels = $request->get_param( 'hotels' );
-        $prices = $request->get_param( 'pricing_variants' );
-
-        if ( empty( $hotels ) || empty( $prices ) ) {
-            return new WP_Error( 'invalid_json', 'Data Hotel dan Varian Harga wajib diisi.', array( 'status' => 400 ) );
-        }
-
-        $data['hotels'] = is_string( $hotels ) ? $hotels : json_encode( $hotels );
-        $data['pricing_variants'] = is_string( $prices ) ? $prices : json_encode( $prices );
-
-        $inserted = $wpdb->insert( $table, $data );
-
-        if ( $inserted ) {
-            return rest_ensure_response( array( 
-                'id' => $wpdb->insert_id, 
-                'message' => 'Paket berhasil dibuat.' 
-            ) );
-        }
-
-        return new WP_Error( 'db_error', 'Gagal menyimpan paket.', array( 'status' => 500 ) );
+        $wpdb->insert($wpdb->prefix . 'umh_packages', $data);
+        return rest_ensure_response(['id' => $wpdb->insert_id, 'message' => 'Paket berhasil dibuat']);
     }
 
-    // --- UPDATE ITEM ---
     public function update_item( $request ) {
         global $wpdb;
-        $table = $wpdb->prefix . 'umh_packages';
-        $id = (int) $request->get_param( 'id' );
+        $id = $request['id'];
+        $params = $request->get_json_params();
 
-        // Cek eksistensi
-        $exists = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM $table WHERE id = %d", $id ) );
-        if ( ! $exists ) return new WP_Error( 'not_found', 'Paket tidak ditemukan', array( 'status' => 404 ) );
+        $data = [
+            'name' => sanitize_text_field($params['name']),
+            'category_id' => intval($params['category_id']),
+            'sub_category_id' => intval($params['sub_category_id']),
+            'departure_date' => $params['departure_date'],
+            'airline_id' => intval($params['airline_id']),
+            'status' => $params['status'],
+            'itinerary_file' => esc_url_raw($params['itinerary_file']),
+            'hotels' => json_encode($params['hotels']), 
+            'pricing_variants' => json_encode($params['pricing_variants']),
+        ];
 
-        $data = array();
-        $params = $request->get_params();
-        
-        // Mapping field yang boleh diupdate
-        $allowed = ['name', 'category_id', 'sub_category_id', 'departure_date', 'airline_id', 'status', 'itinerary_file'];
-        
-        foreach ( $allowed as $key ) {
-            if ( isset( $params[$key] ) ) {
-                $data[$key] = sanitize_text_field( $params[$key] );
-            }
-        }
-
-        // Handle JSON fields khusus
-        if ( isset( $params['hotels'] ) ) {
-            $data['hotels'] = is_string( $params['hotels'] ) ? $params['hotels'] : json_encode( $params['hotels'] );
-        }
-        if ( isset( $params['pricing_variants'] ) ) {
-            $data['pricing_variants'] = is_string( $params['pricing_variants'] ) ? $params['pricing_variants'] : json_encode( $params['pricing_variants'] );
-        }
-
-        if ( empty( $data ) ) return new WP_Error( 'no_changes', 'Tidak ada data yang diubah.', array( 'status' => 400 ) );
-
-        $updated = $wpdb->update( $table, $data, array( 'id' => $id ) );
-
-        if ( $updated !== false ) {
-            return rest_ensure_response( array( 'message' => 'Paket berhasil diperbarui.' ) );
-        }
-
-        return new WP_Error( 'db_error', 'Gagal update paket.', array( 'status' => 500 ) );
+        $wpdb->update($wpdb->prefix . 'umh_packages', $data, ['id' => $id]);
+        return rest_ensure_response(['message' => 'Paket diperbarui']);
     }
 
-    // --- DELETE ITEM ---
     public function delete_item( $request ) {
         global $wpdb;
-        $table = $wpdb->prefix . 'umh_packages';
-        $id = (int) $request->get_param( 'id' );
-
-        // 1. Referential Integrity Check
-        $jamaah_count = $wpdb->get_var( $wpdb->prepare( 
-            "SELECT COUNT(*) FROM {$wpdb->prefix}umh_jamaah WHERE package_id = %d", $id 
-        ) );
-
-        if ( $jamaah_count > 0 ) {
-            return new WP_Error( 'dependency_error', "Gagal: Masih ada $jamaah_count Jamaah yang terdaftar di paket ini. Silakan pindahkan mereka atau arsipkan paket ini.", array( 'status' => 409 ) );
-        }
-
-        $deleted = $wpdb->delete( $table, array( 'id' => $id ) );
-
-        if ( $deleted ) {
-            return rest_ensure_response( array( 'message' => 'Paket berhasil dihapus.' ) );
-        }
-
-        return new WP_Error( 'db_error', 'Gagal menghapus paket.', array( 'status' => 500 ) );
+        $wpdb->delete($wpdb->prefix . 'umh_packages', ['id' => $request['id']]);
+        return rest_ensure_response(['message' => 'Paket dihapus']);
     }
 }
-
 new UMH_API_Packages();

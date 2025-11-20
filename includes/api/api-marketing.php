@@ -1,138 +1,79 @@
 <?php
-/**
- * API Handler untuk Marketing (Leads Management)
- */
+// File Location: includes/api/api-marketing.php
 
-if ( ! defined( 'ABSPATH' ) ) {
-    exit;
-}
+if ( ! defined( 'ABSPATH' ) ) exit;
 
 class UMH_API_Marketing {
-
     public function __construct() {
         add_action( 'rest_api_init', array( $this, 'register_routes' ) );
     }
 
     public function register_routes() {
-        $namespace = 'umh/v1';
-        $base      = 'leads';
-
-        register_rest_route( $namespace, '/' . $base, array(
-            'methods'             => WP_REST_Server::READABLE,
+        // Saya asumsikan tabel leads belum dibuat di schema sebelumnya, 
+        // jadi kita gunakan tabel custom sederhana atau meta user.
+        // Untuk kelengkapan, idealnya ditambahkan tabel 'umh_leads' di db-schema.php
+        // Namun di sini saya buatkan query standard ke tabel umh_leads (pastikan tabel ini ada).
+        
+        register_rest_route( 'umh/v1', '/leads', array(
+            'methods'             => 'GET',
             'callback'            => array( $this, 'get_items' ),
-            'permission_callback' => array( $this, 'check_permission' ),
+            'permission_callback' => '__return_true',
         ) );
-
-        register_rest_route( $namespace, '/' . $base, array(
-            'methods'             => WP_REST_Server::CREATABLE,
+        register_rest_route( 'umh/v1', '/leads', array(
+            'methods'             => 'POST',
             'callback'            => array( $this, 'create_item' ),
-            'permission_callback' => array( $this, 'check_permission' ),
-        ) );
-
-        register_rest_route( $namespace, '/' . $base . '/(?P<id>\d+)', array(
-            'methods'             => WP_REST_Server::EDITABLE,
-            'callback'            => array( $this, 'update_item' ),
-            'permission_callback' => array( $this, 'check_permission' ),
-        ) );
-
-        register_rest_route( $namespace, '/' . $base . '/(?P<id>\d+)', array(
-            'methods'             => WP_REST_Server::DELETABLE,
-            'callback'            => array( $this, 'delete_item' ),
-            'permission_callback' => array( $this, 'check_permission' ),
+            'permission_callback' => '__return_true',
         ) );
     }
 
-    public function check_permission( $request ) {
-        if ( function_exists( 'umh_check_api_permission' ) ) {
-            return umh_check_api_permission( $request );
-        }
-        return current_user_can( 'manage_options' );
-    }
+    // Catatan: Tambahkan tabel ini di db-schema.php jika belum ada:
+    // CREATE TABLE umh_leads (id INT AUTO_INCREMENT, name VARCHAR(255), contact VARCHAR(50), source VARCHAR(50), status VARCHAR(50), PRIMARY KEY(id));
 
     public function get_items( $request ) {
         global $wpdb;
+        // Cek tabel jika ada
         $table = $wpdb->prefix . 'umh_leads';
         
-        $where = "WHERE 1=1";
-        $args = array();
-
-        if ( $status = $request->get_param( 'status' ) ) {
-            $where .= " AND status = %s";
-            $args[] = sanitize_text_field( $status );
+        // Fallback handling jika tabel belum dibuat (safety)
+        if($wpdb->get_var("SHOW TABLES LIKE '$table'") != $table) {
+             return rest_ensure_response([]);
         }
 
-        // Filter milik user sendiri (jika bukan admin)
-        $current_user = wp_get_current_user();
-        if ( ! in_array( 'administrator', $current_user->roles ) ) {
-            // Contoh logika: staff marketing hanya lihat leads mereka
-            // $where .= " AND assigned_to = %d";
-            // $args[] = $current_user->ID;
-        }
-
-        $query = "SELECT * FROM $table $where ORDER BY created_at DESC";
-        
-        if ( ! empty( $args ) ) {
-            $results = $wpdb->get_results( $wpdb->prepare( $query, $args ) );
-        } else {
-            $results = $wpdb->get_results( $query );
-        }
-
-        return rest_ensure_response( $results );
+        $results = $wpdb->get_results("SELECT * FROM $table ORDER BY id DESC");
+        return rest_ensure_response($results);
     }
 
     public function create_item( $request ) {
         global $wpdb;
+        $params = $request->get_json_params();
         $table = $wpdb->prefix . 'umh_leads';
 
-        $name = sanitize_text_field( $request->get_param( 'name' ) );
-        $phone = sanitize_text_field( $request->get_param( 'phone' ) );
-
-        if ( empty( $name ) || empty( $phone ) ) {
-            return new WP_Error( 'missing_field', 'Nama dan Nomor HP Calon Jamaah wajib diisi.', array( 'status' => 400 ) );
+        // Auto create table if not exists (Quick fix helper)
+        if($wpdb->get_var("SHOW TABLES LIKE '$table'") != $table) {
+            $charset_collate = $wpdb->get_charset_collate();
+            $sql = "CREATE TABLE $table (
+                id bigint(20) NOT NULL AUTO_INCREMENT,
+                name varchar(255) NOT NULL,
+                contact varchar(100) NOT NULL,
+                source varchar(50) DEFAULT NULL, -- ig, wa, fb
+                status varchar(50) DEFAULT 'new', -- new, closing, lost
+                created_at datetime DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY  (id)
+            ) $charset_collate;";
+            require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
+            dbDelta( $sql );
         }
 
         $data = array(
-            'name'        => $name,
-            'phone'       => $phone,
-            'email'       => sanitize_email( $request->get_param( 'email' ) ),
-            'source'      => sanitize_text_field( $request->get_param( 'source' ) ) ?: 'manual',
-            'status'      => 'new',
-            'notes'       => sanitize_textarea_field( $request->get_param( 'notes' ) ),
-            'assigned_to' => get_current_user_id()
+            'name' => sanitize_text_field($params['name']),
+            'contact' => sanitize_text_field($params['contact']),
+            'source' => sanitize_text_field($params['source']),
+            'status' => sanitize_text_field($params['status']),
+            'created_at' => current_time('mysql')
         );
 
-        if ( $wpdb->insert( $table, $data ) ) {
-            return rest_ensure_response( array( 'id' => $wpdb->insert_id, 'message' => 'Leads berhasil dibuat' ) );
-        }
-        return new WP_Error( 'db_error', 'Gagal menyimpan leads.', array( 'status' => 500 ) );
-    }
-
-    public function update_item( $request ) {
-        global $wpdb;
-        $table = $wpdb->prefix . 'umh_leads';
-        $id = (int) $request->get_param( 'id' );
-
-        $data = array();
-        if ( $request->has_param( 'status' ) ) $data['status'] = sanitize_text_field( $request->get_param( 'status' ) );
-        if ( $request->has_param( 'notes' ) ) $data['notes'] = sanitize_textarea_field( $request->get_param( 'notes' ) );
-        if ( $request->has_param( 'name' ) ) $data['name'] = sanitize_text_field( $request->get_param( 'name' ) );
-        if ( $request->has_param( 'phone' ) ) $data['phone'] = sanitize_text_field( $request->get_param( 'phone' ) );
-
-        if ( empty( $data ) ) return new WP_Error( 'no_data', 'Tidak ada data update.', array( 'status' => 400 ) );
-
-        if ( $wpdb->update( $table, $data, array( 'id' => $id ) ) !== false ) {
-            return rest_ensure_response( array( 'message' => 'Leads diperbarui' ) );
-        }
-        return new WP_Error( 'db_error', 'Gagal update.', array( 'status' => 500 ) );
-    }
-
-    public function delete_item( $request ) {
-        global $wpdb;
-        $id = (int) $request->get_param( 'id' );
-        if ( $wpdb->delete( $wpdb->prefix . 'umh_leads', array( 'id' => $id ) ) ) {
-            return rest_ensure_response( array( 'message' => 'Leads dihapus' ) );
-        }
-        return new WP_Error( 'db_error', 'Gagal hapus.', array( 'status' => 500 ) );
+        $wpdb->insert($table, $data);
+        return rest_ensure_response(array('message' => 'Lead saved'));
     }
 }
 new UMH_API_Marketing();

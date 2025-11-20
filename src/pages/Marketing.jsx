@@ -1,85 +1,114 @@
-// File Location: src/pages/Marketing.jsx
-
 import React, { useState, useEffect } from 'react';
 import { useApi } from '../context/ApiContext';
-import { FaBullhorn, FaPlus, FaWhatsapp } from 'react-icons/fa';
+import Loading from '../components/common/Loading';
 import Modal from '../components/common/Modal';
 import LeadForm from '../components/forms/LeadForm';
-import Loading from '../components/common/Loading';
+import { FaWhatsapp, FaInstagram, FaFacebook, FaTiktok, FaUserFriends } from 'react-icons/fa';
 
 const Marketing = () => {
-    const { getLeads } = useApi();
+    const { apiCall } = useApi();
     const [leads, setLeads] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingData, setEditingData] = useState(null);
+    const [editData, setEditData] = useState(null);
 
-    const fetchData = async () => {
+    const fetchLeads = async () => {
         setLoading(true);
         try {
-            const res = await getLeads();
-            setLeads(Array.isArray(res) ? res : []);
-        } catch (e) { console.error(e); }
-        finally { setLoading(false); }
+            const res = await apiCall('/leads');
+            setLeads(res || []);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    useEffect(() => { fetchData(); }, []);
+    useEffect(() => {
+        fetchLeads();
+    }, []);
 
-    const handleAddNew = () => { setEditingData(null); setIsModalOpen(true); };
-    const handleEdit = (item) => { setEditingData(item); setIsModalOpen(true); };
+    const handleEdit = (lead) => {
+        setEditData(lead);
+        setIsModalOpen(true);
+    };
+
+    const handleDelete = async (id) => {
+        if(!confirm('Hapus data lead ini?')) return;
+        await apiCall(`/leads/${id}`, 'DELETE');
+        fetchLeads();
+    };
+
+    const handleSuccess = () => {
+        setIsModalOpen(false);
+        fetchLeads();
+    };
+
+    const getIcon = (source) => {
+        switch(source) {
+            case 'wa': return <FaWhatsapp className="text-green-500" />;
+            case 'ig': return <FaInstagram className="text-pink-500" />;
+            case 'fb': return <FaFacebook className="text-blue-600" />;
+            case 'tiktok': return <FaTiktok className="text-black" />;
+            default: return <FaUserFriends className="text-gray-500" />;
+        }
+    };
+
+    const getStatusColor = (status) => {
+        switch(status) {
+            case 'closing': return 'bg-green-100 text-green-800';
+            case 'lost': return 'bg-red-100 text-red-800';
+            default: return 'bg-yellow-100 text-yellow-800'; // new/prospek
+        }
+    };
 
     return (
-        <div className="p-6 bg-gray-50 min-h-screen">
+        <div className="p-6">
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                    <FaBullhorn className="text-orange-500" /> Marketing Leads
-                </h1>
-                <button onClick={handleAddNew} className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded flex items-center gap-2 shadow">
-                    <FaPlus /> Tambah Prospek
+                <h1 className="text-2xl font-bold text-gray-800">Marketing Leads</h1>
+                <button onClick={() => { setEditData(null); setIsModalOpen(true); }} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 shadow">
+                    + Tambah Lead
                 </button>
             </div>
 
-            <div className="bg-white rounded-xl shadow overflow-hidden">
-                {loading ? <Loading /> : (
-                    <table className="w-full text-left border-collapse">
-                        <thead className="bg-orange-50 text-orange-800">
+            {loading ? <Loading /> : (
+                <div className="bg-white rounded-xl shadow overflow-hidden">
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
                             <tr>
-                                <th className="p-4">Nama Prospek</th>
-                                <th className="p-4">No. HP</th>
-                                <th className="p-4">Sumber</th>
-                                <th className="p-4">Status</th>
-                                <th className="p-4 text-right">Aksi</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kontak</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sumber</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Aksi</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y">
+                        <tbody className="bg-white divide-y divide-gray-200">
                             {leads.map(lead => (
                                 <tr key={lead.id} className="hover:bg-gray-50">
-                                    <td className="p-4 font-medium">{lead.name}</td>
-                                    <td className="p-4 text-gray-600">{lead.phone}</td>
-                                    <td className="p-4 text-gray-500 capitalize">{lead.source}</td>
-                                    <td className="p-4">
-                                        <span className={`px-2 py-1 text-xs rounded font-bold uppercase 
-                                            ${lead.status === 'hot' ? 'bg-red-100 text-red-600' : 
-                                            lead.status === 'new' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'}`}>
+                                    <td className="px-6 py-4 whitespace-nowrap font-medium">{lead.name}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{lead.contact}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap flex items-center gap-2 text-sm capitalize">
+                                        {getIcon(lead.source)} {lead.source}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <span className={`px-2 py-1 rounded-full text-xs font-bold capitalize ${getStatusColor(lead.status)}`}>
                                             {lead.status}
                                         </span>
                                     </td>
-                                    <td className="p-4 text-right flex justify-end gap-2">
-                                        <a href={`https://wa.me/${lead.phone}`} target="_blank" rel="noreferrer" className="text-green-500 hover:text-green-700 text-xl">
-                                            <FaWhatsapp />
-                                        </a>
-                                        <button onClick={() => handleEdit(lead)} className="text-blue-500 hover:underline text-sm">Edit</button>
+                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                        <button onClick={() => handleEdit(lead)} className="text-indigo-600 hover:text-indigo-900 mr-3">Edit</button>
+                                        <button onClick={() => handleDelete(lead.id)} className="text-red-600 hover:text-red-900">Hapus</button>
                                     </td>
                                 </tr>
                             ))}
-                            {leads.length === 0 && <tr><td colSpan="5" className="p-6 text-center text-gray-400">Belum ada leads masuk.</td></tr>}
                         </tbody>
                     </table>
-                )}
-            </div>
+                </div>
+            )}
 
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingData ? 'Edit Lead' : 'Tambah Lead Baru'}>
-                <LeadForm data={editingData} onSuccess={() => { setIsModalOpen(false); fetchData(); }} onCancel={() => setIsModalOpen(false)} />
+            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editData ? 'Edit Lead' : 'Tambah Lead Baru'}>
+                <LeadForm initialData={editData} onSuccess={handleSuccess} onCancel={() => setIsModalOpen(false)} />
             </Modal>
         </div>
     );

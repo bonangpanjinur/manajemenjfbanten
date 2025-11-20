@@ -1,72 +1,89 @@
-// File Location: src/context/ApiContext.jsx
+// File: src/context/ApiContext.jsx
 
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState } from 'react';
+import { useAuth } from './AuthContext';
 
 const ApiContext = createContext();
+
 export const useApi = () => useContext(ApiContext);
 
 export const ApiProvider = ({ children }) => {
+    const { token } = useAuth();
     const [loading, setLoading] = useState(false);
-    const { apiUrl, nonce } = window.umh_wp_data || { apiUrl: '/wp-json/umh/v1', nonce: '' };
 
-    const apiCall = useCallback(async (endpoint, method = 'GET', body = null) => {
+    // Sesuaikan URL ini dengan konfigurasi server lokal Anda
+    // Jika di XAMPP/Localhost biasanya: 'http://localhost/folder-project/wp-json/umh/v1'
+    // Namun jika relative path sudah di-setup di proxy, gunakan relative
+    const API_URL = '/wp-json/umh/v1'; 
+
+    const apiCall = async (endpoint, method = 'GET', body = null, isFileUpload = false) => {
         setLoading(true);
         try {
-            const headers = { 'Content-Type': 'application/json', 'X-WP-Nonce': nonce };
-            const config = { method, headers };
-            if (body) config.body = JSON.stringify(body);
+            const headers = {
+                'Authorization': `Bearer ${token}`
+            };
             
-            let url = `${apiUrl}${endpoint}`;
-            if (method === 'GET' && body) {
-                url += '?' + new URLSearchParams(body).toString();
-                delete config.body;
+            if (!isFileUpload) {
+                headers['Content-Type'] = 'application/json';
             }
 
-            const res = await fetch(url, config);
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.message || 'Request failed');
+            const config = { method, headers };
+            if (body) {
+                config.body = isFileUpload ? body : JSON.stringify(body);
+            }
+
+            const response = await fetch(`${API_URL}${endpoint}`, config);
+            const data = await response.json();
+
+            if (!response.ok) throw new Error(data.message || 'Terjadi kesalahan server');
             return data;
-        } catch (err) {
-            console.error(err);
-            throw err;
+        } catch (error) {
+            console.error("API Error:", error);
+            throw error;
         } finally {
             setLoading(false);
         }
-    }, [apiUrl, nonce]);
+    };
 
-    // EXPORT METHODS
-    const getJamaahList = (f) => apiCall('/jamaah', 'GET', f);
-    const createJamaah = (d) => apiCall('/jamaah', 'POST', d);
-    const updateJamaah = (id, d) => apiCall(`/jamaah/${id}`, 'PUT', d);
-    const deleteJamaah = (id) => apiCall(`/jamaah/${id}`, 'DELETE');
+    // --- API METHODS ---
 
-    const getPackages = (f) => apiCall('/packages', 'GET', f);
-    const createPackage = (d) => apiCall('/packages', 'POST', d);
-
-    const getFinanceStats = () => apiCall('/finance/stats');
-    const getCashFlow = (f) => apiCall('/finance/cash-flow', 'GET', f);
-    const getPayments = () => apiCall('/finance/payments');
-    const createCashTransaction = (d) => apiCall('/finance/cash-flow', 'POST', d);
-    const createPayment = (d) => apiCall('/finance/payments', 'POST', d);
-
-    const getMasterData = (t) => apiCall('/master-data', 'GET', { type: t });
-    const createMasterData = (d) => apiCall('/master-data', 'POST', d);
+    // Master Data
+    const getMasterData = (type) => apiCall(`/master-data?type=${type}`);
+    const createMasterData = (data) => apiCall('/master-data', 'POST', data);
     const deleteMasterData = (id) => apiCall(`/master-data/${id}`, 'DELETE');
 
-    const getLeads = () => apiCall('/marketing');
-    const createOrUpdate = (res, d, id) => id ? apiCall(`/${res}/${id}`, 'PUT', d) : apiCall(`/${res}`, 'POST', d);
+    // Categories
+    const getCategories = () => apiCall('/categories');
+    const createCategory = (data) => apiCall('/categories', 'POST', data);
+    const deleteCategory = (id) => apiCall(`/categories/${id}`, 'DELETE');
 
-    const getEmployees = () => apiCall('/hr/employees');
-    const getDashboardStats = () => apiCall('/stats/dashboard');
+    // Packages
+    const getPackages = (filters) => apiCall(`/packages?${new URLSearchParams(filters)}`);
+    const createPackage = (data) => apiCall('/packages', 'POST', data);
+    const updatePackage = (id, data) => apiCall(`/packages/${id}`, 'PUT', data);
+    const deletePackage = (id) => apiCall(`/packages/${id}`, 'DELETE');
+
+    // Jamaah
+    const getJamaah = (filters) => apiCall(`/jamaah?${new URLSearchParams(filters)}`);
+    const createJamaah = (data) => apiCall('/jamaah', 'POST', data);
+    const updateJamaah = (id, data) => apiCall(`/jamaah/${id}`, 'PUT', data);
+    const deleteJamaah = (id) => apiCall(`/jamaah/${id}`, 'DELETE');
+
+    // Finance & Reports
+    const getCashflow = (filters) => apiCall(`/finance/cashflow?${new URLSearchParams(filters)}`);
+    const createCashflow = (data) => apiCall('/finance/cashflow', 'POST', data);
+    const createPayment = (data) => apiCall('/finance/payment', 'POST', data);
+    const getDashboardStats = () => apiCall('/stats');
 
     return (
-        <ApiContext.Provider value={{ 
-            loading, apiCall, 
-            getJamaahList, createJamaah, updateJamaah, deleteJamaah,
-            getPackages, createPackage,
-            getFinanceStats, getCashFlow, getPayments, createCashTransaction, createPayment,
+        <ApiContext.Provider value={{
+            loading, apiCall,
             getMasterData, createMasterData, deleteMasterData,
-            getLeads, createOrUpdate, getEmployees, getDashboardStats
+            getCategories, createCategory, deleteCategory,
+            getPackages, createPackage, updatePackage, deletePackage,
+            getJamaah, createJamaah, updateJamaah, deleteJamaah,
+            getCashflow, createCashflow, createPayment,
+            getDashboardStats
         }}>
             {children}
         </ApiContext.Provider>
