@@ -1,89 +1,72 @@
 <?php
-// Lokasi: includes/api/api-roles.php
-
-if (!defined('ABSPATH')) {
-    exit; // Exit if accessed directly
-}
-
 /**
- * Register API routes for Roles (Divisi).
- *
- * @param string $namespace The API namespace.
+ * Manajemen Role & Capabilities (Hak Akses)
+ * File ini dijalankan saat plugin diaktifkan untuk mendaftarkan role baru.
  */
-function umh_register_roles_api_routes($namespace) {
-    global $wpdb;
-    $table_name = $wpdb->prefix . 'umh_roles';
-    $item_name = 'role'; // 'role'
 
-    // Tentukan izin
-    // Hanya Owner dan Admin Staff yang bisa mengelola roles
-    $permissions = array(
-        'get_items' => ['owner', 'admin_staff', 'hr_staff', 'finance_staff', 'marketing_staff'], // Semua staff bisa lihat
-        'create_item' => ['owner', 'admin_staff'],
-        'get_item' => ['owner', 'admin_staff', 'hr_staff'],
-        'update_item' => ['owner', 'admin_staff'],
-        'delete_item' => ['owner', 'admin_staff'],
-    );
-
-    // Buat instance CRUD controller
-    $crud_controller = new UMH_CRUD_Controller($table_name, $item_name, $permissions);
-
-    // Register routes
-    register_rest_route($namespace, "/{$item_name}s", array(
-        array(
-            'methods'             => WP_REST_Server::READABLE,
-            'callback'            => array($crud_controller, 'get_items'),
-            // --- PERBAIKAN (Kategori 1): Bungkus panggilan dalam anonymous function ---
-            'permission_callback' => function ($request) use ($permissions) {
-                return umh_check_api_permission($request, $permissions['get_items']);
-            },
-            // --- AKHIR PERBAIKAN ---
-        ),
-        array(
-            'methods'             => WP_REST_Server::CREATABLE,
-            'callback'            => array($crud_controller, 'create_item'),
-            // --- PERBAIKAN (Kategori 1): Bungkus panggilan dalam anonymous function ---
-            'permission_callback' => function ($request) use ($permissions) {
-                return umh_check_api_permission($request, $permissions['create_item']);
-            },
-            // --- AKHIR PERBAIKAN ---
-            'args' => $crud_controller->get_endpoint_args_for_item_schema(WP_REST_Server::CREATABLE),
-        ),
-    ));
-
-    register_rest_route($namespace, "/{$item_name}s/(?P<id>\d+)", array(
-        array(
-            'methods'             => WP_REST_Server::READABLE,
-            'callback'            => array($crud_controller, 'get_item'),
-            // --- PERBAIKAN (Kategori 1): Bungkus panggilan dalam anonymous function ---
-            'permission_callback' => function ($request) use ($permissions) {
-                return umh_check_api_permission($request, $permissions['get_item']);
-            },
-            // --- AKHIR PERBAIKAN ---
-        ),
-        array(
-            'methods'             => WP_REST_Server::EDITABLE,
-            'callback'            => array($crud_controller, 'update_item'),
-            // --- PERBAIKAN (Kategori 1): Bungkus panggilan dalam anonymous function ---
-            'permission_callback' => function ($request) use ($permissions) {
-                return umh_check_api_permission($request, $permissions['update_item']);
-            },
-            // --- AKHIR PERBAIKAN ---
-            'args' => $crud_controller->get_endpoint_args_for_item_schema(WP_REST_Server::EDITABLE),
-        ),
-        array(
-            'methods'             => WP_REST_Server::DELETABLE,
-            'callback'            => array($crud_controller, 'delete_item'),
-            // --- PERBAIKAN (Kategori 1): Bungkus panggilan dalam anonymous function ---
-            'permission_callback' => function ($request) use ($permissions) {
-                return umh_check_api_permission($request, $permissions['delete_item']);
-            },
-            // --- AKHIR PERBAIKAN ---
-        ),
-    ));
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
 }
 
-// Hook pendaftaran routes
-add_action('rest_api_init', function () {
-    umh_register_roles_api_routes('umh/v1');
-});
+class UMH_Roles {
+
+    public static function init() {
+        // Jalankan hanya saat aktivasi plugin (biasanya dipanggil di hook aktivasi)
+        self::create_roles();
+    }
+
+    public static function create_roles() {
+        // Hapus role lama jika ada untuk reset (hati-hati di production)
+        // remove_role('umh_staff');
+        // remove_role('umh_finance');
+        // remove_role('umh_owner');
+
+        // 1. ROLE: STAFF ADMINISTRASI (Input Jamaah & Paket)
+        add_role( 'umh_staff', 'Staff Travel', array(
+            'read'         => true,
+            'upload_files' => true, // Bisa upload KTP/Paspor
+            // Custom Caps
+            'umh_view_dashboard' => true,
+            'umh_manage_jamaah'  => true,  // CRUD Jamaah
+            'umh_view_packages'  => true,
+            'umh_manage_packages'=> false, // Tidak boleh edit harga paket
+            'umh_view_finance'   => false, // Tidak boleh lihat keuangan
+            'umh_manage_finance' => false,
+        ));
+
+        // 2. ROLE: FINANCE (Keuangan & Kasir)
+        add_role( 'umh_finance', 'Staff Keuangan', array(
+            'read'         => true,
+            'upload_files' => true, // Bukti transfer
+            // Custom Caps
+            'umh_view_dashboard' => true,
+            'umh_manage_jamaah'  => false, // Hanya view
+            'umh_view_jamaah'    => true,
+            'umh_view_packages'  => true,
+            'umh_manage_finance' => true,  // CRUD Finance
+            'umh_view_finance'   => true,
+        ));
+
+        // 3. ROLE: OWNER / SUPERVISOR (Akses Penuh tapi bukan Admin WP)
+        add_role( 'umh_owner', 'Owner / Pimpinan', array(
+            'read'         => true,
+            'upload_files' => true,
+            // Custom Caps (Full Access)
+            'umh_view_dashboard' => true,
+            'umh_manage_jamaah'  => true,
+            'umh_manage_packages'=> true,
+            'umh_manage_finance' => true,
+            'umh_view_reports'   => true, // Lihat statistik profit
+        ));
+
+        // Tambahkan caps ini ke Administrator bawaan WP juga agar admin tetap bisa akses
+        $admin = get_role('administrator');
+        $caps = array(
+            'umh_view_dashboard', 'umh_manage_jamaah', 'umh_manage_packages', 
+            'umh_manage_finance', 'umh_view_finance', 'umh_view_reports'
+        );
+        foreach ($caps as $cap) {
+            $admin->add_cap($cap);
+        }
+    }
+}

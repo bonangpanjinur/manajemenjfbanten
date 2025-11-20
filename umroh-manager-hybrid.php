@@ -26,7 +26,7 @@ require_once UMH_PLUGIN_DIR . 'includes/api/api-packages.php';
 require_once UMH_PLUGIN_DIR . 'includes/api/api-jamaah.php';
 require_once UMH_PLUGIN_DIR . 'includes/api/api-finance.php';
 require_once UMH_PLUGIN_DIR . 'includes/api/api-users.php';
-require_once UMH_PLUGIN_DIR . 'includes/api/api-auth.php'; // Pastikan file ini ada atau sesuaikan
+// require_once UMH_PLUGIN_DIR . 'includes/api/api-auth.php'; // Pastikan file ini ada atau sesuaikan
 require_once UMH_PLUGIN_DIR . 'includes/api/api-master-data.php'; // Placeholder untuk master data baru
 
 // Registrasi Hook Aktivasi untuk membuat tabel
