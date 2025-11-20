@@ -1,66 +1,156 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApi } from '../context/ApiContext';
-import { Modal } from '../components/common/Modal';
-import { Button, Input, Select } from '../components/common/FormUI';
+import { useAuth } from '../context/AuthContext';
+import Modal from '../components/common/Modal'; // PERBAIKAN: Import Default (Tanpa Kurung Kurawal)
+import Loading from '../components/common/Loading';
+import UserForm from '../components/forms/UserForm'; // Pastikan path ini benar
+import { FaUserPlus, FaEdit, FaTrash, FaUserTie } from 'react-icons/fa';
 
 const HR = () => {
-    const { staff, updateStaffRole } = useApi(); // Asumsi user staff di load di context
+    const { getEmployees, createOrUpdate, apiCall, loading } = useApi();
+    const [employees, setEmployees] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [selectedStaff, setSelectedStaff] = useState(null);
+    const [selectedEmployee, setSelectedEmployee] = useState(null);
+    const [localLoading, setLocalLoading] = useState(true); // Loading state lokal halaman ini
 
-    const openPermissionModal = (staffMember) => {
-        setSelectedStaff(staffMember);
+    // Fetch Data Pegawai
+    const fetchData = async () => {
+        setLocalLoading(true);
+        try {
+            // Kita gunakan getEmployees dari context, atau fallback ke manual fetch jika belum ada
+            const res = await getEmployees ? getEmployees() : apiCall('/hr/employees');
+            setEmployees(Array.isArray(res) ? res : (res.data || []));
+        } catch (error) {
+            console.error("Gagal memuat data HR:", error);
+        } finally {
+            setLocalLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const handleCreate = () => {
+        setSelectedEmployee(null);
         setIsModalOpen(true);
     };
 
+    const handleEdit = (emp) => {
+        setSelectedEmployee(emp);
+        setIsModalOpen(true);
+    };
+
+    const handleDelete = async (id) => {
+        if (window.confirm('Apakah Anda yakin ingin menghapus data pegawai ini?')) {
+            try {
+                await apiCall(`/users/${id}`, 'DELETE');
+                fetchData(); // Refresh data
+            } catch (error) {
+                alert('Gagal menghapus: ' + error.message);
+            }
+        }
+    };
+
+    const handleFormSuccess = () => {
+        setIsModalOpen(false);
+        fetchData();
+    };
+
+    if (localLoading && employees.length === 0) return <Loading text="Memuat Data Pegawai..." />;
+
     return (
-        <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-800">Manajemen Staff (HR)</h2>
-            
-            <div className="bg-white shadow rounded overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hak Akses</th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                        {staff?.map(s => (
-                            <tr key={s.id}>
-                                <td className="px-6 py-4 font-medium text-gray-900">{s.full_name}</td>
-                                <td className="px-6 py-4">
-                                    {/* Fix: Warna teks dropdown harus kontras */}
-                                    <span className="bg-blue-100 text-blue-800 py-1 px-2 rounded text-xs">{s.role}</span>
-                                </td>
-                                <td className="px-6 py-4 text-sm text-gray-500">
-                                    <button onClick={() => openPermissionModal(s)} className="text-blue-600 hover:underline">Atur Hak Akses</button>
-                                </td>
-                                <td className="px-6 py-4 text-right text-sm">Edit | Hapus</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+        <div className="p-6">
+            <div className="flex justify-between items-center mb-6">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-800">Manajemen HR & Staff</h1>
+                    <p className="text-sm text-gray-500">Kelola data pengguna dan hak akses sistem.</p>
+                </div>
+                <button 
+                    onClick={handleCreate}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition shadow-sm"
+                >
+                    <FaUserPlus /> Tambah Pegawai
+                </button>
             </div>
 
-            {/* Modal Pengaturan Hak Akses */}
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={`Hak Akses: ${selectedStaff?.full_name}`}>
-                <div className="space-y-4">
-                    <p className="text-sm text-gray-600">Centang fitur yang dapat diakses oleh staff ini.</p>
-                    <div className="grid grid-cols-2 gap-2">
-                        {['Dashboard', 'Keuangan', 'Marketing', 'Paket', 'Jemaah', 'HR'].map(feature => (
-                            <label key={feature} className="flex items-center space-x-2">
-                                <input type="checkbox" className="rounded text-blue-600 focus:ring-blue-500" />
-                                <span className="text-gray-700">{feature}</span>
-                            </label>
-                        ))}
-                    </div>
-                    <div className="flex justify-end mt-4">
-                        <Button onClick={() => setIsModalOpen(false)}>Simpan Akses</Button>
-                    </div>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead className="bg-gray-50 text-gray-600 uppercase text-xs font-bold">
+                            <tr>
+                                <th className="p-4 border-b">Nama Lengkap</th>
+                                <th className="p-4 border-b">Email / Username</th>
+                                <th className="p-4 border-b">Role / Jabatan</th>
+                                <th className="p-4 border-b">Status</th>
+                                <th className="p-4 border-b text-right">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {employees.length > 0 ? (
+                                employees.map((emp) => (
+                                    <tr key={emp.id} className="hover:bg-gray-50 transition">
+                                        <td className="p-4 font-medium text-gray-800 flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                                                <FaUserTie />
+                                            </div>
+                                            {emp.display_name || emp.user_login}
+                                        </td>
+                                        <td className="p-4 text-gray-600">{emp.user_email}</td>
+                                        <td className="p-4">
+                                            <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs uppercase font-bold border border-gray-200">
+                                                {(emp.roles && emp.roles[0]) ? emp.roles[0].replace('_', ' ') : 'User'}
+                                            </span>
+                                        </td>
+                                        <td className="p-4">
+                                            <span className="text-green-600 text-xs font-bold bg-green-50 px-2 py-1 rounded">
+                                                Aktif
+                                            </span>
+                                        </td>
+                                        <td className="p-4 text-right">
+                                            <div className="flex justify-end gap-2">
+                                                <button 
+                                                    onClick={() => handleEdit(emp)}
+                                                    className="p-2 text-blue-600 hover:bg-blue-50 rounded transition"
+                                                    title="Edit"
+                                                >
+                                                    <FaEdit />
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleDelete(emp.id)}
+                                                    className="p-2 text-red-600 hover:bg-red-50 rounded transition"
+                                                    title="Hapus"
+                                                >
+                                                    <FaTrash />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan="5" className="p-8 text-center text-gray-500">
+                                        Belum ada data pegawai. Silakan tambah baru.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
                 </div>
+            </div>
+
+            {/* Modal Form */}
+            <Modal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                title={selectedEmployee ? "Edit Data Pegawai" : "Tambah Pegawai Baru"}
+                size="lg"
+            >
+                <UserForm 
+                    initialData={selectedEmployee}
+                    onSuccess={handleFormSuccess}
+                    onCancel={() => setIsModalOpen(false)}
+                />
             </Modal>
         </div>
     );
