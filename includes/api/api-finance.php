@@ -17,7 +17,7 @@ class UMH_API_Finance {
     public function register_routes() {
         $namespace = 'umh/v1';
 
-        // --- CASH FLOW (ARUS KAS) ---
+        // CASH FLOW
         register_rest_route( $namespace, '/finance/cash-flow', array(
             'methods'             => WP_REST_Server::READABLE,
             'callback'            => array( $this, 'get_cash_flow' ),
@@ -30,14 +30,14 @@ class UMH_API_Finance {
             'permission_callback' => array( $this, 'check_permission' ),
         ) );
 
-        // --- STATISTIK KEUANGAN ---
+        // STATISTIK
         register_rest_route( $namespace, '/finance/stats', array(
             'methods'             => WP_REST_Server::READABLE,
             'callback'            => array( $this, 'get_finance_stats' ),
             'permission_callback' => array( $this, 'check_permission' ),
         ) );
 
-        // --- PEMBAYARAN JAMAAH ---
+        // PEMBAYARAN JAMAAH
         register_rest_route( $namespace, '/finance/payments', array(
             'methods'             => WP_REST_Server::READABLE,
             'callback'            => array( $this, 'get_jamaah_payments' ),
@@ -52,7 +52,7 @@ class UMH_API_Finance {
     }
 
     public function check_permission() {
-        return current_user_can( 'manage_options' );
+        return current_user_can( 'manage_options' ); // Atau cek capability custom
     }
 
     // --- 1. CASH FLOW LOGIC ---
@@ -64,20 +64,19 @@ class UMH_API_Finance {
         $where = "WHERE 1=1";
         $args = array();
 
-        // Filter by Type (in/out)
         if ( $request->get_param( 'type' ) ) {
             $where .= " AND type = %s";
             $args[] = sanitize_text_field( $request->get_param( 'type' ) );
         }
 
-        // Filter by Date Range
         if ( $request->get_param( 'start_date' ) && $request->get_param( 'end_date' ) ) {
             $where .= " AND transaction_date BETWEEN %s AND %s";
             $args[] = $request->get_param( 'start_date' );
             $args[] = $request->get_param( 'end_date' );
         }
 
-        $query = "SELECT * FROM $table $where ORDER BY transaction_date DESC, id DESC LIMIT 100";
+        // Urutkan terbaru di atas
+        $query = "SELECT * FROM $table $where ORDER BY transaction_date DESC, id DESC LIMIT 200";
         
         if ( ! empty( $args ) ) {
             $results = $wpdb->get_results( $wpdb->prepare( $query, $args ) );
@@ -95,17 +94,29 @@ class UMH_API_Finance {
         $type = sanitize_text_field( $request->get_param( 'type' ) ); // 'in' or 'out'
         $amount = (float) $request->get_param( 'amount' );
         $category = sanitize_text_field( $request->get_param( 'category' ) );
+        $description = sanitize_textarea_field( $request->get_param( 'description' ) );
+        $date = $request->get_param( 'transaction_date' ) ?: current_time( 'mysql' );
         
         if ( $amount <= 0 ) {
             return new WP_Error( 'invalid_amount', 'Nominal harus lebih dari 0', array( 'status' => 400 ) );
         }
 
-        // Validasi Saldo jika Pengeluaran
-        if ( $type === 'out' ) {
-            $current_balance = $this->calculate_current_balance();
-            if ( $amount > $current_balance ) {
-                return new WP_Error( 'insufficient_funds', 'Saldo kas tidak mencukupi. Sisa saldo: ' . number_format($current_balance), array( 'status' => 400 ) );
-            }
+        // 1. Hitung Saldo Terakhir
+        // Kita ambil transaksi terakhir berdasarkan ID (asumsi ID selalu increment)
+        $last_transaction = $wpdb->get_row("SELECT balance_after FROM $table ORDER BY id DESC LIMIT 1");
+        $last_balance = $last_transaction ? (float)$last_transaction->balance_after : 0;
+
+        // 2. Hitung Saldo Baru
+        $new_balance = $last_balance;
+        if ($type === 'in') {
+            $new_balance += $amount;
+        } else {
+            $new_balance -= $amount;
+        }
+
+        // Validasi Saldo jika Pengeluaran (Opsional, matikan jika boleh minus)
+        if ( $type === 'out' && $new_balance < 0 ) {
+            // return new WP_Error( 'insufficient_funds', 'Saldo kas tidak mencukupi.', array( 'status' => 400 ) );
         }
 
         $inserted = $wpdb->insert(
@@ -114,15 +125,16 @@ class UMH_API_Finance {
                 'type' => $type,
                 'category' => $category,
                 'amount' => $amount,
-                'transaction_date' => $request->get_param( 'transaction_date' ) ?: current_time( 'mysql' ),
-                'description' => sanitize_textarea_field( $request->get_param( 'description' ) ),
+                'transaction_date' => $date,
+                'description' => $description,
                 'proof_file' => esc_url_raw( $request->get_param( 'proof_file' ) ),
-                'balance_after' => 0 // Placeholder, logic saldo kompleks bisa ditambahkan jika perlu history saldo per baris
-            )
+                'balance_after' => $new_balance 
+            ),
+            array('%s', '%s', '%f', '%s', '%s', '%s', '%f')
         );
 
         if ( $inserted ) {
-            return rest_ensure_response( array( 'message' => 'Transaksi berhasil dicatat' ) );
+            return rest_ensure_response( array( 'message' => 'Transaksi berhasil dicatat', 'new_balance' => $new_balance ) );
         }
         return new WP_Error( 'db_error', 'Gagal menyimpan transaksi', array( 'status' => 500 ) );
     }
@@ -134,7 +146,6 @@ class UMH_API_Finance {
         $table = $wpdb->prefix . 'umh_payments';
         $table_jamaah = $wpdb->prefix . 'umh_jamaah';
         
-        // Join untuk dapat nama jamaah
         $query = "
             SELECT p.*, j.full_name, j.passport_number 
             FROM $table p
@@ -159,11 +170,10 @@ class UMH_API_Finance {
 
         if ( $amount <= 0 ) return new WP_Error( 'invalid', 'Nominal salah', array( 'status' => 400 ) );
 
-        // 1. Ambil Data Jamaah Saat Ini
         $jamaah = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $table_jamaah WHERE id = %d", $jamaah_id ) );
         if ( ! $jamaah ) return new WP_Error( 'not_found', 'Jamaah tidak ditemukan', array( 'status' => 404 ) );
 
-        // 2. Insert Riwayat Pembayaran
+        // 1. Insert ke Tabel Pembayaran
         $wpdb->insert(
             $table_payments,
             array(
@@ -178,7 +188,7 @@ class UMH_API_Finance {
         );
         $payment_id = $wpdb->insert_id;
 
-        // 3. Update Status Jamaah
+        // 2. Update Status Jamaah
         $new_total_paid = (float)$jamaah->total_paid + $amount;
         $price = (float)$jamaah->package_price;
         
@@ -198,7 +208,12 @@ class UMH_API_Finance {
             array( 'id' => $jamaah_id )
         );
 
-        // 4. Catat Otomatis di Cash Flow (Pemasukan)
+        // 3. Otomatis Catat di Cash Flow (Pemasukan)
+        // Hitung saldo terakhir dulu
+        $last_transaction = $wpdb->get_row("SELECT balance_after FROM $table_cash ORDER BY id DESC LIMIT 1");
+        $last_balance = $last_transaction ? (float)$last_transaction->balance_after : 0;
+        $new_balance = $last_balance + $amount;
+
         $wpdb->insert(
             $table_cash,
             array(
@@ -207,8 +222,10 @@ class UMH_API_Finance {
                 'amount' => $amount,
                 'transaction_date' => $date,
                 'description' => "Pembayaran dari {$jamaah->full_name} (ID: {$jamaah_id}) via $method",
-                'reference_id' => $payment_id
-            )
+                'reference_id' => $payment_id,
+                'balance_after' => $new_balance
+            ),
+            array('%s', '%s', '%f', '%s', '%s', '%d', '%f')
         );
 
         return rest_ensure_response( array( 
@@ -218,15 +235,15 @@ class UMH_API_Finance {
         ) );
     }
 
-    // --- 3. HELPERS & STATS ---
-
     public function get_finance_stats() {
         global $wpdb;
         $table = $wpdb->prefix . 'umh_cash_flow';
 
+        // Statistik Total
         $in = $wpdb->get_var( "SELECT SUM(amount) FROM $table WHERE type = 'in'" );
         $out = $wpdb->get_var( "SELECT SUM(amount) FROM $table WHERE type = 'out'" );
         
+        // Saldo saat ini (real time calculation untuk akurasi) atau ambil last record
         $balance = (float)$in - (float)$out;
 
         return rest_ensure_response( array(
@@ -235,15 +252,6 @@ class UMH_API_Finance {
             'balance' => $balance
         ) );
     }
-
-    private function calculate_current_balance() {
-        global $wpdb;
-        $table = $wpdb->prefix . 'umh_cash_flow';
-        $in = $wpdb->get_var( "SELECT SUM(amount) FROM $table WHERE type = 'in'" );
-        $out = $wpdb->get_var( "SELECT SUM(amount) FROM $table WHERE type = 'out'" );
-        return (float)$in - (float)$out;
-    }
-
 }
 
 new UMH_API_Finance();

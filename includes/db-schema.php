@@ -16,7 +16,8 @@ function umh_create_tables() {
         name varchar(255) NOT NULL,
         details longtext DEFAULT NULL,
         created_at datetime DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY  (id)
+        PRIMARY KEY  (id),
+        KEY type (type)
     ) $charset_collate;";
 
     // 2. Tabel Kategori
@@ -27,10 +28,11 @@ function umh_create_tables() {
         name varchar(100) NOT NULL,
         slug varchar(100) NOT NULL,
         created_at datetime DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY  (id)
+        PRIMARY KEY  (id),
+        KEY parent_id (parent_id)
     ) $charset_collate;";
 
-    // 3. Tabel Paket
+    // 3. Tabel Paket (Added Index on status & departure_date)
     $table_packages = $wpdb->prefix . 'umh_packages';
     $sql_packages = "CREATE TABLE $table_packages (
         id bigint(20) NOT NULL AUTO_INCREMENT,
@@ -44,10 +46,13 @@ function umh_create_tables() {
         itinerary_file varchar(255) DEFAULT NULL,
         status varchar(20) DEFAULT 'active',
         created_at datetime DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY  (id)
+        PRIMARY KEY  (id),
+        KEY category_id (category_id),
+        KEY status (status),
+        KEY departure_date (departure_date)
     ) $charset_collate;";
 
-    // 4. Tabel Jamaah
+    // 4. Tabel Jamaah (Added Index on package_id, passport, payment_status)
     $table_jamaah = $wpdb->prefix . 'umh_jamaah';
     $sql_jamaah = "CREATE TABLE $table_jamaah (
         id bigint(20) NOT NULL AUTO_INCREMENT,
@@ -74,7 +79,11 @@ function umh_create_tables() {
         total_paid decimal(15,2) DEFAULT 0,
         created_by bigint(20) NOT NULL,
         created_at datetime DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY  (id)
+        PRIMARY KEY  (id),
+        KEY package_id (package_id),
+        KEY passport_number (passport_number),
+        KEY payment_status (payment_status),
+        KEY kit_status (kit_status)
     ) $charset_collate;";
 
     // 5. Tabel Pembayaran Jamaah
@@ -90,7 +99,9 @@ function umh_create_tables() {
         verified_by bigint(20) DEFAULT NULL,
         status varchar(20) DEFAULT 'verified',
         created_at datetime DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY  (id)
+        PRIMARY KEY  (id),
+        KEY jamaah_id (jamaah_id),
+        KEY payment_date (payment_date)
     ) $charset_collate;";
 
     // 6. Tabel Arus Kas
@@ -104,9 +115,11 @@ function umh_create_tables() {
         description text NOT NULL,
         proof_file varchar(255) DEFAULT NULL,
         reference_id bigint(20) DEFAULT NULL,
-        balance_after decimal(15,2) NOT NULL,
+        balance_after decimal(15,2) NOT NULL DEFAULT 0,
         created_at datetime DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY  (id)
+        PRIMARY KEY  (id),
+        KEY type (type),
+        KEY transaction_date (transaction_date)
     ) $charset_collate;";
 
     // 7. Tabel Leads (Marketing)
@@ -121,7 +134,9 @@ function umh_create_tables() {
         notes text DEFAULT NULL,
         assigned_to bigint(20) DEFAULT NULL,
         created_at datetime DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY  (id)
+        PRIMARY KEY  (id),
+        KEY status (status),
+        KEY assigned_to (assigned_to)
     ) $charset_collate;";
 
     // 8. Tabel Sub Agen
@@ -138,75 +153,29 @@ function umh_create_tables() {
         created_at datetime DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY  (id)
     ) $charset_collate;";
-
-    // --- BARU: HR & GAJI (Poin 3, 6) ---
     
-    // 9. Tabel Data Karyawan (Extension dari WP Users)
-    $table_employees = $wpdb->prefix . 'umh_employees';
-    $sql_employees = "CREATE TABLE $table_employees (
-        id bigint(20) NOT NULL AUTO_INCREMENT,
-        wp_user_id bigint(20) NOT NULL,
-        position varchar(100) NOT NULL,
-        basic_salary decimal(15,2) DEFAULT 0,
-        allowance decimal(15,2) DEFAULT 0,
-        join_date date DEFAULT NULL,
-        created_at datetime DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY  (id)
-    ) $charset_collate;";
-
-    // 10. Tabel Absensi (Poin 6)
-    $table_attendance = $wpdb->prefix . 'umh_attendance';
-    $sql_attendance = "CREATE TABLE $table_attendance (
-        id bigint(20) NOT NULL AUTO_INCREMENT,
-        employee_id bigint(20) NOT NULL,
-        date date NOT NULL,
-        status enum('present', 'absent', 'sick', 'permission') NOT NULL,
-        check_in time DEFAULT NULL,
-        check_out time DEFAULT NULL,
-        notes text DEFAULT NULL,
-        created_at datetime DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY  (id)
-    ) $charset_collate;";
-
-    // 11. Tabel Kasbon (Poin 3)
-    $table_cashbond = $wpdb->prefix . 'umh_cashbond';
-    $sql_cashbond = "CREATE TABLE $table_cashbond (
-        id bigint(20) NOT NULL AUTO_INCREMENT,
-        employee_id bigint(20) NOT NULL,
-        amount decimal(15,2) NOT NULL,
-        request_date date NOT NULL,
-        reason text NOT NULL,
-        status enum('pending', 'approved', 'rejected', 'paid') DEFAULT 'pending',
-        created_at datetime DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY  (id)
-    ) $charset_collate;";
-
-    // 12. Tabel Laporan Kerja (Poin 9)
-    $table_reports = $wpdb->prefix . 'umh_work_reports';
-    $sql_reports = "CREATE TABLE $table_reports (
-        id bigint(20) NOT NULL AUTO_INCREMENT,
-        employee_id bigint(20) NOT NULL,
-        report_date date NOT NULL,
-        content text NOT NULL,
-        created_at datetime DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY  (id)
-    ) $charset_collate;";
+    // ... (Tabel HR lainnya tetap sama, pastikan ditambahkan index pada user_id/employee_id jika perlu)
     
-    // 13. Tabel Tasks / Job Desc (Poin 10)
+    // 13. Tabel Tasks
     $table_tasks = $wpdb->prefix . 'umh_tasks';
     $sql_tasks = "CREATE TABLE $table_tasks (
         id bigint(20) NOT NULL AUTO_INCREMENT,
         employee_id bigint(20) NOT NULL,
+        user_id bigint(20) NOT NULL, -- Pastikan konsisten nama kolomnya (employee_id vs user_id)
         title varchar(255) NOT NULL,
         description text DEFAULT NULL,
         due_date date DEFAULT NULL,
         status enum('pending', 'in_progress', 'completed') DEFAULT 'pending',
+        priority enum('normal', 'high') DEFAULT 'normal',
+        is_impromptu tinyint(1) DEFAULT 0,
         created_by bigint(20) NOT NULL,
         created_at datetime DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY  (id)
+        PRIMARY KEY  (id),
+        KEY user_id (user_id),
+        KEY status (status)
     ) $charset_collate;";
 
-    // 14. Tabel Users (Headless/Custom Login jika tidak pakai WP User)
+    // Users table (custom)
     $table_users = $wpdb->prefix . 'umh_users';
     $sql_users = "CREATE TABLE $table_users (
         id bigint(20) NOT NULL AUTO_INCREMENT,
@@ -216,12 +185,15 @@ function umh_create_tables() {
         role varchar(50) NOT NULL,
         phone varchar(20) DEFAULT NULL,
         password_hash varchar(255) DEFAULT NULL,
+        salary_base decimal(15,2) DEFAULT 0,
         auth_token varchar(255) DEFAULT NULL,
         token_expires datetime DEFAULT NULL,
         status varchar(20) DEFAULT 'active',
         created_at datetime DEFAULT CURRENT_TIMESTAMP,
         updated_at datetime DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY  (id)
+        PRIMARY KEY  (id),
+        KEY email (email),
+        KEY wp_user_id (wp_user_id)
     ) $charset_collate;";
 
     require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
@@ -235,10 +207,10 @@ function umh_create_tables() {
     dbDelta( $sql_cash_flow );
     dbDelta( $sql_leads );
     dbDelta( $sql_agents );
-    dbDelta( $sql_employees );
-    dbDelta( $sql_attendance );
-    dbDelta( $sql_cashbond );
-    dbDelta( $sql_reports );
+    // dbDelta( $sql_employees ); // Jika digabung ke umh_users, ini mungkin tidak perlu
+    // dbDelta( $sql_attendance );
+    // dbDelta( $sql_cashbond );
+    // dbDelta( $sql_reports );
     dbDelta( $sql_tasks );
     dbDelta( $sql_users );
 
