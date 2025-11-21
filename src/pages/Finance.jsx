@@ -1,222 +1,96 @@
-// File: src/pages/Finance.jsx
-
 import React, { useState, useEffect } from 'react';
 import { useApi } from '../context/ApiContext';
 import Loading from '../components/common/Loading';
-import Modal from '../components/common/Modal';
+import { DollarSign, CreditCard, TrendingUp, Printer, Search } from 'lucide-react';
 
 const Finance = () => {
-    const { getCashflow, createCashflow, createPayment, getJamaah } = useApi();
-    const [activeTab, setActiveTab] = useState('cashflow'); // cashflow, payment
-    const [data, setData] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [modalOpen, setModalOpen] = useState(false);
+  const { api } = useApi();
+  const [payments, setPayments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  // --- FUNGSI CETAK KWITANSI ---
+  const handlePrint = (paymentId) => {
+    // URL ini mengarah ke admin-post.php WordPress yang di-hook oleh api-print.php
+    const printUrl = `/wp-admin/admin-post.php?action=umh_print_receipt&id=${paymentId}`;
+    window.open(printUrl, '_blank', 'width=900,height=600');
+  };
 
-    // Filter State
-    const [filters, setFilters] = useState({ month: '', year: new Date().getFullYear() });
-
-    // Form State
-    const [formData, setFormData] = useState({});
-    const [jamaahList, setJamaahList] = useState([]);
-
-    useEffect(() => {
-        fetchData();
-    }, [activeTab, filters]);
-
-    const fetchData = async () => {
-        setLoading(true);
-        try {
-            if (activeTab === 'cashflow') {
-                const res = await getCashflow(filters);
-                setData(res || []);
-            } else {
-                // Load history pembayaran jamaah atau cashflow kategori pembayaran
-                const res = await getCashflow({ category: 'Pembayaran Jamaah', ...filters });
-                setData(res || []);
-            }
-        } catch (error) {
-            console.error("Fetch finance error:", error);
-        } finally {
-            setLoading(false);
-        }
+  useEffect(() => {
+    const fetchFinance = async () => {
+      try {
+        const res = await api.get('/finance/transactions');
+        setPayments(res.data || []);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
     };
+    fetchFinance();
+  }, []);
 
-    const handlePaymentSubmit = async (e) => {
-        e.preventDefault();
-        try {
-            await createPayment(formData);
-            alert('Pembayaran berhasil disimpan!');
-            setModalOpen(false);
-            fetchData();
-        } catch (err) {
-            alert(err.message);
-        }
-    };
+  if (loading) return <div className="p-6"><Loading /></div>;
 
-    const handleCashflowSubmit = async (e) => {
-        e.preventDefault();
-        try {
-            await createCashflow(formData);
-            alert('Data kas berhasil disimpan!');
-            setModalOpen(false);
-            fetchData();
-        } catch (err) {
-            alert(err.message);
-        }
-    };
+  const totalIn = payments.filter(p => p.type === 'in').reduce((acc, curr) => acc + parseInt(curr.amount), 0);
 
-    // Load jamaah saat modal pembayaran dibuka
-    const openPaymentModal = async () => {
-        setFormData({ jamaah_id: '', amount: 0, date: '', notes: '' });
-        setModalOpen(true);
-        try {
-            const res = await getJamaah({ limit: 100 }); 
-            setJamaahList(res || []);
-        } catch (error) {
-            console.error("Gagal load jamaah:", error);
-        }
-    };
+  return (
+    <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold text-gray-800">Keuangan & Pembayaran</h1>
+      </div>
 
-    return (
-        <div className="p-6">
-            <h1 className="text-2xl font-bold text-gray-800 mb-6">Manajemen Keuangan</h1>
-
-            <div className="flex space-x-4 mb-6">
-                <button 
-                    onClick={() => setActiveTab('cashflow')} 
-                    className={`px-6 py-3 rounded-lg font-bold transition ${activeTab === 'cashflow' ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}
-                >
-                    Arus Kas (Operasional)
-                </button>
-                <button 
-                    onClick={() => setActiveTab('payment')} 
-                    className={`px-6 py-3 rounded-lg font-bold transition ${activeTab === 'payment' ? 'bg-green-600 text-white shadow-md' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}
-                >
-                    Pembayaran Jamaah
-                </button>
-            </div>
-
-            <div className="flex justify-between items-center mb-4">
-                <div className="flex space-x-2">
-                    <select 
-                        className="border border-gray-300 p-2 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500" 
-                        value={filters.month} 
-                        onChange={e => setFilters({...filters, month: e.target.value})}
-                    >
-                        <option value="">Semua Bulan</option>
-                        {[...Array(12)].map((_, i) => <option key={i+1} value={i+1}>{new Date(0, i).toLocaleString('id-ID', { month: 'long' })}</option>)}
-                    </select>
-                </div>
-                <button 
-                    onClick={() => activeTab === 'cashflow' ? setModalOpen(true) : openPaymentModal()} 
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg shadow-sm font-medium transition flex items-center gap-2"
-                >
-                    <span>+</span> {activeTab === 'cashflow' ? 'Input Kas' : 'Input Pembayaran'}
-                </button>
-            </div>
-
-            {loading ? <Loading /> : (
-                <div className="bg-white shadow rounded-lg overflow-hidden border border-gray-200">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tanggal</th>
-                                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Keterangan</th>
-                                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tipe</th>
-                                <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Nominal</th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {data.length === 0 ? (
-                                <tr>
-                                    <td colSpan="4" className="px-6 py-10 text-center text-gray-400">Belum ada data transaksi.</td>
-                                </tr>
-                            ) : (
-                                data.map((item, idx) => (
-                                    <tr key={idx} className="hover:bg-gray-50 transition">
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {new Date(item.transaction_date || item.payment_date).toLocaleDateString('id-ID')}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">
-                                            {item.description || item.notes || `Pembayaran Jamaah #${item.jamaah_id}`}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                                                item.type === 'in' || activeTab === 'payment' 
-                                                    ? 'bg-green-100 text-green-800' 
-                                                    : 'bg-red-100 text-red-800'
-                                            }`}>
-                                                {activeTab === 'payment' ? 'Pemasukan' : (item.type === 'in' ? 'Kas Masuk' : 'Kas Keluar')}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-gray-800">
-                                            {item.type === 'out' && activeTab === 'cashflow' ? '-' : '+'} Rp {parseInt(item.amount).toLocaleString('id-ID')}
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            )}
-
-            {/* Modal Form */}
-            <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={activeTab === 'cashflow' ? 'Input Kas Operasional' : 'Input Pembayaran Jamaah'}>
-                {activeTab === 'cashflow' ? (
-                    <form onSubmit={handleCashflowSubmit} className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Tipe Transaksi</label>
-                            <select 
-                                className="w-full border border-gray-300 p-2 rounded-lg focus:ring-blue-500 focus:border-blue-500" 
-                                onChange={e => setFormData({...formData, type: e.target.value})} 
-                                required
-                            >
-                                <option value="">-- Pilih Tipe --</option>
-                                <option value="in">Pemasukan (Kas Masuk)</option>
-                                <option value="out">Pengeluaran (Kas Keluar)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Nominal (Rp)</label>
-                            <input type="number" className="w-full border border-gray-300 p-2 rounded-lg" onChange={e => setFormData({...formData, amount: e.target.value})} required />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal</label>
-                            <input type="date" className="w-full border border-gray-300 p-2 rounded-lg" onChange={e => setFormData({...formData, transaction_date: e.target.value})} required />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Keterangan</label>
-                            <textarea className="w-full border border-gray-300 p-2 rounded-lg" rows="3" onChange={e => setFormData({...formData, description: e.target.value})} required placeholder="Contoh: Biaya listrik, Beli ATK, dll"></textarea>
-                        </div>
-                        <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700 shadow-md">Simpan Data</button>
-                    </form>
-                ) : (
-                    <form onSubmit={handlePaymentSubmit} className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Pilih Jamaah</label>
-                            <select className="w-full border border-gray-300 p-2 rounded-lg" onChange={e => setFormData({...formData, jamaah_id: e.target.value})} required>
-                                <option value="">-- Cari Jamaah --</option>
-                                {jamaahList.map(j => <option key={j.id} value={j.id}>{j.full_name} - {j.package_name}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Nominal Pembayaran (Rp)</label>
-                            <input type="number" className="w-full border border-gray-300 p-2 rounded-lg" onChange={e => setFormData({...formData, amount: e.target.value})} required />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Bayar</label>
-                            <input type="date" className="w-full border border-gray-300 p-2 rounded-lg" onChange={e => setFormData({...formData, payment_date: e.target.value})} required />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Catatan</label>
-                            <textarea className="w-full border border-gray-300 p-2 rounded-lg" rows="3" onChange={e => setFormData({...formData, notes: e.target.value})} placeholder="Contoh: Pelunasan tahap 1, DP, dll"></textarea>
-                        </div>
-                        <button type="submit" className="w-full bg-green-600 text-white py-2 rounded-lg font-bold hover:bg-green-700 shadow-md">Simpan Pembayaran</button>
-                    </form>
-                )}
-            </Modal>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white p-4 rounded-xl shadow-sm border flex items-center gap-4">
+            <div className="p-3 bg-green-100 text-green-600 rounded-lg"><TrendingUp size={24}/></div>
+            <div><p className="text-sm text-gray-500">Total Pemasukan</p><h3 className="text-xl font-bold">Rp {totalIn.toLocaleString()}</h3></div>
         </div>
-    );
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden border">
+        <div className="p-4 border-b bg-gray-50 font-medium text-gray-700">Riwayat Pembayaran Jamaah</div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-white border-b text-gray-500 uppercase">
+              <tr>
+                <th className="p-4">Tanggal</th>
+                <th className="p-4">Jamaah</th>
+                <th className="p-4">Keterangan</th>
+                <th className="p-4">Jumlah</th>
+                <th className="p-4 text-center">Cetak</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {payments.map((pay) => (
+                <tr key={pay.id} className="hover:bg-gray-50">
+                  <td className="p-4">{new Date(pay.payment_date).toLocaleDateString('id-ID')}</td>
+                  <td className="p-4 font-medium">
+                    {pay.jamaah_name} <br/>
+                    <span className="text-xs text-gray-400">{pay.booking_code}</span>
+                  </td>
+                  <td className="p-4">
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${pay.status === 'verified' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                        {pay.status === 'verified' ? 'Terverifikasi' : 'Menunggu'}
+                    </span>
+                    <div className="text-xs text-gray-500 mt-1">{pay.payment_method}</div>
+                  </td>
+                  <td className="p-4 font-bold text-gray-700">Rp {parseInt(pay.amount).toLocaleString()}</td>
+                  <td className="p-4 text-center">
+                    <button 
+                        onClick={() => handlePrint(pay.id)}
+                        className="bg-blue-50 text-blue-600 p-2 rounded-lg hover:bg-blue-100 transition-colors"
+                        title="Cetak Kwitansi"
+                    >
+                        <Printer size={18} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default Finance;
