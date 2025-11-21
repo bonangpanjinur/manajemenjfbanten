@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Manajemen JF Banten (Umroh Manager Hybrid)
  * Description: Plugin manajemen travel umroh hybrid (React + WP) dengan fitur Keuangan, Jamaah, dan Paket Dinamis.
- * Version: 1.1.5
+ * Version: 1.1.6
  * Author: Bonang Panji Nur
  */
 
@@ -19,6 +19,11 @@ define( 'UMH_DB_VERSION', '1.4' );
 // Include file-file penting
 require_once UMH_PLUGIN_DIR . 'includes/db-schema.php';
 require_once UMH_PLUGIN_DIR . 'includes/utils.php';
+
+// --- PERBAIKAN: Include Base Classes Terlebih Dahulu ---
+// Class ini dibutuhkan oleh api-departures.php, api-hotels.php, dll.
+require_once UMH_PLUGIN_DIR . 'includes/class-umh-logger.php';
+require_once UMH_PLUGIN_DIR . 'includes/class-umh-crud-controller.php';
 
 // Include API Handlers
 require_once UMH_PLUGIN_DIR . 'includes/api/api-stats.php';
