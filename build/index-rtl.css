@@ -132,17 +132,6 @@
     max-width: 1536px;
   }
 }
-#umh-admin-app .sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border-width: 0;
-}
 #umh-admin-app .fixed {
   position: fixed;
 }
@@ -158,15 +147,11 @@
 #umh-admin-app .inset-0 {
   inset: 0px;
 }
-#umh-admin-app .inset-y-0 {
-  top: 0px;
-  bottom: 0px;
-}
-#umh-admin-app .left-0 {
-  right: 0px;
-}
 #umh-admin-app .left-3 {
   right: 0.75rem;
+}
+#umh-admin-app .top-0 {
+  top: 0px;
 }
 #umh-admin-app .top-2 {
   top: 0.5rem;
@@ -176,12 +161,6 @@
 }
 #umh-admin-app .z-10 {
   z-index: 10;
-}
-#umh-admin-app .z-20 {
-  z-index: 20;
-}
-#umh-admin-app .z-30 {
-  z-index: 30;
 }
 #umh-admin-app .z-50 {
   z-index: 50;
@@ -229,17 +208,8 @@
 #umh-admin-app .ml-1 {
   margin-right: 0.25rem;
 }
-#umh-admin-app .ml-3 {
-  margin-right: 0.75rem;
-}
-#umh-admin-app .ml-auto {
-  margin-right: auto;
-}
 #umh-admin-app .mr-2 {
   margin-left: 0.5rem;
-}
-#umh-admin-app .mr-3 {
-  margin-left: 0.75rem;
 }
 #umh-admin-app .mt-0\.5 {
   margin-top: 0.125rem;
@@ -255,9 +225,6 @@
 }
 #umh-admin-app .mt-6 {
   margin-top: 1.5rem;
-}
-#umh-admin-app .mt-8 {
-  margin-top: 2rem;
 }
 #umh-admin-app .block {
   display: block;
@@ -279,9 +246,6 @@
 }
 #umh-admin-app .aspect-video {
   aspect-ratio: 16 / 9;
-}
-#umh-admin-app .h-1\.5 {
-  height: 0.375rem;
 }
 #umh-admin-app .h-10 {
   height: 2.5rem;
@@ -319,9 +283,6 @@
 #umh-admin-app .h-full {
   height: 100%;
 }
-#umh-admin-app .h-screen {
-  height: 100vh;
-}
 #umh-admin-app .max-h-60 {
   max-height: 15rem;
 }
@@ -336,9 +297,6 @@
 }
 #umh-admin-app .min-h-screen {
   min-height: 100vh;
-}
-#umh-admin-app .w-1\.5 {
-  width: 0.375rem;
 }
 #umh-admin-app .w-10 {
   width: 2.5rem;
@@ -363,9 +321,6 @@
 }
 #umh-admin-app .w-6 {
   width: 1.5rem;
-}
-#umh-admin-app .w-64 {
-  width: 16rem;
 }
 #umh-admin-app .w-8 {
   width: 2rem;
@@ -408,14 +363,6 @@
 }
 #umh-admin-app .flex-shrink-0 {
   flex-shrink: 0;
-}
-#umh-admin-app .-translate-x-full {
-  --tw-translate-x: -100%;
-  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
-}
-#umh-admin-app .translate-x-0 {
-  --tw-translate-x: 0px;
-  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
 #umh-admin-app .scale-\[1\.02\] {
   --tw-scale-x: 1.02;
@@ -506,10 +453,10 @@
 #umh-admin-app .gap-8 {
   gap: 2rem;
 }
-#umh-admin-app :is(.-space-y-px > :not([hidden]) ~ :not([hidden])) {
-  --tw-space-y-reverse: 0;
-  margin-top: calc(-1px * calc(1 - var(--tw-space-y-reverse)));
-  margin-bottom: calc(-1px * var(--tw-space-y-reverse));
+#umh-admin-app :is(.space-x-1 > :not([hidden]) ~ :not([hidden])) {
+  --tw-space-x-reverse: 0;
+  margin-left: calc(0.25rem * var(--tw-space-x-reverse));
+  margin-right: calc(0.25rem * calc(1 - var(--tw-space-x-reverse)));
 }
 #umh-admin-app :is(.space-x-2 > :not([hidden]) ~ :not([hidden])) {
   --tw-space-x-reverse: 0;
@@ -520,11 +467,6 @@
   --tw-space-x-reverse: 0;
   margin-left: calc(0.75rem * var(--tw-space-x-reverse));
   margin-right: calc(0.75rem * calc(1 - var(--tw-space-x-reverse)));
-}
-#umh-admin-app :is(.space-y-1 > :not([hidden]) ~ :not([hidden])) {
-  --tw-space-y-reverse: 0;
-  margin-top: calc(0.25rem * calc(1 - var(--tw-space-y-reverse)));
-  margin-bottom: calc(0.25rem * var(--tw-space-y-reverse));
 }
 #umh-admin-app :is(.space-y-2 > :not([hidden]) ~ :not([hidden])) {
   --tw-space-y-reverse: 0;
@@ -592,23 +534,12 @@
 #umh-admin-app .rounded-md {
   border-radius: 0.375rem;
 }
-#umh-admin-app .rounded-none {
-  border-radius: 0px;
-}
 #umh-admin-app .rounded-xl {
   border-radius: 0.75rem;
-}
-#umh-admin-app .rounded-b-md {
-  border-bottom-left-radius: 0.375rem;
-  border-bottom-right-radius: 0.375rem;
 }
 #umh-admin-app .rounded-b-xl {
   border-bottom-left-radius: 0.75rem;
   border-bottom-right-radius: 0.75rem;
-}
-#umh-admin-app .rounded-t-md {
-  border-top-right-radius: 0.375rem;
-  border-top-left-radius: 0.375rem;
 }
 #umh-admin-app .rounded-t-xl {
   border-top-right-radius: 0.75rem;
@@ -616,9 +547,6 @@
 }
 #umh-admin-app .border {
   border-width: 1px;
-}
-#umh-admin-app .border-2 {
-  border-width: 2px;
 }
 #umh-admin-app .border-b {
   border-bottom-width: 1px;
@@ -670,14 +598,6 @@
   --tw-border-opacity: 1;
   border-color: rgb(249 250 251 / var(--tw-border-opacity, 1));
 }
-#umh-admin-app .border-gray-600 {
-  --tw-border-opacity: 1;
-  border-color: rgb(75 85 99 / var(--tw-border-opacity, 1));
-}
-#umh-admin-app .border-gray-800 {
-  --tw-border-opacity: 1;
-  border-color: rgb(31 41 55 / var(--tw-border-opacity, 1));
-}
 #umh-admin-app .border-green-200 {
   --tw-border-opacity: 1;
   border-color: rgb(187 247 208 / var(--tw-border-opacity, 1));
@@ -705,9 +625,6 @@
 #umh-admin-app .border-red-500 {
   --tw-border-opacity: 1;
   border-color: rgb(239 68 68 / var(--tw-border-opacity, 1));
-}
-#umh-admin-app .border-red-900\/30 {
-  border-color: rgb(127 29 29 / 0.3);
 }
 #umh-admin-app .border-transparent {
   border-color: transparent;
@@ -752,14 +669,6 @@
   --tw-bg-opacity: 1;
   background-color: rgb(31 41 55 / var(--tw-bg-opacity, 1));
 }
-#umh-admin-app .bg-gray-900 {
-  --tw-bg-opacity: 1;
-  background-color: rgb(17 24 39 / var(--tw-bg-opacity, 1));
-}
-#umh-admin-app .bg-gray-950 {
-  --tw-bg-opacity: 1;
-  background-color: rgb(3 7 18 / var(--tw-bg-opacity, 1));
-}
 #umh-admin-app .bg-green-100 {
   --tw-bg-opacity: 1;
   background-color: rgb(220 252 231 / var(--tw-bg-opacity, 1));
@@ -803,9 +712,6 @@
 #umh-admin-app .bg-red-600 {
   --tw-bg-opacity: 1;
   background-color: rgb(220 38 38 / var(--tw-bg-opacity, 1));
-}
-#umh-admin-app .bg-red-900\/10 {
-  background-color: rgb(127 29 29 / 0.1);
 }
 #umh-admin-app .bg-transparent {
   background-color: transparent;
@@ -913,6 +819,9 @@
 #umh-admin-app .p-6 {
   padding: 1.5rem;
 }
+#umh-admin-app .p-8 {
+  padding: 2rem;
+}
 #umh-admin-app .px-1\.5 {
   padding-right: 0.375rem;
   padding-left: 0.375rem;
@@ -940,6 +849,10 @@
 #umh-admin-app .px-6 {
   padding-right: 1.5rem;
   padding-left: 1.5rem;
+}
+#umh-admin-app .py-0 {
+  padding-top: 0px;
+  padding-bottom: 0px;
 }
 #umh-admin-app .py-0\.5 {
   padding-top: 0.125rem;
@@ -980,10 +893,6 @@
 #umh-admin-app .py-4 {
   padding-top: 1rem;
   padding-bottom: 1rem;
-}
-#umh-admin-app .py-6 {
-  padding-top: 1.5rem;
-  padding-bottom: 1.5rem;
 }
 #umh-admin-app .py-8 {
   padding-top: 2rem;
@@ -1090,14 +999,8 @@
 #umh-admin-app .leading-5 {
   line-height: 1.25rem;
 }
-#umh-admin-app .leading-tight {
-  line-height: 1.25;
-}
 #umh-admin-app .tracking-tight {
   letter-spacing: -0.025em;
-}
-#umh-admin-app .tracking-wide {
-  letter-spacing: 0.025em;
 }
 #umh-admin-app .tracking-wider {
   letter-spacing: 0.05em;
@@ -1225,14 +1128,6 @@
   --tw-placeholder-opacity: 1;
   color: rgb(156 163 175 / var(--tw-placeholder-opacity, 1));
 }
-#umh-admin-app .placeholder-gray-500::-moz-placeholder {
-  --tw-placeholder-opacity: 1;
-  color: rgb(107 114 128 / var(--tw-placeholder-opacity, 1));
-}
-#umh-admin-app .placeholder-gray-500::placeholder {
-  --tw-placeholder-opacity: 1;
-  color: rgb(107 114 128 / var(--tw-placeholder-opacity, 1));
-}
 #umh-admin-app .opacity-0 {
   opacity: 0;
 }
@@ -1273,17 +1168,8 @@
   --tw-shadow-colored: 0 1px 2px 0 var(--tw-shadow-color);
   box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
 }
-#umh-admin-app .shadow-xl {
-  --tw-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-  --tw-shadow-colored: 0 20px 25px -5px var(--tw-shadow-color), 0 8px 10px -6px var(--tw-shadow-color);
-  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
-}
 #umh-admin-app .shadow-blue-200 {
   --tw-shadow-color: #bfdbfe;
-  --tw-shadow: var(--tw-shadow-colored);
-}
-#umh-admin-app .shadow-blue-900\/50 {
-  --tw-shadow-color: rgb(30 58 138 / 0.5);
   --tw-shadow: var(--tw-shadow-colored);
 }
 #umh-admin-app .outline-none {
@@ -1333,12 +1219,6 @@
 }
 #umh-admin-app .duration-200 {
   transition-duration: 200ms;
-}
-#umh-admin-app .duration-300 {
-  transition-duration: 300ms;
-}
-#umh-admin-app .ease-in-out {
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* SCOPED PREFLIGHT */
@@ -1447,6 +1327,10 @@
   --tw-border-opacity: 1;
   border-color: rgb(147 197 253 / var(--tw-border-opacity, 1));
 }
+#umh-admin-app .hover\:border-gray-300:hover {
+  --tw-border-opacity: 1;
+  border-color: rgb(209 213 219 / var(--tw-border-opacity, 1));
+}
 #umh-admin-app .hover\:bg-blue-50:hover {
   --tw-bg-opacity: 1;
   background-color: rgb(239 246 255 / var(--tw-bg-opacity, 1));
@@ -1471,10 +1355,6 @@
   --tw-bg-opacity: 1;
   background-color: rgb(55 65 81 / var(--tw-bg-opacity, 1));
 }
-#umh-admin-app .hover\:bg-gray-800:hover {
-  --tw-bg-opacity: 1;
-  background-color: rgb(31 41 55 / var(--tw-bg-opacity, 1));
-}
 #umh-admin-app .hover\:bg-green-50:hover {
   --tw-bg-opacity: 1;
   background-color: rgb(240 253 244 / var(--tw-bg-opacity, 1));
@@ -1486,10 +1366,6 @@
 #umh-admin-app .hover\:bg-red-50:hover {
   --tw-bg-opacity: 1;
   background-color: rgb(254 242 242 / var(--tw-bg-opacity, 1));
-}
-#umh-admin-app .hover\:bg-red-600:hover {
-  --tw-bg-opacity: 1;
-  background-color: rgb(220 38 38 / var(--tw-bg-opacity, 1));
 }
 #umh-admin-app .hover\:bg-red-700:hover {
   --tw-bg-opacity: 1;
@@ -1527,10 +1403,6 @@
   --tw-text-opacity: 1;
   color: rgb(127 29 29 / var(--tw-text-opacity, 1));
 }
-#umh-admin-app .hover\:text-white:hover {
-  --tw-text-opacity: 1;
-  color: rgb(255 255 255 / var(--tw-text-opacity, 1));
-}
 #umh-admin-app .hover\:shadow-lg:hover {
   --tw-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   --tw-shadow-colored: 0 10px 15px -3px var(--tw-shadow-color), 0 4px 6px -4px var(--tw-shadow-color);
@@ -1540,9 +1412,6 @@
   --tw-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   --tw-shadow-colored: 0 4px 6px -1px var(--tw-shadow-color), 0 2px 4px -2px var(--tw-shadow-color);
   box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
-}
-#umh-admin-app .focus\:z-10:focus {
-  z-index: 10;
 }
 #umh-admin-app .focus\:border-blue-500:focus {
   --tw-border-opacity: 1;
@@ -1592,22 +1461,6 @@
 #umh-admin-app .disabled\:opacity-50:disabled {
   opacity: 0.5;
 }
-@keyframes pulse {
-  50% {
-    opacity: .5;
-  }
-}
-#umh-admin-app :is(.group:hover .group-hover\:animate-pulse) {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-#umh-admin-app :is(.group:hover .group-hover\:text-blue-400) {
-  --tw-text-opacity: 1;
-  color: rgb(96 165 250 / var(--tw-text-opacity, 1));
-}
-#umh-admin-app :is(.group:hover .group-hover\:text-white) {
-  --tw-text-opacity: 1;
-  color: rgb(255 255 255 / var(--tw-text-opacity, 1));
-}
 #umh-admin-app :is(.group:hover .group-hover\:opacity-100) {
   opacity: 1;
 }
@@ -1617,13 +1470,6 @@
   }
   #umh-admin-app .sm\:grid-cols-2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  #umh-admin-app .sm\:p-6 {
-    padding: 1.5rem;
-  }
-  #umh-admin-app .sm\:px-6 {
-    padding-right: 1.5rem;
-    padding-left: 1.5rem;
   }
   #umh-admin-app .sm\:text-sm {
     font-size: 0.875rem;
@@ -1654,33 +1500,16 @@
   }
 }
 @media (min-width: 1024px) {
-  #umh-admin-app .lg\:static {
-    position: static;
-  }
   #umh-admin-app .lg\:col-span-1 {
     grid-column: span 1 / span 1;
   }
   #umh-admin-app .lg\:col-span-2 {
     grid-column: span 2 / span 2;
   }
-  #umh-admin-app .lg\:hidden {
-    display: none;
-  }
-  #umh-admin-app .lg\:translate-x-0 {
-    --tw-translate-x: 0px;
-    transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
-  }
   #umh-admin-app .lg\:grid-cols-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   #umh-admin-app .lg\:grid-cols-4 {
     grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-  #umh-admin-app .lg\:p-8 {
-    padding: 2rem;
-  }
-  #umh-admin-app .lg\:px-8 {
-    padding-right: 2rem;
-    padding-left: 2rem;
   }
 }
