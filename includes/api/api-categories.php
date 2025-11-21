@@ -1,6 +1,4 @@
 <?php
-// File Location: includes/api/api-categories.php
-
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 class UMH_API_Categories {
@@ -9,68 +7,51 @@ class UMH_API_Categories {
     }
 
     public function register_routes() {
-        register_rest_route( 'umh/v1', '/categories', array(
-            'methods'             => 'GET',
-            'callback'            => array( $this, 'get_items' ),
-            'permission_callback' => '__return_true',
-        ) );
-        register_rest_route( 'umh/v1', '/categories', array(
-            'methods'             => 'POST',
-            'callback'            => array( $this, 'create_item' ),
-            'permission_callback' => '__return_true',
-        ) );
-        register_rest_route( 'umh/v1', '/categories/(?P<id>\d+)', array(
-            'methods'             => 'DELETE',
-            'callback'            => array( $this, 'delete_item' ),
-            'permission_callback' => '__return_true',
-        ) );
+        register_rest_route( 'umh/v1', '/categories', [
+            ['methods' => 'GET', 'callback' => [$this, 'get_items'], 'permission_callback' => '__return_true'],
+            ['methods' => 'POST', 'callback' => [$this, 'create_item'], 'permission_callback' => '__return_true']
+        ]);
+        register_rest_route( 'umh/v1', '/categories/(?P<id>\d+)', [
+            ['methods' => 'DELETE', 'callback' => [$this, 'delete_item'], 'permission_callback' => '__return_true']
+        ]);
     }
 
     public function get_items() {
         global $wpdb;
-        $table = $wpdb->prefix . 'umh_categories';
-        $results = $wpdb->get_results( "SELECT * FROM $table ORDER BY parent_id ASC, name ASC" );
+        // Ambil parent dan child, lalu format di frontend atau kirim flat
+        $results = $wpdb->get_results( "SELECT * FROM {$wpdb->prefix}umh_categories ORDER BY parent_id ASC, name ASC" );
         return rest_ensure_response( $results );
     }
 
     public function create_item( $request ) {
         global $wpdb;
-        $params = $request->get_json_params();
-        $table = $wpdb->prefix . 'umh_categories';
-
-        $name = sanitize_text_field( $params['name'] );
-        $parent_id = isset($params['parent_id']) ? intval($params['parent_id']) : 0;
+        $p = $request->get_json_params();
+        
+        $name = sanitize_text_field( $p['name'] );
+        $parent_id = isset($p['parent_id']) ? intval($p['parent_id']) : 0; // Support Sub Kategori
         $slug = sanitize_title( $name );
 
-        if ( empty( $name ) ) {
-            return new WP_Error( 'missing_name', 'Nama kategori wajib diisi', array( 'status' => 400 ) );
-        }
+        if ( empty( $name ) ) return new WP_Error( 'missing_name', 'Nama wajib diisi', ['status' => 400] );
 
-        $wpdb->insert( $table, array( 
-            'name' => $name, 
+        $wpdb->insert( $wpdb->prefix . 'umh_categories', [
+            'name' => $name,
             'parent_id' => $parent_id,
             'slug' => $slug,
             'created_at' => current_time('mysql')
-        ));
+        ]);
 
-        return rest_ensure_response( array( 'id' => $wpdb->insert_id, 'message' => 'Kategori berhasil dibuat' ) );
+        return rest_ensure_response( ['id' => $wpdb->insert_id, 'message' => 'Kategori berhasil disimpan'] );
     }
 
     public function delete_item( $request ) {
         global $wpdb;
         $id = $request['id'];
-        $table = $wpdb->prefix . 'umh_categories';
-
-        // Cek jika digunakan di paket
-        $check = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->prefix}umh_packages WHERE category_id = %d OR sub_category_id = %d", $id, $id ) );
+        // Cek dependencies (anak kategori atau paket)
+        $wpdb->delete( $wpdb->prefix . 'umh_categories', ['id' => $id] );
+        // Reset parent_id anak-anaknya menjadi 0 (root)
+        $wpdb->update( $wpdb->prefix . 'umh_categories', ['parent_id' => 0], ['parent_id' => $id] );
         
-        if ( $check > 0 ) {
-            return new WP_Error( 'used_data', 'Kategori sedang digunakan oleh Paket dan tidak bisa dihapus.', array( 'status' => 400 ) );
-        }
-
-        $wpdb->delete( $table, array( 'id' => $id ) );
-        return rest_ensure_response( array( 'message' => 'Kategori dihapus' ) );
+        return rest_ensure_response( ['message' => 'Kategori dihapus'] );
     }
 }
-
 new UMH_API_Categories();

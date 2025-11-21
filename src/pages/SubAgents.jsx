@@ -3,9 +3,10 @@ import { useApi } from '../context/ApiContext';
 import Loading from '../components/common/Loading';
 import Modal from '../components/common/Modal';
 import SubAgentForm from '../components/forms/SubAgentForm';
+import { Edit, Trash2, UserPlus } from 'lucide-react';
 
 const SubAgents = () => {
-    const { apiCall } = useApi();
+    const { api } = useApi();
     const [agents, setAgents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -14,68 +15,54 @@ const SubAgents = () => {
     const fetchAgents = async () => {
         setLoading(true);
         try {
-            const res = await apiCall('/sub-agents');
-            setAgents(res || []);
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setLoading(false);
-        }
+            const res = await api.get('/sub-agents');
+            setAgents(res.data || []);
+        } catch (e) { console.error(e); } 
+        finally { setLoading(false); }
     };
 
     useEffect(() => { fetchAgents(); }, []);
 
     const handleDelete = async (id) => {
-        if(!confirm('Hapus sub agent ini?')) return;
-        await apiCall(`/sub-agents/${id}`, 'DELETE');
+        if(!confirm("Hapus agen ini?")) return;
+        await api.delete(`/sub-agents/${id}`);
         fetchAgents();
-    };
+    }
 
     const handleSuccess = () => {
         setIsModalOpen(false);
         fetchAgents();
-    };
+    }
 
     return (
-        <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold text-gray-800">Manajemen Sub Agent</h1>
-                <button onClick={() => { setEditData(null); setIsModalOpen(true); }} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 shadow">
-                    + Tambah Sub Agent
+        <div className="p-6 space-y-6">
+            <div className="flex justify-between items-center">
+                <h1 className="text-2xl font-bold text-gray-800">Data Sub Agent</h1>
+                <button onClick={() => { setEditData(null); setIsModalOpen(true); }} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex gap-2 items-center">
+                   <UserPlus size={18}/> Tambah Agent
                 </button>
             </div>
 
             {loading ? <Loading /> : (
-                <div className="bg-white rounded-xl shadow overflow-hidden">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                <div className="bg-white rounded shadow overflow-hidden">
+                    <table className="w-full text-left text-sm">
+                        <thead className="bg-gray-50 border-b uppercase text-gray-500">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-bold uppercase text-gray-500">Nama</th>
-                                <th className="px-6 py-3 text-left text-xs font-bold uppercase text-gray-500">Kontak</th>
-                                <th className="px-6 py-3 text-left text-xs font-bold uppercase text-gray-500">Lokasi</th>
-                                <th className="px-6 py-3 text-left text-xs font-bold uppercase text-gray-500">Status</th>
-                                <th className="px-6 py-3 text-right text-xs font-bold uppercase text-gray-500">Aksi</th>
+                                <th className="p-4">Nama</th>
+                                <th className="p-4">Kontak</th>
+                                <th className="p-4">Status</th>
+                                <th className="p-4 text-right">Aksi</th>
                             </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {agents.map(agent => (
-                                <tr key={agent.id} className="hover:bg-gray-50">
-                                    <td className="px-6 py-4 font-medium text-gray-900">{agent.name}</td>
-                                    <td className="px-6 py-4 text-sm text-gray-600">
-                                        <div>{agent.phone}</div>
-                                        <div className="text-xs text-gray-400">{agent.email}</div>
-                                    </td>
-                                    <td className="px-6 py-4 text-sm text-gray-600">
-                                        {agent.address_details?.city || '-'}, {agent.address_details?.province || '-'}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className={`px-2 py-1 text-xs rounded-full font-bold ${agent.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                            {agent.status === 'active' ? 'Aktif' : 'Non-Aktif'}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <button onClick={() => { setEditData(agent); setIsModalOpen(true); }} className="text-indigo-600 mr-3">Edit</button>
-                                        <button onClick={() => handleDelete(agent.id)} className="text-red-600">Hapus</button>
+                        <tbody className="divide-y">
+                            {agents.map(a => (
+                                <tr key={a.id}>
+                                    <td className="p-4 font-medium">{a.name}</td>
+                                    <td className="p-4">{a.phone} <br/><span className="text-xs text-gray-400">{a.email}</span></td>
+                                    <td className="p-4"><span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">{a.status}</span></td>
+                                    <td className="p-4 text-right flex justify-end gap-2">
+                                        <button onClick={() => { setEditData(a); setIsModalOpen(true); }} className="text-blue-600"><Edit size={16}/></button>
+                                        <button onClick={() => handleDelete(a.id)} className="text-red-600"><Trash2 size={16}/></button>
                                     </td>
                                 </tr>
                             ))}
@@ -84,8 +71,8 @@ const SubAgents = () => {
                 </div>
             )}
 
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editData ? 'Edit Sub Agent' : 'Tambah Sub Agent'}>
-                <SubAgentForm initialData={editData} onSuccess={handleSuccess} onCancel={() => setIsModalOpen(false)} />
+            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editData ? "Edit Agent" : "Tambah Agent"}>
+                <SubAgentForm initialData={editData} closeModal={() => setIsModalOpen(false)} onSuccess={handleSuccess} /> {/* Pass onSuccess props fix */}
             </Modal>
         </div>
     );

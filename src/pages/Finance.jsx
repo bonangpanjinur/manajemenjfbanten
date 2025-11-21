@@ -1,96 +1,105 @@
 import React, { useState, useEffect } from 'react';
 import { useApi } from '../context/ApiContext';
 import Loading from '../components/common/Loading';
-import { DollarSign, CreditCard, TrendingUp, Printer, Search } from 'lucide-react';
+import Modal from '../components/common/Modal';
+import FinanceForm from '../components/forms/FinanceForm'; // Komponen Baru
+import { Plus, TrendingUp, TrendingDown, Wallet } from 'lucide-react';
 
 const Finance = () => {
   const { api } = useApi();
-  const [payments, setPayments] = useState([]);
+  const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
-  
-  // --- FUNGSI CETAK KWITANSI ---
-  const handlePrint = (paymentId) => {
-    // URL ini mengarah ke admin-post.php WordPress yang di-hook oleh api-print.php
-    const printUrl = `/wp-admin/admin-post.php?action=umh_print_receipt&id=${paymentId}`;
-    window.open(printUrl, '_blank', 'width=900,height=600');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalType, setModalType] = useState('income'); // income, expense, loan
+
+  const fetchFinance = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/finance/transactions');
+      setTransactions(res.data || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => {
-    const fetchFinance = async () => {
-      try {
-        const res = await api.get('/finance/transactions');
-        setPayments(res.data || []);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchFinance();
-  }, []);
+  useEffect(() => { fetchFinance(); }, []);
 
-  if (loading) return <div className="p-6"><Loading /></div>;
+  const openModal = (type) => {
+    setModalType(type);
+    setIsModalOpen(true);
+  };
 
-  const totalIn = payments.filter(p => p.type === 'in').reduce((acc, curr) => acc + parseInt(curr.amount), 0);
+  // Hitung Saldo
+  const totalIn = transactions.filter(t => t.type === 'in').reduce((sum, t) => sum + parseFloat(t.amount), 0);
+  const totalOut = transactions.filter(t => t.type === 'out').reduce((sum, t) => sum + parseFloat(t.amount), 0);
 
   return (
     <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-800">Keuangan & Pembayaran</h1>
+      <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+        <h1 className="text-2xl font-bold text-gray-800">Keuangan & Kas</h1>
+        <div className="flex gap-2">
+            <button onClick={() => openModal('expense')} className="bg-red-100 text-red-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-red-200">
+                <TrendingDown size={16}/> Pengeluaran / Operasional
+            </button>
+            <button onClick={() => openModal('loan')} className="bg-yellow-100 text-yellow-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-yellow-200">
+                <Wallet size={16}/> Kasbon Karyawan
+            </button>
+             {/* Tombol Pembayaran Jemaah biasanya via Menu Jemaah, tapi bisa ditambah shortcut disini jika mau */}
+        </div>
       </div>
 
+      {/* Ringkasan */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white p-4 rounded-xl shadow-sm border flex items-center gap-4">
-            <div className="p-3 bg-green-100 text-green-600 rounded-lg"><TrendingUp size={24}/></div>
-            <div><p className="text-sm text-gray-500">Total Pemasukan</p><h3 className="text-xl font-bold">Rp {totalIn.toLocaleString()}</h3></div>
-        </div>
+         <div className="bg-white p-4 rounded-xl shadow border-l-4 border-green-500">
+            <p className="text-gray-500 text-sm">Total Pemasukan</p>
+            <h3 className="text-2xl font-bold text-gray-800">Rp {totalIn.toLocaleString()}</h3>
+         </div>
+         <div className="bg-white p-4 rounded-xl shadow border-l-4 border-red-500">
+            <p className="text-gray-500 text-sm">Total Pengeluaran</p>
+            <h3 className="text-2xl font-bold text-gray-800">Rp {totalOut.toLocaleString()}</h3>
+         </div>
+         <div className="bg-white p-4 rounded-xl shadow border-l-4 border-blue-500">
+            <p className="text-gray-500 text-sm">Saldo Akhir</p>
+            <h3 className="text-2xl font-bold text-gray-800">Rp {(totalIn - totalOut).toLocaleString()}</h3>
+         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden border">
-        <div className="p-4 border-b bg-gray-50 font-medium text-gray-700">Riwayat Pembayaran Jamaah</div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-white border-b text-gray-500 uppercase">
-              <tr>
-                <th className="p-4">Tanggal</th>
-                <th className="p-4">Jamaah</th>
-                <th className="p-4">Keterangan</th>
-                <th className="p-4">Jumlah</th>
-                <th className="p-4 text-center">Cetak</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {payments.map((pay) => (
-                <tr key={pay.id} className="hover:bg-gray-50">
-                  <td className="p-4">{new Date(pay.payment_date).toLocaleDateString('id-ID')}</td>
-                  <td className="p-4 font-medium">
-                    {pay.jamaah_name} <br/>
-                    <span className="text-xs text-gray-400">{pay.booking_code}</span>
-                  </td>
-                  <td className="p-4">
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${pay.status === 'verified' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                        {pay.status === 'verified' ? 'Terverifikasi' : 'Menunggu'}
-                    </span>
-                    <div className="text-xs text-gray-500 mt-1">{pay.payment_method}</div>
-                  </td>
-                  <td className="p-4 font-bold text-gray-700">Rp {parseInt(pay.amount).toLocaleString()}</td>
-                  <td className="p-4 text-center">
-                    <button 
-                        onClick={() => handlePrint(pay.id)}
-                        className="bg-blue-50 text-blue-600 p-2 rounded-lg hover:bg-blue-100 transition-colors"
-                        title="Cetak Kwitansi"
-                    >
-                        <Printer size={18} />
-                    </button>
-                  </td>
+      {/* Tabel Transaksi */}
+      <div className="bg-white rounded-xl shadow overflow-hidden">
+        <table className="w-full text-left text-sm">
+            <thead className="bg-gray-50 border-b uppercase text-gray-500">
+                <tr>
+                    <th className="p-4">Tanggal</th>
+                    <th className="p-4">Kategori</th>
+                    <th className="p-4">Keterangan</th>
+                    <th className="p-4 text-right">Nominal</th>
                 </tr>
-              ))}
+            </thead>
+            <tbody className="divide-y">
+                {transactions.map(t => (
+                    <tr key={t.id}>
+                        <td className="p-4">{t.transaction_date}</td>
+                        <td className="p-4">
+                            <span className={`px-2 py-1 rounded text-xs font-bold ${t.type === 'in' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                {t.category}
+                            </span>
+                        </td>
+                        <td className="p-4">{t.description}</td>
+                        <td className={`p-4 text-right font-mono font-medium ${t.type === 'in' ? 'text-green-600' : 'text-red-600'}`}>
+                            {t.type === 'in' ? '+' : '-'} Rp {parseFloat(t.amount).toLocaleString()}
+                        </td>
+                    </tr>
+                ))}
             </tbody>
-          </table>
-        </div>
+        </table>
       </div>
+
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={modalType === 'loan' ? 'Catat Kasbon Karyawan' : 'Catat Pengeluaran Operasional'}>
+         <FinanceForm type={modalType} onSuccess={() => { setIsModalOpen(false); fetchFinance(); }} onCancel={() => setIsModalOpen(false)} />
+      </Modal>
     </div>
   );
 };
-
 export default Finance;

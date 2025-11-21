@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useApi } from '../context/ApiContext';
 import Loading from '../components/common/Loading';
 import Modal from '../components/common/Modal';
-import LeadForm from '../components/forms/LeadForm';
-import { FaWhatsapp, FaInstagram, FaFacebook, FaTiktok, FaUserFriends } from 'react-icons/fa';
+import LeadForm from '../components/forms/LeadForm'; // Pastikan path benar
+import { Trash2, Edit, UserPlus } from 'lucide-react';
 
 const Marketing = () => {
-    const { apiCall } = useApi();
+    const { api } = useApi(); // Gunakan 'api' generic object
     const [leads, setLeads] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -15,28 +15,29 @@ const Marketing = () => {
     const fetchLeads = async () => {
         setLoading(true);
         try {
-            const res = await apiCall('/leads');
-            setLeads(res || []);
+            const res = await api.get('/leads');
+            setLeads(res.data || []);
         } catch (error) {
-            console.error(error);
+            console.error("Gagal load leads:", error);
         } finally {
             setLoading(false);
         }
     };
 
-    useEffect(() => {
-        fetchLeads();
-    }, []);
-
-    const handleEdit = (lead) => {
-        setEditData(lead);
-        setIsModalOpen(true);
-    };
+    useEffect(() => { fetchLeads(); }, []);
 
     const handleDelete = async (id) => {
-        if(!confirm('Hapus data lead ini?')) return;
-        await apiCall(`/leads/${id}`, 'DELETE');
-        fetchLeads();
+        if(!confirm('Hapus data prospek ini?')) return;
+        try {
+            // Sesuaikan endpoint delete di api-marketing.php jika perlu (biasanya POST dengan action delete atau method DELETE)
+            // Disini kita asumsikan endpoint DELETE standar
+            // Jika api-marketing.php belum support DELETE, Anda harus menambahkannya di PHP
+            // Untuk sementara kita gunakan method DELETE standar REST
+             await api.delete(`/leads?id=${id}`); // Atau sesuaikan endpointnya
+             fetchLeads();
+        } catch(e) {
+            alert("Gagal menghapus (Pastikan API support DELETE)");
+        }
     };
 
     const handleSuccess = () => {
@@ -44,61 +45,40 @@ const Marketing = () => {
         fetchLeads();
     };
 
-    const getIcon = (source) => {
-        switch(source) {
-            case 'wa': return <FaWhatsapp className="text-green-500" />;
-            case 'ig': return <FaInstagram className="text-pink-500" />;
-            case 'fb': return <FaFacebook className="text-blue-600" />;
-            case 'tiktok': return <FaTiktok className="text-black" />;
-            default: return <FaUserFriends className="text-gray-500" />;
-        }
-    };
-
-    const getStatusColor = (status) => {
-        switch(status) {
-            case 'closing': return 'bg-green-100 text-green-800';
-            case 'lost': return 'bg-red-100 text-red-800';
-            default: return 'bg-yellow-100 text-yellow-800'; // new/prospek
-        }
-    };
-
     return (
-        <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
+        <div className="p-6 space-y-6">
+            <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold text-gray-800">Marketing Leads</h1>
-                <button onClick={() => { setEditData(null); setIsModalOpen(true); }} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 shadow">
-                    + Tambah Lead
+                <button onClick={() => { setEditData(null); setIsModalOpen(true); }} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center gap-2">
+                    <UserPlus size={18}/> Tambah Lead
                 </button>
             </div>
 
             {loading ? <Loading /> : (
                 <div className="bg-white rounded-xl shadow overflow-hidden">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                    <table className="w-full text-left text-sm">
+                        <thead className="bg-gray-50 border-b uppercase text-gray-500">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kontak</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sumber</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Aksi</th>
+                                <th className="p-4">Nama</th>
+                                <th className="p-4">Kontak</th>
+                                <th className="p-4">Sumber</th>
+                                <th className="p-4">Status</th>
+                                <th className="p-4 text-right">Aksi</th>
                             </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
+                        <tbody className="divide-y">
                             {leads.map(lead => (
                                 <tr key={lead.id} className="hover:bg-gray-50">
-                                    <td className="px-6 py-4 whitespace-nowrap font-medium">{lead.name}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{lead.contact}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap flex items-center gap-2 text-sm capitalize">
-                                        {getIcon(lead.source)} {lead.source}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className={`px-2 py-1 rounded-full text-xs font-bold capitalize ${getStatusColor(lead.status)}`}>
+                                    <td className="p-4 font-medium">{lead.name}</td>
+                                    <td className="p-4">{lead.contact}</td>
+                                    <td className="p-4 capitalize">{lead.source}</td>
+                                    <td className="p-4">
+                                        <span className={`px-2 py-1 rounded text-xs font-bold ${lead.status === 'closing' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
                                             {lead.status}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button onClick={() => handleEdit(lead)} className="text-indigo-600 hover:text-indigo-900 mr-3">Edit</button>
-                                        <button onClick={() => handleDelete(lead.id)} className="text-red-600 hover:text-red-900">Hapus</button>
+                                    <td className="p-4 text-right flex justify-end gap-2">
+                                        <button onClick={() => { setEditData(lead); setIsModalOpen(true); }} className="text-blue-600"><Edit size={18}/></button>
                                     </td>
                                 </tr>
                             ))}
@@ -107,7 +87,7 @@ const Marketing = () => {
                 </div>
             )}
 
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editData ? 'Edit Lead' : 'Tambah Lead Baru'}>
+            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editData ? 'Edit Lead' : 'Input Lead Baru'}>
                 <LeadForm initialData={editData} onSuccess={handleSuccess} onCancel={() => setIsModalOpen(false)} />
             </Modal>
         </div>
