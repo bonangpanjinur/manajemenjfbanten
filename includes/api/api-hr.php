@@ -1,66 +1,77 @@
 <?php
-if ( ! defined( 'ABSPATH' ) ) exit;
+if (!defined('ABSPATH')) exit;
 
-class UMH_API_HR {
+require_once plugin_dir_path(__FILE__) . '../class-umh-crud-controller.php';
+
+class UMH_API_HR extends UMH_CRUD_Controller {
     public function __construct() {
-        add_action( 'rest_api_init', array( $this, 'register_routes' ) );
+        parent::__construct('umh_employees');
     }
 
     public function register_routes() {
-        register_rest_route( 'umh/v1', '/employees', [
-            ['methods' => 'GET', 'callback' => [$this, 'get_items'], 'permission_callback' => '__return_true'],
-            ['methods' => 'POST', 'callback' => [$this, 'create_item'], 'permission_callback' => '__return_true']
-        ]);
-        register_rest_route( 'umh/v1', '/employees/(?P<id>\d+)', [
-            ['methods' => 'PUT', 'callback' => [$this, 'update_item'], 'permission_callback' => '__return_true'],
-            ['methods' => 'DELETE', 'callback' => [$this, 'delete_item'], 'permission_callback' => '__return_true']
-        ]);
-    }
-
-    public function get_items() {
-        global $wpdb;
-        $results = $wpdb->get_results( "SELECT * FROM {$wpdb->prefix}umh_employees ORDER BY name ASC" );
-        return rest_ensure_response( $results );
-    }
-
-    public function create_item( $request ) {
-        global $wpdb;
-        $p = $request->get_json_params();
-
-        $wpdb->insert( $wpdb->prefix . 'umh_employees', [
-            'name' => sanitize_text_field($p['name']),
-            'position' => sanitize_text_field($p['position']), // Jabatan Dinamis
-            'phone' => sanitize_text_field($p['phone']),
-            'email' => sanitize_email($p['email']),
-            'salary' => floatval($p['salary']),
-            'status' => sanitize_text_field($p['status']) ?: 'active',
-            'created_at' => current_time('mysql')
+        register_rest_route('umh/v1', '/hr/employees', [
+            [
+                'methods' => 'GET',
+                'callback' => [$this, 'get_items'],
+                'permission_callback' => [$this, 'check_permission'],
+            ],
+            [
+                'methods' => 'POST',
+                'callback' => [$this, 'create_item'],
+                'permission_callback' => [$this, 'check_permission'],
+            ]
         ]);
 
-        return rest_ensure_response( ['message' => 'Karyawan ditambahkan', 'id' => $wpdb->insert_id] );
+        register_rest_route('umh/v1', '/hr/employees/(?P<id>\d+)', [
+            [
+                'methods' => 'PUT',
+                'callback' => [$this, 'update_item'],
+                'permission_callback' => [$this, 'check_permission'],
+            ],
+            [
+                'methods' => 'DELETE',
+                'callback' => [$this, 'delete_item'],
+                'permission_callback' => [$this, 'check_permission'],
+            ]
+        ]);
     }
 
-    public function update_item( $request ) {
+    // Override get_items untuk decode JSON permission
+    public function get_items($request) {
         global $wpdb;
-        $id = $request['id'];
-        $p = $request->get_json_params();
+        $items = $wpdb->get_results("SELECT * FROM {$this->table_name} ORDER BY name ASC");
 
-        $wpdb->update( $wpdb->prefix . 'umh_employees', [
-            'name' => sanitize_text_field($p['name']),
-            'position' => sanitize_text_field($p['position']),
-            'phone' => sanitize_text_field($p['phone']),
-            'email' => sanitize_email($p['email']),
-            'salary' => floatval($p['salary']),
-            'status' => sanitize_text_field($p['status'])
-        ], ['id' => $id] );
+        foreach ($items as $item) {
+            if (!empty($item->access_permissions)) {
+                $item->access_permissions = json_decode($item->access_permissions);
+            } else {
+                $item->access_permissions = [];
+            }
+        }
 
-        return rest_ensure_response( ['message' => 'Data karyawan diperbarui'] );
+        return rest_ensure_response($items);
     }
 
-    public function delete_item( $request ) {
-        global $wpdb;
-        $wpdb->delete( $wpdb->prefix . 'umh_employees', ['id' => $request['id']] );
-        return rest_ensure_response( ['message' => 'Karyawan dihapus'] );
+    public function prepare_item_for_database($request) {
+        $data = [
+            'name' => sanitize_text_field($request['name']),
+            'position' => sanitize_text_field($request['position']),
+            'phone' => sanitize_text_field($request['phone']),
+            'email' => sanitize_email($request['email']),
+            'salary' => floatval($request['salary']),
+            'status' => sanitize_text_field($request['status']),
+        ];
+
+        // Handle Permissions Array -> JSON String
+        if (isset($request['access_permissions'])) {
+            $permissions = $request['access_permissions'];
+            if (is_array($permissions)) {
+                $data['access_permissions'] = json_encode($permissions);
+            } else {
+                $data['access_permissions'] = json_encode([]); // Default empty array
+            }
+        }
+
+        return $data;
     }
 }
-new UMH_API_HR();

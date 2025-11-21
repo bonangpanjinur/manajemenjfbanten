@@ -132,6 +132,17 @@
     max-width: 1536px;
   }
 }
+#umh-admin-app .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
 #umh-admin-app .fixed {
   position: fixed;
 }
@@ -147,35 +158,40 @@
 #umh-admin-app .inset-0 {
   inset: 0px;
 }
-#umh-admin-app .bottom-0 {
+#umh-admin-app .inset-y-0 {
+  top: 0px;
   bottom: 0px;
+}
+#umh-admin-app .left-0 {
+  left: 0px;
 }
 #umh-admin-app .left-3 {
   left: 0.75rem;
 }
-#umh-admin-app .top-0 {
-  top: 0px;
-}
 #umh-admin-app .top-2 {
   top: 0.5rem;
-}
-#umh-admin-app .top-2\.5 {
-  top: 0.625rem;
 }
 #umh-admin-app .top-6 {
   top: 1.5rem;
 }
+#umh-admin-app .z-10 {
+  z-index: 10;
+}
+#umh-admin-app .z-20 {
+  z-index: 20;
+}
 #umh-admin-app .z-30 {
   z-index: 30;
-}
-#umh-admin-app .z-40 {
-  z-index: 40;
 }
 #umh-admin-app .z-50 {
   z-index: 50;
 }
 #umh-admin-app .col-span-2 {
   grid-column: span 2 / span 2;
+}
+#umh-admin-app .mx-2 {
+  margin-left: 0.5rem;
+  margin-right: 0.5rem;
 }
 #umh-admin-app .mx-4 {
   margin-left: 1rem;
@@ -188,6 +204,9 @@
 #umh-admin-app .my-4 {
   margin-top: 1rem;
   margin-bottom: 1rem;
+}
+#umh-admin-app .-ml-1 {
+  margin-left: -0.25rem;
 }
 #umh-admin-app .mb-1 {
   margin-bottom: 0.25rem;
@@ -210,11 +229,20 @@
 #umh-admin-app .ml-1 {
   margin-left: 0.25rem;
 }
-#umh-admin-app .ml-5 {
-  margin-left: 1.25rem;
+#umh-admin-app .ml-3 {
+  margin-left: 0.75rem;
+}
+#umh-admin-app .ml-auto {
+  margin-left: auto;
+}
+#umh-admin-app .mr-2 {
+  margin-right: 0.5rem;
 }
 #umh-admin-app .mr-3 {
   margin-right: 0.75rem;
+}
+#umh-admin-app .mt-0\.5 {
+  margin-top: 0.125rem;
 }
 #umh-admin-app .mt-1 {
   margin-top: 0.25rem;
@@ -228,8 +256,8 @@
 #umh-admin-app .mt-6 {
   margin-top: 1.5rem;
 }
-#umh-admin-app .mt-auto {
-  margin-top: auto;
+#umh-admin-app .mt-8 {
+  margin-top: 2rem;
 }
 #umh-admin-app .block {
   display: block;
@@ -249,14 +277,29 @@
 #umh-admin-app .hidden {
   display: none;
 }
+#umh-admin-app .aspect-video {
+  aspect-ratio: 16 / 9;
+}
+#umh-admin-app .h-1\.5 {
+  height: 0.375rem;
+}
+#umh-admin-app .h-10 {
+  height: 2.5rem;
+}
 #umh-admin-app .h-12 {
   height: 3rem;
 }
 #umh-admin-app .h-16 {
   height: 4rem;
 }
+#umh-admin-app .h-2 {
+  height: 0.5rem;
+}
 #umh-admin-app .h-4 {
   height: 1rem;
+}
+#umh-admin-app .h-5 {
+  height: 1.25rem;
 }
 #umh-admin-app .h-6 {
   height: 1.5rem;
@@ -267,9 +310,6 @@
 #umh-admin-app .h-8 {
   height: 2rem;
 }
-#umh-admin-app .h-9 {
-  height: 2.25rem;
-}
 #umh-admin-app .h-\[18px\] {
   height: 18px;
 }
@@ -278,6 +318,9 @@
 }
 #umh-admin-app .h-full {
   height: 100%;
+}
+#umh-admin-app .h-screen {
+  height: 100vh;
 }
 #umh-admin-app .max-h-60 {
   max-height: 15rem;
@@ -291,17 +334,14 @@
 #umh-admin-app .min-h-\[300px\] {
   min-height: 300px;
 }
-#umh-admin-app .min-h-\[500px\] {
-  min-height: 500px;
-}
 #umh-admin-app .min-h-screen {
   min-height: 100vh;
 }
-#umh-admin-app .w-0 {
-  width: 0px;
+#umh-admin-app .w-1\.5 {
+  width: 0.375rem;
 }
-#umh-admin-app .w-1\/3 {
-  width: 33.333333%;
+#umh-admin-app .w-10 {
+  width: 2.5rem;
 }
 #umh-admin-app .w-12 {
   width: 3rem;
@@ -309,8 +349,8 @@
 #umh-admin-app .w-16 {
   width: 4rem;
 }
-#umh-admin-app .w-2\/3 {
-  width: 66.666667%;
+#umh-admin-app .w-2 {
+  width: 0.5rem;
 }
 #umh-admin-app .w-24 {
   width: 6rem;
@@ -318,20 +358,26 @@
 #umh-admin-app .w-4 {
   width: 1rem;
 }
+#umh-admin-app .w-5 {
+  width: 1.25rem;
+}
 #umh-admin-app .w-6 {
   width: 1.5rem;
 }
+#umh-admin-app .w-64 {
+  width: 16rem;
+}
 #umh-admin-app .w-8 {
   width: 2rem;
-}
-#umh-admin-app .w-9 {
-  width: 2.25rem;
 }
 #umh-admin-app .w-\[18px\] {
   width: 18px;
 }
 #umh-admin-app .w-full {
   width: 100%;
+}
+#umh-admin-app .min-w-0 {
+  min-width: 0px;
 }
 #umh-admin-app .min-w-full {
   min-width: 100%;
@@ -363,6 +409,14 @@
 #umh-admin-app .flex-shrink-0 {
   flex-shrink: 0;
 }
+#umh-admin-app .-translate-x-full {
+  --tw-translate-x: -100%;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+#umh-admin-app .translate-x-0 {
+  --tw-translate-x: 0px;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
 #umh-admin-app .scale-\[1\.02\] {
   --tw-scale-x: 1.02;
   --tw-scale-y: 1.02;
@@ -387,11 +441,19 @@
 #umh-admin-app .animate-spin {
   animation: spin 1s linear infinite;
 }
+#umh-admin-app .cursor-not-allowed {
+  cursor: not-allowed;
+}
 #umh-admin-app .cursor-pointer {
   cursor: pointer;
 }
 #umh-admin-app .resize-none {
   resize: none;
+}
+#umh-admin-app .appearance-none {
+  -webkit-appearance: none;
+     -moz-appearance: none;
+          appearance: none;
 }
 #umh-admin-app .grid-cols-1 {
   grid-template-columns: repeat(1, minmax(0, 1fr));
@@ -401,6 +463,9 @@
 }
 #umh-admin-app .flex-col {
   flex-direction: column;
+}
+#umh-admin-app .flex-wrap {
+  flex-wrap: wrap;
 }
 #umh-admin-app .items-start {
   align-items: flex-start;
@@ -441,20 +506,20 @@
 #umh-admin-app .gap-8 {
   gap: 2rem;
 }
-#umh-admin-app :is(.space-x-1 > :not([hidden]) ~ :not([hidden])) {
-  --tw-space-x-reverse: 0;
-  margin-right: calc(0.25rem * var(--tw-space-x-reverse));
-  margin-left: calc(0.25rem * calc(1 - var(--tw-space-x-reverse)));
+#umh-admin-app :is(.-space-y-px > :not([hidden]) ~ :not([hidden])) {
+  --tw-space-y-reverse: 0;
+  margin-top: calc(-1px * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(-1px * var(--tw-space-y-reverse));
 }
 #umh-admin-app :is(.space-x-2 > :not([hidden]) ~ :not([hidden])) {
   --tw-space-x-reverse: 0;
   margin-right: calc(0.5rem * var(--tw-space-x-reverse));
   margin-left: calc(0.5rem * calc(1 - var(--tw-space-x-reverse)));
 }
-#umh-admin-app :is(.space-x-4 > :not([hidden]) ~ :not([hidden])) {
+#umh-admin-app :is(.space-x-3 > :not([hidden]) ~ :not([hidden])) {
   --tw-space-x-reverse: 0;
-  margin-right: calc(1rem * var(--tw-space-x-reverse));
-  margin-left: calc(1rem * calc(1 - var(--tw-space-x-reverse)));
+  margin-right: calc(0.75rem * var(--tw-space-x-reverse));
+  margin-left: calc(0.75rem * calc(1 - var(--tw-space-x-reverse)));
 }
 #umh-admin-app :is(.space-y-1 > :not([hidden]) ~ :not([hidden])) {
   --tw-space-y-reverse: 0;
@@ -490,10 +555,6 @@
   --tw-divide-y-reverse: 0;
   border-top-width: calc(1px * calc(1 - var(--tw-divide-y-reverse)));
   border-bottom-width: calc(1px * var(--tw-divide-y-reverse));
-}
-#umh-admin-app :is(.divide-gray-100 > :not([hidden]) ~ :not([hidden])) {
-  --tw-divide-opacity: 1;
-  border-color: rgb(243 244 246 / var(--tw-divide-opacity, 1));
 }
 #umh-admin-app :is(.divide-gray-200 > :not([hidden]) ~ :not([hidden])) {
   --tw-divide-opacity: 1;
@@ -531,16 +592,23 @@
 #umh-admin-app .rounded-md {
   border-radius: 0.375rem;
 }
+#umh-admin-app .rounded-none {
+  border-radius: 0px;
+}
 #umh-admin-app .rounded-xl {
   border-radius: 0.75rem;
+}
+#umh-admin-app .rounded-b-md {
+  border-bottom-right-radius: 0.375rem;
+  border-bottom-left-radius: 0.375rem;
 }
 #umh-admin-app .rounded-b-xl {
   border-bottom-right-radius: 0.75rem;
   border-bottom-left-radius: 0.75rem;
 }
-#umh-admin-app .rounded-t-lg {
-  border-top-left-radius: 0.5rem;
-  border-top-right-radius: 0.5rem;
+#umh-admin-app .rounded-t-md {
+  border-top-left-radius: 0.375rem;
+  border-top-right-radius: 0.375rem;
 }
 #umh-admin-app .rounded-t-xl {
   border-top-left-radius: 0.75rem;
@@ -574,6 +642,10 @@
   --tw-border-opacity: 1;
   border-color: rgb(219 234 254 / var(--tw-border-opacity, 1));
 }
+#umh-admin-app .border-blue-200 {
+  --tw-border-opacity: 1;
+  border-color: rgb(191 219 254 / var(--tw-border-opacity, 1));
+}
 #umh-admin-app .border-blue-500 {
   --tw-border-opacity: 1;
   border-color: rgb(59 130 246 / var(--tw-border-opacity, 1));
@@ -598,6 +670,14 @@
   --tw-border-opacity: 1;
   border-color: rgb(249 250 251 / var(--tw-border-opacity, 1));
 }
+#umh-admin-app .border-gray-600 {
+  --tw-border-opacity: 1;
+  border-color: rgb(75 85 99 / var(--tw-border-opacity, 1));
+}
+#umh-admin-app .border-gray-800 {
+  --tw-border-opacity: 1;
+  border-color: rgb(31 41 55 / var(--tw-border-opacity, 1));
+}
 #umh-admin-app .border-green-200 {
   --tw-border-opacity: 1;
   border-color: rgb(187 247 208 / var(--tw-border-opacity, 1));
@@ -605,6 +685,18 @@
 #umh-admin-app .border-green-500 {
   --tw-border-opacity: 1;
   border-color: rgb(34 197 94 / var(--tw-border-opacity, 1));
+}
+#umh-admin-app .border-orange-200 {
+  --tw-border-opacity: 1;
+  border-color: rgb(254 215 170 / var(--tw-border-opacity, 1));
+}
+#umh-admin-app .border-red-200 {
+  --tw-border-opacity: 1;
+  border-color: rgb(254 202 202 / var(--tw-border-opacity, 1));
+}
+#umh-admin-app .border-red-300 {
+  --tw-border-opacity: 1;
+  border-color: rgb(252 165 165 / var(--tw-border-opacity, 1));
 }
 #umh-admin-app .border-red-400 {
   --tw-border-opacity: 1;
@@ -614,12 +706,11 @@
   --tw-border-opacity: 1;
   border-color: rgb(239 68 68 / var(--tw-border-opacity, 1));
 }
+#umh-admin-app .border-red-900\/30 {
+  border-color: rgb(127 29 29 / 0.3);
+}
 #umh-admin-app .border-transparent {
   border-color: transparent;
-}
-#umh-admin-app .border-yellow-200 {
-  --tw-border-opacity: 1;
-  border-color: rgb(254 240 138 / var(--tw-border-opacity, 1));
 }
 #umh-admin-app .bg-black {
   --tw-bg-opacity: 1;
@@ -653,13 +744,6 @@
   --tw-bg-opacity: 1;
   background-color: rgb(249 250 251 / var(--tw-bg-opacity, 1));
 }
-#umh-admin-app .bg-gray-50\/50 {
-  background-color: rgb(249 250 251 / 0.5);
-}
-#umh-admin-app .bg-gray-500 {
-  --tw-bg-opacity: 1;
-  background-color: rgb(107 114 128 / var(--tw-bg-opacity, 1));
-}
 #umh-admin-app .bg-gray-700 {
   --tw-bg-opacity: 1;
   background-color: rgb(55 65 81 / var(--tw-bg-opacity, 1));
@@ -668,17 +752,33 @@
   --tw-bg-opacity: 1;
   background-color: rgb(31 41 55 / var(--tw-bg-opacity, 1));
 }
+#umh-admin-app .bg-gray-900 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(17 24 39 / var(--tw-bg-opacity, 1));
+}
+#umh-admin-app .bg-gray-950 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(3 7 18 / var(--tw-bg-opacity, 1));
+}
 #umh-admin-app .bg-green-100 {
   --tw-bg-opacity: 1;
   background-color: rgb(220 252 231 / var(--tw-bg-opacity, 1));
+}
+#umh-admin-app .bg-green-50 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(240 253 244 / var(--tw-bg-opacity, 1));
 }
 #umh-admin-app .bg-green-500 {
   --tw-bg-opacity: 1;
   background-color: rgb(34 197 94 / var(--tw-bg-opacity, 1));
 }
-#umh-admin-app .bg-indigo-500 {
+#umh-admin-app .bg-green-600 {
   --tw-bg-opacity: 1;
-  background-color: rgb(99 102 241 / var(--tw-bg-opacity, 1));
+  background-color: rgb(22 163 74 / var(--tw-bg-opacity, 1));
+}
+#umh-admin-app .bg-orange-50 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(255 247 237 / var(--tw-bg-opacity, 1));
 }
 #umh-admin-app .bg-pink-100 {
   --tw-bg-opacity: 1;
@@ -700,8 +800,12 @@
   --tw-bg-opacity: 1;
   background-color: rgb(239 68 68 / var(--tw-bg-opacity, 1));
 }
-#umh-admin-app .bg-slate-50\/50 {
-  background-color: rgb(248 250 252 / 0.5);
+#umh-admin-app .bg-red-600 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(220 38 38 / var(--tw-bg-opacity, 1));
+}
+#umh-admin-app .bg-red-900\/10 {
+  background-color: rgb(127 29 29 / 0.1);
 }
 #umh-admin-app .bg-transparent {
   background-color: transparent;
@@ -713,14 +817,6 @@
 #umh-admin-app .bg-yellow-100 {
   --tw-bg-opacity: 1;
   background-color: rgb(254 249 195 / var(--tw-bg-opacity, 1));
-}
-#umh-admin-app .bg-yellow-50 {
-  --tw-bg-opacity: 1;
-  background-color: rgb(254 252 232 / var(--tw-bg-opacity, 1));
-}
-#umh-admin-app .bg-yellow-500 {
-  --tw-bg-opacity: 1;
-  background-color: rgb(234 179 8 / var(--tw-bg-opacity, 1));
 }
 #umh-admin-app .bg-opacity-50 {
   --tw-bg-opacity: 0.5;
@@ -741,8 +837,51 @@
   --tw-gradient-to: rgb(37 99 235 / 0) var(--tw-gradient-to-position);
   --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
 }
+#umh-admin-app .from-gray-500 {
+  --tw-gradient-from: #6b7280 var(--tw-gradient-from-position);
+  --tw-gradient-to: rgb(107 114 128 / 0) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+#umh-admin-app .from-green-500 {
+  --tw-gradient-from: #22c55e var(--tw-gradient-from-position);
+  --tw-gradient-to: rgb(34 197 94 / 0) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+#umh-admin-app .from-indigo-500 {
+  --tw-gradient-from: #6366f1 var(--tw-gradient-from-position);
+  --tw-gradient-to: rgb(99 102 241 / 0) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+#umh-admin-app .from-red-500 {
+  --tw-gradient-from: #ef4444 var(--tw-gradient-from-position);
+  --tw-gradient-to: rgb(239 68 68 / 0) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+#umh-admin-app .from-yellow-400 {
+  --tw-gradient-from: #facc15 var(--tw-gradient-from-position);
+  --tw-gradient-to: rgb(250 204 21 / 0) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+#umh-admin-app .to-blue-600 {
+  --tw-gradient-to: #2563eb var(--tw-gradient-to-position);
+}
 #umh-admin-app .to-blue-700 {
   --tw-gradient-to: #1d4ed8 var(--tw-gradient-to-position);
+}
+#umh-admin-app .to-gray-600 {
+  --tw-gradient-to: #4b5563 var(--tw-gradient-to-position);
+}
+#umh-admin-app .to-green-600 {
+  --tw-gradient-to: #16a34a var(--tw-gradient-to-position);
+}
+#umh-admin-app .to-indigo-600 {
+  --tw-gradient-to: #4f46e5 var(--tw-gradient-to-position);
+}
+#umh-admin-app .to-red-600 {
+  --tw-gradient-to: #dc2626 var(--tw-gradient-to-position);
+}
+#umh-admin-app .to-yellow-500 {
+  --tw-gradient-to: #eab308 var(--tw-gradient-to-position);
 }
 #umh-admin-app .p-1 {
   padding: 0.25rem;
@@ -782,6 +921,10 @@
   padding-left: 0.5rem;
   padding-right: 0.5rem;
 }
+#umh-admin-app .px-2\.5 {
+  padding-left: 0.625rem;
+  padding-right: 0.625rem;
+}
 #umh-admin-app .px-3 {
   padding-left: 0.75rem;
   padding-right: 0.75rem;
@@ -806,9 +949,17 @@
   padding-top: 0.25rem;
   padding-bottom: 0.25rem;
 }
+#umh-admin-app .py-1\.5 {
+  padding-top: 0.375rem;
+  padding-bottom: 0.375rem;
+}
 #umh-admin-app .py-10 {
   padding-top: 2.5rem;
   padding-bottom: 2.5rem;
+}
+#umh-admin-app .py-12 {
+  padding-top: 3rem;
+  padding-bottom: 3rem;
 }
 #umh-admin-app .py-2 {
   padding-top: 0.5rem;
@@ -830,29 +981,37 @@
   padding-top: 1rem;
   padding-bottom: 1rem;
 }
+#umh-admin-app .py-6 {
+  padding-top: 1.5rem;
+  padding-bottom: 1.5rem;
+}
+#umh-admin-app .py-8 {
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+}
+#umh-admin-app .pb-10 {
+  padding-bottom: 2.5rem;
+}
 #umh-admin-app .pb-2 {
   padding-bottom: 0.5rem;
 }
-#umh-admin-app .pb-3 {
-  padding-bottom: 0.75rem;
-}
-#umh-admin-app .pl-10 {
-  padding-left: 2.5rem;
+#umh-admin-app .pl-3 {
+  padding-left: 0.75rem;
 }
 #umh-admin-app .pl-8 {
   padding-left: 2rem;
 }
-#umh-admin-app .pr-4 {
-  padding-right: 1rem;
-}
-#umh-admin-app .pt-1 {
-  padding-top: 0.25rem;
+#umh-admin-app .pr-10 {
+  padding-right: 2.5rem;
 }
 #umh-admin-app .pt-2 {
   padding-top: 0.5rem;
 }
 #umh-admin-app .pt-4 {
   padding-top: 1rem;
+}
+#umh-admin-app .pt-6 {
+  padding-top: 1.5rem;
 }
 #umh-admin-app .text-left {
   text-align: left;
@@ -877,8 +1036,16 @@
   font-size: 1.875rem;
   line-height: 2.25rem;
 }
+#umh-admin-app .text-5xl {
+  font-size: 3rem;
+  line-height: 1;
+}
 #umh-admin-app .text-\[10px\] {
   font-size: 10px;
+}
+#umh-admin-app .text-base {
+  font-size: 1rem;
+  line-height: 1.5rem;
 }
 #umh-admin-app .text-lg {
   font-size: 1.125rem;
@@ -923,11 +1090,11 @@
 #umh-admin-app .leading-5 {
   line-height: 1.25rem;
 }
-#umh-admin-app .leading-none {
-  line-height: 1;
-}
 #umh-admin-app .leading-tight {
   line-height: 1.25;
+}
+#umh-admin-app .tracking-tight {
+  letter-spacing: -0.025em;
 }
 #umh-admin-app .tracking-wide {
   letter-spacing: 0.025em;
@@ -954,6 +1121,9 @@
 #umh-admin-app .text-blue-800 {
   --tw-text-opacity: 1;
   color: rgb(30 64 175 / var(--tw-text-opacity, 1));
+}
+#umh-admin-app .text-current {
+  color: currentColor;
 }
 #umh-admin-app .text-gray-200 {
   --tw-text-opacity: 1;
@@ -1007,6 +1177,10 @@
   --tw-text-opacity: 1;
   color: rgb(79 70 229 / var(--tw-text-opacity, 1));
 }
+#umh-admin-app .text-orange-800 {
+  --tw-text-opacity: 1;
+  color: rgb(154 52 18 / var(--tw-text-opacity, 1));
+}
 #umh-admin-app .text-pink-600 {
   --tw-text-opacity: 1;
   color: rgb(219 39 119 / var(--tw-text-opacity, 1));
@@ -1035,10 +1209,6 @@
   --tw-text-opacity: 1;
   color: rgb(255 255 255 / var(--tw-text-opacity, 1));
 }
-#umh-admin-app .text-yellow-700 {
-  --tw-text-opacity: 1;
-  color: rgb(161 98 7 / var(--tw-text-opacity, 1));
-}
 #umh-admin-app .text-yellow-800 {
   --tw-text-opacity: 1;
   color: rgb(133 77 14 / var(--tw-text-opacity, 1));
@@ -1047,8 +1217,27 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+#umh-admin-app .placeholder-gray-400::-moz-placeholder {
+  --tw-placeholder-opacity: 1;
+  color: rgb(156 163 175 / var(--tw-placeholder-opacity, 1));
+}
+#umh-admin-app .placeholder-gray-400::placeholder {
+  --tw-placeholder-opacity: 1;
+  color: rgb(156 163 175 / var(--tw-placeholder-opacity, 1));
+}
+#umh-admin-app .placeholder-gray-500::-moz-placeholder {
+  --tw-placeholder-opacity: 1;
+  color: rgb(107 114 128 / var(--tw-placeholder-opacity, 1));
+}
+#umh-admin-app .placeholder-gray-500::placeholder {
+  --tw-placeholder-opacity: 1;
+  color: rgb(107 114 128 / var(--tw-placeholder-opacity, 1));
+}
 #umh-admin-app .opacity-0 {
   opacity: 0;
+}
+#umh-admin-app .opacity-100 {
+  opacity: 1;
 }
 #umh-admin-app .opacity-25 {
   opacity: 0.25;
@@ -1093,6 +1282,10 @@
   --tw-shadow-color: #bfdbfe;
   --tw-shadow: var(--tw-shadow-colored);
 }
+#umh-admin-app .shadow-blue-900\/50 {
+  --tw-shadow-color: rgb(30 58 138 / 0.5);
+  --tw-shadow: var(--tw-shadow-colored);
+}
 #umh-admin-app .outline-none {
   outline: 2px solid transparent;
   outline-offset: 2px;
@@ -1133,28 +1326,36 @@
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 150ms;
 }
+#umh-admin-app .transition-transform {
+  transition-property: transform;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
 #umh-admin-app .duration-200 {
   transition-duration: 200ms;
 }
+#umh-admin-app .duration-300 {
+  transition-duration: 300ms;
+}
+#umh-admin-app .ease-in-out {
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
 
-/* SCOPED PREFLIGHT / RESET */
-/* Ini sangat penting karena kita mematikan preflight global */
+/* SCOPED PREFLIGHT */
 #umh-admin-app {
-  /* Pastikan font modern dan ukuran yang nyaman */
   font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: #1f2937;
   box-sizing: border-box;
-  background-color: #f3f4f6; /* Latar abu-abu lembut */
-  min-height: calc(100vh - 32px); /* Sesuaikan tinggi */
-  margin-left: -20px; /* Kompensasi margin bawaan WP .wrap */
+  background-color: #f3f4f6; 
+  min-height: calc(100vh - 32px); 
+  margin-left: -20px; 
   padding: 20px;
   font-size: 14px;
 }
 
-/* Reset Box Sizing untuk semua elemen di dalam app */
 #umh-admin-app *, 
 #umh-admin-app ::before, 
 #umh-admin-app ::after {
@@ -1164,39 +1365,35 @@
   border-color: #e5e7eb;
 }
 
-/* Reset Heading agar tidak kecil seperti default browser tanpa preflight */
 #umh-admin-app h1 { font-size: 2.25rem; line-height: 2.5rem; font-weight: 700; margin: 0; }
 #umh-admin-app h2 { font-size: 1.5rem; line-height: 2rem; font-weight: 700; margin: 0; }
 #umh-admin-app h3 { font-size: 1.25rem; line-height: 1.75rem; font-weight: 600; margin: 0; }
 #umh-admin-app p { margin: 0; }
 
-/* Fix Form Elements yang sering bentrok dengan WP */
 #umh-admin-app input, 
 #umh-admin-app select, 
 #umh-admin-app textarea {
-  /* Reset gaya WP */
   background-color: #fff;
   border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
-  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem; /* Lebih rounded */
+  padding: 0.6rem 0.85rem; /* Sedikit lebih lega */
   font-size: 0.875rem;
   line-height: 1.25rem;
   width: 100%;
   display: block;
   margin: 0;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease-in-out;
 }
 
 #umh-admin-app input:focus, 
 #umh-admin-app select:focus, 
 #umh-admin-app textarea:focus {
   outline: 2px solid transparent;
-  outline-offset: 2px;
   border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); /* Shadow lebih halus */
 }
 
-/* Fix Table Styles */
 #umh-admin-app table {
   width: 100%;
   border-collapse: collapse;
@@ -1205,14 +1402,13 @@
   text-align: left;
 }
 
-/* Button Reset */
 #umh-admin-app button {
   cursor: pointer;
   background-color: transparent;
   background-image: none;
 }
 
-/* Custom Scrollbar untuk area scrollable */
+/* Custom Scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -1227,37 +1423,14 @@
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: #94a3b8;
 }
-#umh-admin-app .file\:mr-4::file-selector-button {
-  margin-right: 1rem;
+
+/* Simple Fade In Animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
 }
-#umh-admin-app .file\:rounded-full::file-selector-button {
-  border-radius: 9999px;
-}
-#umh-admin-app .file\:border-0::file-selector-button {
-  border-width: 0px;
-}
-#umh-admin-app .file\:bg-blue-50::file-selector-button {
-  --tw-bg-opacity: 1;
-  background-color: rgb(239 246 255 / var(--tw-bg-opacity, 1));
-}
-#umh-admin-app .file\:px-4::file-selector-button {
-  padding-left: 1rem;
-  padding-right: 1rem;
-}
-#umh-admin-app .file\:py-2::file-selector-button {
-  padding-top: 0.5rem;
-  padding-bottom: 0.5rem;
-}
-#umh-admin-app .file\:text-sm::file-selector-button {
-  font-size: 0.875rem;
-  line-height: 1.25rem;
-}
-#umh-admin-app .file\:font-semibold::file-selector-button {
-  font-weight: 600;
-}
-#umh-admin-app .file\:text-blue-700::file-selector-button {
-  --tw-text-opacity: 1;
-  color: rgb(29 78 216 / var(--tw-text-opacity, 1));
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
 }
 #umh-admin-app .last\:border-0:last-child {
   border-width: 0px;
@@ -1265,13 +1438,14 @@
 #umh-admin-app .last\:pb-0:last-child {
   padding-bottom: 0px;
 }
+#umh-admin-app .hover\:scale-105:hover {
+  --tw-scale-x: 1.05;
+  --tw-scale-y: 1.05;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
 #umh-admin-app .hover\:border-blue-300:hover {
   --tw-border-opacity: 1;
   border-color: rgb(147 197 253 / var(--tw-border-opacity, 1));
-}
-#umh-admin-app .hover\:border-blue-400:hover {
-  --tw-border-opacity: 1;
-  border-color: rgb(96 165 250 / var(--tw-border-opacity, 1));
 }
 #umh-admin-app .hover\:bg-blue-50:hover {
   --tw-bg-opacity: 1;
@@ -1285,8 +1459,9 @@
   --tw-bg-opacity: 1;
   background-color: rgb(243 244 246 / var(--tw-bg-opacity, 1));
 }
-#umh-admin-app .hover\:bg-gray-100\/50:hover {
-  background-color: rgb(243 244 246 / 0.5);
+#umh-admin-app .hover\:bg-gray-200:hover {
+  --tw-bg-opacity: 1;
+  background-color: rgb(229 231 235 / var(--tw-bg-opacity, 1));
 }
 #umh-admin-app .hover\:bg-gray-50:hover {
   --tw-bg-opacity: 1;
@@ -1296,29 +1471,45 @@
   --tw-bg-opacity: 1;
   background-color: rgb(55 65 81 / var(--tw-bg-opacity, 1));
 }
-#umh-admin-app .hover\:bg-red-200:hover {
+#umh-admin-app .hover\:bg-gray-800:hover {
   --tw-bg-opacity: 1;
-  background-color: rgb(254 202 202 / var(--tw-bg-opacity, 1));
+  background-color: rgb(31 41 55 / var(--tw-bg-opacity, 1));
+}
+#umh-admin-app .hover\:bg-green-50:hover {
+  --tw-bg-opacity: 1;
+  background-color: rgb(240 253 244 / var(--tw-bg-opacity, 1));
+}
+#umh-admin-app .hover\:bg-indigo-50:hover {
+  --tw-bg-opacity: 1;
+  background-color: rgb(238 242 255 / var(--tw-bg-opacity, 1));
 }
 #umh-admin-app .hover\:bg-red-50:hover {
   --tw-bg-opacity: 1;
   background-color: rgb(254 242 242 / var(--tw-bg-opacity, 1));
 }
-#umh-admin-app .hover\:bg-yellow-200:hover {
+#umh-admin-app .hover\:bg-red-600:hover {
   --tw-bg-opacity: 1;
-  background-color: rgb(254 240 138 / var(--tw-bg-opacity, 1));
+  background-color: rgb(220 38 38 / var(--tw-bg-opacity, 1));
 }
-#umh-admin-app .hover\:text-blue-600:hover {
+#umh-admin-app .hover\:bg-red-700:hover {
+  --tw-bg-opacity: 1;
+  background-color: rgb(185 28 28 / var(--tw-bg-opacity, 1));
+}
+#umh-admin-app .hover\:text-blue-900:hover {
   --tw-text-opacity: 1;
-  color: rgb(37 99 235 / var(--tw-text-opacity, 1));
+  color: rgb(30 58 138 / var(--tw-text-opacity, 1));
 }
 #umh-admin-app .hover\:text-gray-600:hover {
   --tw-text-opacity: 1;
   color: rgb(75 85 99 / var(--tw-text-opacity, 1));
 }
-#umh-admin-app .hover\:text-gray-800:hover {
+#umh-admin-app .hover\:text-gray-700:hover {
   --tw-text-opacity: 1;
-  color: rgb(31 41 55 / var(--tw-text-opacity, 1));
+  color: rgb(55 65 81 / var(--tw-text-opacity, 1));
+}
+#umh-admin-app .hover\:text-green-900:hover {
+  --tw-text-opacity: 1;
+  color: rgb(20 83 45 / var(--tw-text-opacity, 1));
 }
 #umh-admin-app .hover\:text-indigo-900:hover {
   --tw-text-opacity: 1;
@@ -1336,17 +1527,22 @@
   --tw-text-opacity: 1;
   color: rgb(127 29 29 / var(--tw-text-opacity, 1));
 }
-#umh-admin-app .hover\:underline:hover {
-  text-decoration-line: underline;
+#umh-admin-app .hover\:text-white:hover {
+  --tw-text-opacity: 1;
+  color: rgb(255 255 255 / var(--tw-text-opacity, 1));
+}
+#umh-admin-app .hover\:shadow-lg:hover {
+  --tw-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --tw-shadow-colored: 0 10px 15px -3px var(--tw-shadow-color), 0 4px 6px -4px var(--tw-shadow-color);
+  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
 }
 #umh-admin-app .hover\:shadow-md:hover {
   --tw-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   --tw-shadow-colored: 0 4px 6px -1px var(--tw-shadow-color), 0 2px 4px -2px var(--tw-shadow-color);
   box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
 }
-#umh-admin-app .hover\:file\:bg-blue-100::file-selector-button:hover {
-  --tw-bg-opacity: 1;
-  background-color: rgb(219 234 254 / var(--tw-bg-opacity, 1));
+#umh-admin-app .focus\:z-10:focus {
+  z-index: 10;
 }
 #umh-admin-app .focus\:border-blue-500:focus {
   --tw-border-opacity: 1;
@@ -1370,6 +1566,14 @@
   --tw-ring-opacity: 1;
   --tw-ring-color: rgb(59 130 246 / var(--tw-ring-opacity, 1));
 }
+#umh-admin-app .focus\:ring-indigo-500:focus {
+  --tw-ring-opacity: 1;
+  --tw-ring-color: rgb(99 102 241 / var(--tw-ring-opacity, 1));
+}
+#umh-admin-app .focus\:ring-red-500:focus {
+  --tw-ring-opacity: 1;
+  --tw-ring-color: rgb(239 68 68 / var(--tw-ring-opacity, 1));
+}
 #umh-admin-app .focus\:ring-offset-2:focus {
   --tw-ring-offset-width: 2px;
 }
@@ -1388,16 +1592,26 @@
 #umh-admin-app .disabled\:opacity-50:disabled {
   opacity: 0.5;
 }
-#umh-admin-app .disabled\:opacity-70:disabled {
-  opacity: 0.7;
+@keyframes pulse {
+  50% {
+    opacity: .5;
+  }
+}
+#umh-admin-app :is(.group:hover .group-hover\:animate-pulse) {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+#umh-admin-app :is(.group:hover .group-hover\:text-blue-400) {
+  --tw-text-opacity: 1;
+  color: rgb(96 165 250 / var(--tw-text-opacity, 1));
+}
+#umh-admin-app :is(.group:hover .group-hover\:text-white) {
+  --tw-text-opacity: 1;
+  color: rgb(255 255 255 / var(--tw-text-opacity, 1));
 }
 #umh-admin-app :is(.group:hover .group-hover\:opacity-100) {
   opacity: 1;
 }
 @media (min-width: 640px) {
-  #umh-admin-app .sm\:block {
-    display: block;
-  }
   #umh-admin-app .sm\:inline {
     display: inline;
   }
@@ -1411,14 +1625,15 @@
     padding-left: 1.5rem;
     padding-right: 1.5rem;
   }
+  #umh-admin-app .sm\:text-sm {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+  #umh-admin-app .sm\:opacity-0 {
+    opacity: 0;
+  }
 }
 @media (min-width: 768px) {
-  #umh-admin-app .md\:block {
-    display: block;
-  }
-  #umh-admin-app .md\:hidden {
-    display: none;
-  }
   #umh-admin-app .md\:w-64 {
     width: 16rem;
   }
@@ -1431,9 +1646,6 @@
   #umh-admin-app .md\:grid-cols-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-  #umh-admin-app .md\:grid-cols-4 {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
   #umh-admin-app .md\:flex-row {
     flex-direction: row;
   }
@@ -1442,11 +1654,21 @@
   }
 }
 @media (min-width: 1024px) {
+  #umh-admin-app .lg\:static {
+    position: static;
+  }
   #umh-admin-app .lg\:col-span-1 {
     grid-column: span 1 / span 1;
   }
   #umh-admin-app .lg\:col-span-2 {
     grid-column: span 2 / span 2;
+  }
+  #umh-admin-app .lg\:hidden {
+    display: none;
+  }
+  #umh-admin-app .lg\:translate-x-0 {
+    --tw-translate-x: 0px;
+    transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
   }
   #umh-admin-app .lg\:grid-cols-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1456,5 +1678,9 @@
   }
   #umh-admin-app .lg\:p-8 {
     padding: 2rem;
+  }
+  #umh-admin-app .lg\:px-8 {
+    padding-left: 2rem;
+    padding-right: 2rem;
   }
 }

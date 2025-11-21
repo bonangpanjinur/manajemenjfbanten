@@ -3,6 +3,7 @@ import { useApi } from '../context/ApiContext';
 import Loading from '../components/common/Loading';
 import Modal from '../components/common/Modal';
 import PackageForm from '../components/forms/PackageForm';
+import { Edit, Trash2, Plus, Plane, Building } from 'lucide-react';
 
 const Packages = () => {
     const { getPackages, deletePackage } = useApi();
@@ -12,11 +13,9 @@ const Packages = () => {
     const [editData, setEditData] = useState(null);
     const [filterStatus, setFilterStatus] = useState('active');
 
-    // Fetch Data
     const fetchPackages = async () => {
         setLoading(true);
         try {
-            // Kirim filter status ke API
             const data = await getPackages({ status: filterStatus !== 'all' ? filterStatus : '' });
             setPackages(data || []);
         } catch (error) {
@@ -30,9 +29,8 @@ const Packages = () => {
         fetchPackages();
     }, [filterStatus]);
 
-    // Handler Delete
     const handleDelete = async (id) => {
-        if (!window.confirm('Apakah Anda yakin ingin menghapus paket ini? Data yang dihapus tidak bisa dikembalikan.')) return;
+        if (!window.confirm('Yakin hapus paket ini? Data yang dihapus tidak bisa dikembalikan.')) return;
         try {
             await deletePackage(id);
             fetchPackages();
@@ -41,7 +39,6 @@ const Packages = () => {
         }
     };
 
-    // Handler Modal
     const handleAdd = () => {
         setEditData(null);
         setIsModalOpen(true);
@@ -52,24 +49,15 @@ const Packages = () => {
         setIsModalOpen(true);
     };
 
-    const handleSuccess = () => {
-        setIsModalOpen(false);
-        fetchPackages();
-    };
-
-    // Helper untuk menampilkan list hotel dari ID
-    // (Idealnya di-join di backend, tapi jika data master diload di context bisa di-lookup di sini)
-    // Untuk simplifikasi, kita tampilkan jumlahnya atau nama jika tersedia di objek paket (jika backend sudah join)
-    
-    // Format Harga: Menampilkan range harga terendah - tertinggi
+    // Helper: Format Range Harga
     const formatPriceRange = (variants) => {
         if (!variants || variants.length === 0) return 'Belum ada harga';
-        // Jika variants berupa string JSON, parse dulu
         const vars = typeof variants === 'string' ? JSON.parse(variants) : variants;
-        
-        if (!Array.isArray(vars)) return 'Format Data Salah';
+        if (!Array.isArray(vars)) return '-';
         
         const prices = vars.map(v => parseFloat(v.price));
+        if (prices.length === 0) return '-';
+
         const min = Math.min(...prices);
         const max = Math.max(...prices);
         
@@ -78,16 +66,16 @@ const Packages = () => {
     };
 
     return (
-        <div className="p-6">
+        <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
             {/* Header Section */}
-            <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">Manajemen Paket</h1>
-                    <p className="text-gray-500 text-sm mt-1">Kelola jadwal, harga, dan varian paket umroh.</p>
+                    <p className="text-gray-500 text-sm mt-1">Atur jadwal keberangkatan dan harga paket.</p>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex gap-3 w-full md:w-auto">
                     <select 
-                        className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+                        className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
                         value={filterStatus}
                         onChange={(e) => setFilterStatus(e.target.value)}
                     >
@@ -98,9 +86,9 @@ const Packages = () => {
                     </select>
                     <button 
                         onClick={handleAdd} 
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium shadow-sm flex items-center gap-2 transition"
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm flex items-center gap-2 transition transform active:scale-95"
                     >
-                        <span>+</span> Buat Paket
+                        <Plus size={18}/> <span>Buat Paket</span>
                     </button>
                 </div>
             </div>
@@ -112,76 +100,80 @@ const Packages = () => {
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
+                            <thead className="bg-gray-50 text-gray-500 uppercase text-xs font-bold tracking-wider">
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Nama Paket</th>
-                                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tgl Berangkat</th>
-                                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Kategori</th>
-                                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Harga Mulai</th>
-                                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                                    <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Aksi</th>
+                                    <th className="px-6 py-3 text-left">Nama Paket</th>
+                                    <th className="px-6 py-3 text-left">Keberangkatan</th>
+                                    <th className="px-6 py-3 text-left">Kategori</th>
+                                    <th className="px-6 py-3 text-left">Harga Mulai</th>
+                                    <th className="px-6 py-3 text-left">Status</th>
+                                    <th className="px-6 py-3 text-right">Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
+                            <tbody className="bg-white divide-y divide-gray-200 text-sm">
                                 {packages.length === 0 ? (
                                     <tr>
-                                        <td colSpan="6" className="px-6 py-10 text-center text-gray-400">
-                                            Tidak ada paket yang ditemukan.
+                                        <td colSpan="6" className="px-6 py-12 text-center text-gray-400 italic">
+                                            Tidak ada paket yang ditemukan untuk filter ini.
                                         </td>
                                     </tr>
                                 ) : (
                                     packages.map((pkg) => (
-                                        <tr key={pkg.id} className="hover:bg-gray-50 transition">
+                                        <tr key={pkg.id} className="hover:bg-gray-50 transition-colors group">
                                             <td className="px-6 py-4">
-                                                <div className="text-sm font-bold text-gray-900">{pkg.name}</div>
-                                                <div className="text-xs text-gray-500 mt-1">
-                                                    {/* Parsing JSON Hotel jika perlu, atau tampilkan count */}
+                                                <div className="font-bold text-gray-900 text-base">{pkg.name}</div>
+                                                <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                                                    <Building size={12}/>
                                                     {(() => {
                                                         try {
                                                             const h = typeof pkg.hotels === 'string' ? JSON.parse(pkg.hotels) : pkg.hotels;
-                                                            return Array.isArray(h) && h.length > 0 ? `🏨 ${h.length} Hotel Terpilih` : 'Belum ada hotel';
+                                                            return Array.isArray(h) && h.length > 0 ? `${h.length} Hotel` : 'Tanpa Hotel';
                                                         } catch(e) { return '-'; }
                                                     })()}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="text-sm text-gray-900 font-medium">
+                                                <div className="font-medium text-gray-900">
                                                     {new Date(pkg.departure_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
                                                 </div>
-                                                <div className="text-xs text-blue-600">
-                                                    ✈️ {pkg.airline_name || 'Maskapai -'}
+                                                <div className="text-xs text-blue-600 flex items-center gap-1 mt-0.5">
+                                                    <Plane size={12}/> {pkg.airline_name || '-'}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-50 text-blue-800">
+                                                <span className="px-2.5 py-0.5 inline-flex text-xs font-semibold rounded-full bg-blue-50 text-blue-700 border border-blue-100">
                                                     {pkg.category_name || 'Umum'}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-700">
+                                            <td className="px-6 py-4 whitespace-nowrap font-bold text-gray-700">
                                                 {formatPriceRange(pkg.pricing_variants)}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                                    ${pkg.status === 'active' ? 'bg-green-100 text-green-800' : 
-                                                      pkg.status === 'full' ? 'bg-red-100 text-red-800' : 
-                                                      'bg-gray-100 text-gray-800'}`}>
+                                                <span className={`px-2.5 py-0.5 inline-flex text-xs font-semibold rounded-full border 
+                                                    ${pkg.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 
+                                                      pkg.status === 'full' ? 'bg-red-50 text-red-700 border-red-200' : 
+                                                      'bg-gray-100 text-gray-600 border-gray-200'}`}>
                                                     {pkg.status === 'active' ? 'Open' : 
                                                      pkg.status === 'full' ? 'Penuh' : pkg.status}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                <button 
-                                                    onClick={() => handleEdit(pkg)} 
-                                                    className="text-indigo-600 hover:text-indigo-900 mr-3 font-medium"
-                                                >
-                                                    Edit
-                                                </button>
-                                                <button 
-                                                    onClick={() => handleDelete(pkg.id)} 
-                                                    className="text-red-600 hover:text-red-900 font-medium"
-                                                >
-                                                    Hapus
-                                                </button>
+                                            <td className="px-6 py-4 whitespace-nowrap text-right">
+                                                <div className="flex justify-end gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button 
+                                                        onClick={() => handleEdit(pkg)} 
+                                                        className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+                                                        title="Edit Paket"
+                                                    >
+                                                        <Edit size={18}/>
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => handleDelete(pkg.id)} 
+                                                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                                                        title="Hapus Paket"
+                                                    >
+                                                        <Trash2 size={18}/>
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))
@@ -192,12 +184,11 @@ const Packages = () => {
                 </div>
             )}
 
-            {/* Modal Form */}
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editData ? 'Edit Paket' : 'Tambah Paket Baru'}>
+            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editData ? 'Edit Paket' : 'Buat Paket Baru'}>
                 {isModalOpen && (
                     <PackageForm 
                         initialData={editData} 
-                        onSuccess={handleSuccess} 
+                        onSuccess={() => { setIsModalOpen(false); fetchPackages(); }} 
                         onCancel={() => setIsModalOpen(false)} 
                     />
                 )}

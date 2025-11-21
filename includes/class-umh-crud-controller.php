@@ -8,8 +8,8 @@ if (!defined('ABSPATH')) {
 /**
  * Class UMH_CRUD_Controller
  *
- * Kontroler generik yang disempurnakan untuk menangani operasi CRUD 
- * dengan dukungan Pagination, Search, dan Sorting.
+ * Kontroler generik untuk menangani operasi CRUD otomatis
+ * dengan perbaikan pada pengambilan struktur tabel.
  */
 class UMH_CRUD_Controller {
     
@@ -32,56 +32,41 @@ class UMH_CRUD_Controller {
         $this->relations = $relations;
     }
 
-    /**
-     * Mendapatkan items dengan dukungan Filter, Search, dan Pagination.
-     */
     public function get_items($request) {
         global $wpdb;
 
-        // 1. Ambil parameter query
         $page     = $request->get_param('page') ? intval($request->get_param('page')) : 1;
-        $per_page = $request->get_param('per_page') ? intval($request->get_param('per_page')) : -1; // -1 = semua
+        $per_page = $request->get_param('per_page') ? intval($request->get_param('per_page')) : -1;
         $search   = $request->get_param('search') ? sanitize_text_field($request->get_param('search')) : '';
         $orderby  = $request->get_param('orderby') ? sanitize_text_field($request->get_param('orderby')) : 'id';
         $order    = $request->get_param('order') ? strtoupper(sanitize_text_field($request->get_param('order'))) : 'DESC';
 
-        // Validasi ORDER
-        if (!in_array($order, ['ASC', 'DESC'])) {
-            $order = 'DESC';
-        }
-
-        // Validasi ORDER BY (Pastikan kolom ada di tabel untuk mencegah SQL Injection)
-        // Untuk kesederhanaan, kita izinkan alfanumerik dan underscore saja
+        if (!in_array($order, ['ASC', 'DESC'])) $order = 'DESC';
         $orderby = preg_replace('/[^a-zA-Z0-9_]/', '', $orderby);
 
-        // 2. Bangun Query Dasar
         $query = "SELECT * FROM {$this->table_name} WHERE 1=1";
         $args = [];
 
-        // 3. Tambahkan Pencarian (Jika ada kolom pencarian default)
+        // Fitur Search Otomatis
         if (!empty($search)) {
-            // Cari kolom teks di tabel ini untuk di-search
-            // Ini adalah pendekatan generik, bisa di-override di child class
-            $columns = $wpdb->get_col("DESCRIBE {$this->table_name}");
+            $columns = $wpdb->get_results("DESCRIBE {$this->table_name}");
             $search_query = [];
             foreach ($columns as $col) {
-                // Asumsi kolom teks bisa dicari (varchar/text)
-                // Kita hardcode pengecualian untuk id, tanggal, dll jika perlu
-                if (!in_array($col, ['id', 'created_at', 'updated_at']) && strpos($col, 'id') === false) {
-                    $search_query[] = "$col LIKE %s";
-                    $args[] = '%' . $wpdb->esc_like($search) . '%';
+                $field = $col->Field;
+                $type = $col->Type;
+                // Cari hanya di kolom teks
+                if (strpos($type, 'char') !== false || strpos($type, 'text') !== false) {
+                     $search_query[] = "$field LIKE %s";
+                     $args[] = '%' . $wpdb->esc_like($search) . '%';
                 }
             }
-            
             if (!empty($search_query)) {
                 $query .= " AND (" . implode(' OR ', $search_query) . ")";
             }
         }
 
-        // 4. Sorting
         $query .= " ORDER BY $orderby $order";
 
-        // 5. Pagination
         if ($per_page > -1) {
             $offset = ($page - 1) * $per_page;
             $query .= " LIMIT %d OFFSET %d";
@@ -89,16 +74,14 @@ class UMH_CRUD_Controller {
             $args[] = $offset;
         }
 
-        // 6. Eksekusi Query
         if (!empty($args)) {
             $query = $wpdb->prepare($query, $args);
         }
         
         $items = $wpdb->get_results($query);
         
-        // Hitung total untuk header pagination (Opsional, menambah query count)
+        // Hitung total
         $total_query = "SELECT COUNT(*) FROM {$this->table_name}";
-        // Jika ada search, tambahkan where clause yang sama (disederhanakan di sini)
         $total_items = $wpdb->get_var($total_query);
 
         $response = new WP_REST_Response($items, 200);
@@ -121,33 +104,31 @@ class UMH_CRUD_Controller {
 
     public function create_item($request) {
         global $wpdb;
+        // FIX: Ambil kolom yang valid dulu
         $data = $this->prepare_data_for_db($request->get_params());
+        
+        if (empty($data)) {
+            return new WP_Error('rest_empty_data', "Data tidak valid atau nama kolom tidak cocok dengan database.", array('status' => 400));
+        }
+
         $format = $this->get_col_formats($data, $this->table_name);
 
-        if (empty($data['created_at'])) $data['created_at'] = current_time('mysql');
-        if (empty($data['updated_at'])) $data['updated_at'] = current_time('mysql');
+        // Auto timestamp
+        if (!isset($data['created_at']) && $this->column_exists('created_at')) {
+            $data['created_at'] = current_time('mysql');
+        }
 
         $result = $wpdb->insert($this->table_name, $data, $format);
 
         if ($result) {
             $new_id = $wpdb->insert_id;
-            
-            // Logging
-            if (function_exists('umh_create_log_entry')) {
-                $user_context = umh_get_current_user_context();
-                $item_desc = $data['name'] ?? $data['full_name'] ?? $data['title'] ?? $this->table_name . ' item';
-                umh_create_log_entry(
-                    $user_context['id'], 'create', $this->table_name, $new_id,
-                    "Membuat {$this->item_name}: '$item_desc'",
-                    wp_json_encode(['new_data' => $data])
-                );
-            }
-            
+            $this->log_activity('create', $new_id, $data);
             $this->handle_relations($new_id, $request->get_params());
+            
             $new_item = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$this->table_name} WHERE id = %d", $new_id));
             return new WP_REST_Response($new_item, 201);
         } else {
-            return new WP_Error('rest_cannot_create', __("Gagal membuat {$this->item_name}.", 'umroh-manager-hybrid'), array('status' => 500, 'db_error' => $wpdb->last_error));
+            return new WP_Error('rest_cannot_create', "Gagal membuat data. DB Error: " . $wpdb->last_error, array('status' => 500));
         }
     }
 
@@ -155,33 +136,29 @@ class UMH_CRUD_Controller {
         global $wpdb;
         $id = intval($request['id']);
         $data = $this->prepare_data_for_db($request->get_params());
+        
+        // Bersihkan ID dari data update
         unset($data['id']); 
 
-        if (empty($data)) return new WP_Error('rest_no_data', __("Tidak ada data update.", 'umroh-manager-hybrid'), array('status' => 400));
+        if (empty($data)) return new WP_Error('rest_no_data', "Tidak ada data update yang valid.", array('status' => 400));
 
-        $data['updated_at'] = current_time('mysql');
+        if ($this->column_exists('updated_at')) {
+            $data['updated_at'] = current_time('mysql');
+        }
+        
         $format = $this->get_col_formats($data, $this->table_name);
         $old_data = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$this->table_name} WHERE id = %d", $id), ARRAY_A);
 
         $result = $wpdb->update($this->table_name, $data, array('id' => $id), $format, array('%d'));
 
         if ($result !== false) {
-            // Logging
-            if (function_exists('umh_create_log_entry') && $old_data) {
-                $user_context = umh_get_current_user_context();
-                $item_desc = $data['name'] ?? $data['full_name'] ?? $old_data['name'] ?? 'item';
-                umh_create_log_entry(
-                    $user_context['id'], 'update', $this->table_name, $id,
-                    "Update {$this->item_name}: '$item_desc'",
-                    wp_json_encode(['new' => $data, 'old' => $old_data])
-                );
-            }
-
+            $this->log_activity('update', $id, ['new' => $data, 'old' => $old_data]);
             $this->handle_relations($id, $request->get_params());
+            
             $updated_item = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$this->table_name} WHERE id = %d", $id));
             return new WP_REST_Response($updated_item, 200);
         } else {
-            return new WP_Error('rest_cannot_update', __("Gagal update.", 'umroh-manager-hybrid'), array('status' => 500));
+            return new WP_Error('rest_cannot_update', "Gagal update database.", array('status' => 500));
         }
     }
 
@@ -189,35 +166,45 @@ class UMH_CRUD_Controller {
         global $wpdb;
         $id = intval($request['id']);
         $old_data = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$this->table_name} WHERE id = %d", $id), ARRAY_A);
+        
+        if (!$old_data) return new WP_Error('rest_not_found', "Data tidak ditemukan", array('status' => 404));
+
         $result = $wpdb->delete($this->table_name, array('id' => $id), array('%d'));
 
         if ($result) {
-             if (function_exists('umh_create_log_entry') && $old_data) {
-                $user_context = umh_get_current_user_context();
-                $item_desc = $old_data['name'] ?? $old_data['full_name'] ?? 'item';
-                umh_create_log_entry(
-                    $user_context['id'], 'delete', $this->table_name, $id,
-                    "Hapus {$this->item_name}: '$item_desc'",
-                    wp_json_encode($old_data)
-                );
-            }
+            $this->log_activity('delete', $id, $old_data);
             return new WP_REST_Response(array('message' => 'Item deleted', 'id' => $id), 200);
         } else {
-            return new WP_Error('rest_cannot_delete', __("Gagal hapus.", 'umroh-manager-hybrid'), array('status' => 500));
+            return new WP_Error('rest_cannot_delete', "Gagal hapus data.", array('status' => 500));
         }
     }
 
     // --- Helpers ---
+    
+    protected function column_exists($column) {
+        global $wpdb;
+        $row = $wpdb->get_results("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = '{$this->table_name}' AND column_name = '{$column}'");
+        return !empty($row);
+    }
+
     protected function prepare_data_for_db($params) {
         global $wpdb;
-        // Cache kolom untuk performa (transient bisa ditambahkan nanti)
-        $columns = $wpdb->get_col_info("SELECT * FROM {$this->table_name} LIMIT 1", -1);
-        $column_names = wp_list_pluck($columns, 'name');
+        // FIX: Gunakan DESCRIBE, bukan get_col_info yang salah
+        $columns = $wpdb->get_results("DESCRIBE {$this->table_name}");
+        $valid_columns = wp_list_pluck($columns, 'Field');
         
         $data = array();
-        foreach ($column_names as $column) {
-            if (isset($params[$column])) {
-                $data[$column] = is_bool($params[$column]) ? ($params[$column] ? 1 : 0) : $params[$column];
+        foreach ($valid_columns as $col) {
+            if ($col === 'id') continue; // Skip ID auto-increment
+            
+            if (isset($params[$col])) {
+                $val = $params[$col];
+                // Konversi boolean ke 1/0 untuk MySQL
+                if (is_bool($val)) $val = $val ? 1 : 0;
+                // Abaikan array/object (harus di-serialize manual jika perlu)
+                if (!is_array($val) && !is_object($val)) {
+                    $data[$col] = $val;
+                }
             }
         }
         return $data;
@@ -226,21 +213,33 @@ class UMH_CRUD_Controller {
     protected function get_col_formats($data, $table) {
         global $wpdb;
         $formats = array();
-        $columns = $wpdb->get_results("SHOW COLUMNS FROM {$table}", ARRAY_A);
-        $column_types = array();
-        foreach ($columns as $col) $column_types[$col['Field']] = $col['Type'];
+        $columns = $wpdb->get_results("DESCRIBE {$table}");
+        $col_types = array();
+        foreach ($columns as $c) $col_types[$c->Field] = $c->Type;
 
         foreach ($data as $key => $value) {
-            if (isset($column_types[$key])) {
-                $type = $column_types[$key];
-                if (strpos($type, 'int') !== false) $formats[] = '%d';
-                elseif (strpos($type, 'float') !== false || strpos($type, 'decimal') !== false || strpos($type, 'double') !== false) $formats[] = '%f';
+            if (isset($col_types[$key])) {
+                $t = $col_types[$key];
+                if (strpos($t, 'int') !== false || strpos($t, 'bigint') !== false) $formats[] = '%d';
+                elseif (strpos($t, 'float') !== false || strpos($t, 'decimal') !== false || strpos($t, 'double') !== false) $formats[] = '%f';
                 else $formats[] = '%s';
             } else {
                 $formats[] = '%s';
             }
         }
         return $formats;
+    }
+
+    protected function log_activity($action, $id, $data) {
+        if (function_exists('umh_create_log_entry')) {
+            $user = umh_get_current_user_context();
+            $desc = "{$action} {$this->item_name} #{$id}";
+            // Coba cari nama item untuk log yang lebih informatif
+            if (is_array($data) && isset($data['name'])) $desc .= " ({$data['name']})";
+            elseif (isset($data['new']['name'])) $desc .= " ({$data['new']['name']})";
+            
+            umh_create_log_entry($user['id'], $action, $this->table_name, $id, $desc, json_encode($data));
+        }
     }
 
     protected function handle_relations($item_id, $params) {
@@ -264,16 +263,5 @@ class UMH_CRUD_Controller {
         }
     }
     
-    protected function get_sanitize_callback($type) {
-        switch ($type) {
-            case 'integer': return 'absint';
-            case 'number': return 'floatval';
-            case 'boolean': return 'rest_sanitize_boolean';
-            default: return 'sanitize_text_field';
-        }
-    }
-
-    public function get_endpoint_args_for_item_schema($method) {
-        return []; 
-    }
+    public function get_endpoint_args_for_item_schema($method) { return []; }
 }

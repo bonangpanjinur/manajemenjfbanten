@@ -1,143 +1,176 @@
 import React, { useState, useEffect } from 'react';
 import { useApi } from '../context/ApiContext';
+import Modal from '../components/common/Modal';
 import Loading from '../components/common/Loading';
-import { Users, UserPlus, Trash2, Edit } from 'lucide-react';
+import StatCard from '../components/common/StatCard';
+import EmployeeForm from '../components/forms/EmployeeForm'; // Import form baru
 
-const HR = () => {
-  const { api } = useApi();
-  const [employees, setEmployees] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editId, setEditId] = useState(null);
-  
-  // Jabatan Dinamis: Input teks biasa atau bisa select dari list unique yang sudah ada
-  const [formData, setFormData] = useState({
-    name: '',
-    position: '',
-    phone: '',
-    email: '',
-    salary: 0,
-    status: 'active'
-  });
+export default function HR() {
+    const { api } = useApi();
+    const [employees, setEmployees] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingItem, setEditingItem] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const fetchEmployees = async () => {
-    setLoading(true);
-    try {
-      const res = await api.get('/employees');
-      setEmployees(res.data || []);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const fetchEmployees = async () => {
+        try {
+            setLoading(true);
+            const data = await api.get('/hr/employees');
+            setEmployees(data);
+        } catch (error) {
+            console.error('Failed to fetch employees', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-  useEffect(() => { fetchEmployees(); }, []);
+    useEffect(() => {
+        fetchEmployees();
+    }, []);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      if (editId) {
-         // Logic Update
-         // Pastikan API HR support PUT /employees/id
-         // Jika belum, Anda perlu update api-hr.php method update_item
-         await api.put(`/employees/${editId}`, formData); 
-      } else {
-         await api.post('/employees', formData);
-      }
-      setIsModalOpen(false);
-      fetchEmployees();
-    } catch (err) {
-      alert('Gagal menyimpan data: ' + err.message);
-    }
-  };
+    const handleSubmit = async (formData) => {
+        setIsSubmitting(true);
+        try {
+            if (editingItem) {
+                await api.put(`/hr/employees/${editingItem.id}`, formData);
+            } else {
+                await api.post('/hr/employees', formData);
+            }
+            setIsModalOpen(false);
+            setEditingItem(null);
+            fetchEmployees();
+        } catch (error) {
+            console.error('Failed to save employee', error);
+            alert('Gagal menyimpan data karyawan.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
-  const openEdit = (emp) => {
-      setFormData(emp);
-      setEditId(emp.id);
-      setIsModalOpen(true);
-  }
+    const handleDelete = async (id) => {
+        if (window.confirm('Hapus data karyawan ini?')) {
+            try {
+                await api.delete(`/hr/employees/${id}`);
+                fetchEmployees();
+            } catch (error) {
+                console.error('Failed to delete', error);
+            }
+        }
+    };
 
-  const openAdd = () => {
-      setFormData({ name: '', position: '', phone: '', email: '', salary: 0, status: 'active' });
-      setEditId(null);
-      setIsModalOpen(true);
-  }
+    // Helper untuk menampilkan badge akses
+    const renderAccessBadges = (permissions) => {
+        if (!permissions || permissions.length === 0) return <span className="text-gray-400 text-xs">Tidak ada akses</span>;
+        // Tampilkan maks 3, sisanya +X
+        const display = permissions.slice(0, 3);
+        const remaining = permissions.length - 3;
+        return (
+            <div className="flex flex-wrap gap-1">
+                {display.map(p => (
+                    <span key={p} className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full capitalize">
+                        {p}
+                    </span>
+                ))}
+                {remaining > 0 && (
+                    <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">
+                        +{remaining}
+                    </span>
+                )}
+            </div>
+        );
+    };
 
-  const handleDelete = async (id) => {
-      if(!confirm("Hapus data karyawan ini?")) return;
-      try {
-          await api.delete(`/employees/${id}`);
-          fetchEmployees();
-      } catch(e) { alert("Gagal hapus"); }
-  }
+    if (loading) return <Loading />;
 
-  return (
-    <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-800">Data HR & Karyawan</h1>
-        <button onClick={openAdd} className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700">
-          <UserPlus size={18} /> Tambah Karyawan
-        </button>
-      </div>
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <h1 className="text-2xl font-bold text-gray-800">Manajemen SDM (HR)</h1>
+                <button 
+                    onClick={() => { setEditingItem(null); setIsModalOpen(true); }}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center"
+                >
+                    + Tambah Karyawan
+                </button>
+            </div>
 
-      {loading ? <Loading /> : (
-          <div className="bg-white rounded-xl shadow overflow-hidden">
-            <table className="w-full text-left text-sm">
-                <thead className="bg-gray-50 border-b uppercase text-gray-500">
-                    <tr>
-                        <th className="p-4">Nama</th>
-                        <th className="p-4">Jabatan</th>
-                        <th className="p-4">Kontak</th>
-                        <th className="p-4">Gaji</th>
-                        <th className="p-4">Status</th>
-                        <th className="p-4 text-right">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody className="divide-y">
-                    {employees.map(e => (
-                        <tr key={e.id}>
-                            <td className="p-4 font-medium">{e.name}</td>
-                            <td className="p-4"><span className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs">{e.position}</span></td>
-                            <td className="p-4">{e.phone}</td>
-                            <td className="p-4">Rp {parseFloat(e.salary).toLocaleString()}</td>
-                            <td className="p-4">{e.status}</td>
-                            <td className="p-4 text-right flex justify-end gap-2">
-                                <button onClick={() => openEdit(e)} className="text-indigo-600"><Edit size={16}/></button>
-                                <button onClick={() => handleDelete(e.id)} className="text-red-600"><Trash2 size={16}/></button>
-                            </td>
+            {/* Stats Ringkas */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <StatCard title="Total Karyawan" value={employees.length} color="blue" />
+                <StatCard title="Karyawan Aktif" value={employees.filter(e => e.status === 'active').length} color="green" />
+                <StatCard title="Total Gaji (Est)" value={`Rp ${employees.reduce((acc, curr) => acc + parseFloat(curr.salary || 0), 0).toLocaleString()}`} color="yellow" />
+            </div>
+
+            {/* Table List */}
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+                <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                        <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama / Kontak</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Posisi</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hak Akses</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                         </tr>
-                    ))}
-                </tbody>
-            </table>
-          </div>
-      )}
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                        {employees.map((emp) => (
+                            <tr key={emp.id} className="hover:bg-gray-50">
+                                <td className="px-6 py-4">
+                                    <div className="text-sm font-medium text-gray-900">{emp.name}</div>
+                                    <div className="text-sm text-gray-500">{emp.email}</div>
+                                    <div className="text-sm text-gray-500">{emp.phone}</div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                    {emp.position}
+                                </td>
+                                <td className="px-6 py-4 text-sm text-gray-700 max-w-xs">
+                                    {renderAccessBadges(emp.access_permissions)}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                        emp.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                    }`}>
+                                        {emp.status === 'active' ? 'Aktif' : 'Non-Aktif'}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                                    <button 
+                                        onClick={() => { setEditingItem(emp); setIsModalOpen(true); }}
+                                        className="text-indigo-600 hover:text-indigo-900"
+                                    >
+                                        Edit
+                                    </button>
+                                    <button 
+                                        onClick={() => handleDelete(emp.id)}
+                                        className="text-red-600 hover:text-red-900"
+                                    >
+                                        Hapus
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+                {employees.length === 0 && (
+                    <div className="p-6 text-center text-gray-500">Belum ada data karyawan.</div>
+                )}
+            </div>
 
-      {/* Modal Simple untuk HR */}
-      {isModalOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
-                  <h2 className="text-xl font-bold mb-4">{editId ? 'Edit Karyawan' : 'Karyawan Baru'}</h2>
-                  <form onSubmit={handleSubmit} className="space-y-3">
-                      <input className="w-full border p-2 rounded" placeholder="Nama Lengkap" required value={formData.name} onChange={e=>setFormData({...formData, name:e.target.value})} />
-                      {/* Jabatan Dinamis (Text Input) */}
-                      <input className="w-full border p-2 rounded" placeholder="Jabatan (cth: Manager, Staff, Driver)" required value={formData.position} onChange={e=>setFormData({...formData, position:e.target.value})} />
-                      
-                      <div className="grid grid-cols-2 gap-3">
-                        <input className="w-full border p-2 rounded" placeholder="No HP" value={formData.phone} onChange={e=>setFormData({...formData, phone:e.target.value})} />
-                        <input className="w-full border p-2 rounded" placeholder="Gaji Pokok" type="number" value={formData.salary} onChange={e=>setFormData({...formData, salary:e.target.value})} />
-                      </div>
-                      
-                      <div className="flex justify-end gap-2 pt-4">
-                          <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 bg-gray-200 rounded">Batal</button>
-                          <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded">Simpan</button>
-                      </div>
-                  </form>
-              </div>
-          </div>
-      )}
-    </div>
-  );
-};
-
-export default HR;
+            <Modal 
+                isOpen={isModalOpen} 
+                onClose={() => setIsModalOpen(false)} 
+                title={editingItem ? "Edit Data Karyawan" : "Tambah Karyawan Baru"}
+                maxWidth="2xl" // Modal agak lebar untuk checkbox permissions
+            >
+                <EmployeeForm 
+                    initialData={editingItem}
+                    onSubmit={handleSubmit}
+                    onCancel={() => setIsModalOpen(false)}
+                    isLoading={isSubmitting}
+                />
+            </Modal>
+        </div>
+    );
+}

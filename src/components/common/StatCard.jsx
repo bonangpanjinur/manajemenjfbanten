@@ -1,38 +1,32 @@
 import React from 'react';
 
 const StatCard = ({ title, value, icon, color }) => {
-    // Mapping warna agar Tailwind mendeteksi class-nya
-    const colorClasses = {
-        blue: 'bg-blue-500',
-        green: 'bg-green-500',
-        yellow: 'bg-yellow-500',
-        indigo: 'bg-indigo-500',
-        red: 'bg-red-500',
-        gray: 'bg-gray-500'
+    // Mapping warna untuk background gradient
+    const gradientClasses = {
+        blue: 'from-blue-500 to-blue-600',
+        green: 'from-green-500 to-green-600',
+        yellow: 'from-yellow-400 to-yellow-500',
+        indigo: 'from-indigo-500 to-indigo-600',
+        red: 'from-red-500 to-red-600',
+        gray: 'from-gray-500 to-gray-600'
     };
 
-    const bgColor = colorClasses[color] || 'bg-blue-500';
+    const bgGradient = gradientClasses[color] || 'from-blue-500 to-blue-600';
 
     return (
-        <div className="bg-white overflow-hidden shadow rounded-lg">
+        <div className="bg-white overflow-hidden shadow-sm hover:shadow-md transition-shadow rounded-xl border border-gray-100">
             <div className="p-5">
-                <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                        <div className={`rounded-md p-3 ${bgColor} text-white flex items-center justify-center h-12 w-12`}>
-                            <span className="text-2xl leading-none">{icon}</span>
+                <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-500 truncate uppercase tracking-wider">
+                            {title}
+                        </p>
+                        <div className="mt-1 text-2xl font-extrabold text-gray-900">
+                            {value}
                         </div>
                     </div>
-                    <div className="ml-5 w-0 flex-1">
-                        <dl>
-                            <dt className="text-sm font-medium text-gray-500 truncate uppercase">
-                                {title}
-                            </dt>
-                            <dd>
-                                <div className="text-lg font-bold text-gray-900">
-                                    {value}
-                                </div>
-                            </dd>
-                        </dl>
+                    <div className={`flex-shrink-0 rounded-lg p-3 bg-gradient-to-br ${bgGradient} text-white shadow-lg transform transition-transform hover:scale-105`}>
+                        <span className="text-xl">{icon}</span>
                     </div>
                 </div>
             </div>
