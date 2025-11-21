@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ApiProvider } from './context/ApiContext';
+
+// Import Halaman Asli
 import Dashboard from './pages/Dashboard';
 import Finance from './pages/Finance';
 import Marketing from './pages/Marketing';
@@ -9,70 +11,41 @@ import Jamaah from './pages/Jamaah';
 import Packages from './pages/Packages';
 import SubAgents from './pages/SubAgents';
 import MasterData from './pages/MasterData';
-import { FaHome, FaMoneyBill, FaBullhorn, FaUsers, FaBox, FaUserTie, FaDatabase } from 'react-icons/fa';
+
+// Import Icons (Menggunakan Lucide untuk konsistensi dengan desain baru)
+import { 
+    LayoutDashboard, Package, Users, Wallet, 
+    Megaphone, Briefcase, Database, Network,
+    Menu, X, Bell
+} from 'lucide-react';
 
 const AppContent = () => {
     const { currentUser } = useAuth();
     const [activePage, setActivePage] = useState('dashboard');
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-    // Definisi Menu dan Role Akses
-    // Pastikan slug role ini sama persis dengan yang ada di database WordPress (wp_usermeta -> capabilities)
+    // Konfigurasi Menu
     const menuItems = [
-        { 
-            id: 'dashboard', 
-            label: 'Dashboard', 
-            icon: <FaHome />, 
-            roles: ['owner', 'administrator', 'admin_staff', 'finance_staff', 'marketing_staff'] 
-        },
-        { 
-            id: 'packages', 
-            label: 'Paket Umroh', 
-            icon: <FaBox />, 
-            roles: ['owner', 'administrator', 'admin_staff', 'marketing_staff'] 
-        },
-        { 
-            id: 'jamaah', 
-            label: 'Data Jemaah', 
-            icon: <FaUsers />, 
-            roles: ['owner', 'administrator', 'admin_staff', 'marketing_staff', 'finance_staff'] 
-        },
-        { 
-            id: 'finance', 
-            label: 'Keuangan', 
-            icon: <FaMoneyBill />, 
-            roles: ['owner', 'administrator', 'finance_staff', 'admin_staff'] 
-        },
-        { 
-            id: 'marketing', 
-            label: 'Marketing Leads', 
-            icon: <FaBullhorn />, 
-            roles: ['owner', 'administrator', 'admin_staff', 'marketing_staff'] 
-        },
-        { 
-            id: 'sub_agents', 
-            label: 'Sub Agen', 
-            icon: <FaUserTie />, 
-            roles: ['owner', 'administrator', 'admin_staff', 'marketing_staff'] 
-        },
-        { 
-            id: 'hr', 
-            label: 'Manajemen HR', 
-            icon: <FaUsers />, 
-            roles: ['owner', 'administrator'] 
-        },
-        { 
-            id: 'master', 
-            label: 'Data Master', 
-            icon: <FaDatabase />, 
-            roles: ['owner', 'administrator', 'admin_staff'] 
-        },
+        { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} />, roles: ['owner', 'administrator', 'admin_staff', 'finance_staff', 'marketing_staff'] },
+        { id: 'packages', label: 'Paket', icon: <Package size={18} />, roles: ['owner', 'administrator', 'admin_staff', 'marketing_staff'] },
+        { id: 'jamaah', label: 'Jamaah', icon: <Users size={18} />, roles: ['owner', 'administrator', 'admin_staff', 'marketing_staff', 'finance_staff'] },
+        { id: 'finance', label: 'Keuangan', icon: <Wallet size={18} />, roles: ['owner', 'administrator', 'finance_staff', 'admin_staff'] },
+        { id: 'marketing', label: 'Marketing', icon: <Megaphone size={18} />, roles: ['owner', 'administrator', 'admin_staff', 'marketing_staff'] },
+        { id: 'sub_agents', label: 'Agen', icon: <Network size={18} />, roles: ['owner', 'administrator', 'admin_staff', 'marketing_staff'] },
+        { id: 'hr', label: 'HR', icon: <Briefcase size={18} />, roles: ['owner', 'administrator'] },
+        { id: 'master', label: 'Master', icon: <Database size={18} />, roles: ['owner', 'administrator', 'admin_staff'] },
     ];
 
-    // Helper: Cek apakah role user saat ini ada di dalam array roles yang diizinkan
-    const userRole = currentUser?.role || '';
-    const canAccess = (allowedRoles) => allowedRoles.includes(userRole);
+    const userRole = currentUser?.role || 'subscriber';
+    
+    // Helper Cek Akses
+    const canAccess = (allowedRoles) => {
+        // Jika user adalah admin WP asli, izinkan semua
+        if (currentUser?.role === 'administrator') return true;
+        return allowedRoles.includes(userRole);
+    };
 
-    // Render Halaman
+    // Router Sederhana
     const renderPage = () => {
         switch (activePage) {
             case 'dashboard': return <Dashboard />;
@@ -88,53 +61,102 @@ const AppContent = () => {
     };
 
     return (
-        <div className="flex h-screen bg-gray-100 font-sans">
-            {/* Sidebar */}
-            <aside className="w-64 bg-white shadow-xl z-20 flex flex-col fixed h-full md:relative hidden md:flex">
-                <div className="p-6 border-b flex flex-col items-start">
-                    <h1 className="text-2xl font-extrabold text-blue-600 tracking-tight">UmrohMgr</h1>
-                    <div className="mt-4 w-full">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                            {currentUser?.full_name || 'Pengguna'}
-                        </p>
-                        <span className="mt-1 inline-block px-2 py-0.5 text-xs font-bold text-blue-800 bg-blue-100 rounded-full uppercase">
-                            {userRole.replace(/_/g, ' ')}
-                        </span>
+        // Wrapper ID ini penting untuk CSS Scoping
+        <div id="umh-admin-app" className="flex flex-col min-h-screen bg-gray-50 font-sans text-gray-800">
+            
+            {/* HEADER & NAVIGASI */}
+            <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-40">
+                <div className="px-4 sm:px-6 py-3 flex justify-between items-center">
+                    {/* Kiri: Logo */}
+                    <div className="flex items-center gap-3">
+                        <div className="bg-blue-600 text-white p-2 rounded-lg shadow-lg">
+                            <LayoutDashboard size={24} />
+                        </div>
+                        <div className="hidden sm:block">
+                            <h1 className="text-lg font-bold text-gray-900 leading-none">Umroh Manager</h1>
+                            <span className="text-xs text-blue-600 font-medium bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">Hybrid v1.2</span>
+                        </div>
+                    </div>
+
+                    {/* Kanan: User Profile */}
+                    <div className="flex items-center gap-4">
+                        <div className="text-right hidden md:block">
+                            <p className="text-sm font-semibold text-gray-900 leading-tight">
+                                {currentUser?.full_name || 'Pengguna'}
+                            </p>
+                            <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">
+                                {userRole.replace(/_/g, ' ')}
+                            </p>
+                        </div>
+                        <div className="h-9 w-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white font-bold text-sm shadow-md">
+                            {currentUser?.full_name ? currentUser.full_name.charAt(0).toUpperCase() : 'U'}
+                        </div>
+                        
+                        {/* Mobile Menu Toggle */}
+                        <button className="md:hidden p-2 text-gray-500" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+                            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+                        </button>
                     </div>
                 </div>
-                
-                <nav className="flex-1 overflow-y-auto py-4 space-y-1">
+
+                {/* TAB MENU (Desktop) */}
+                <div className="hidden md:block px-4 sm:px-6 bg-gray-50/50 border-t border-gray-100 backdrop-blur-sm">
+                    <nav className="flex space-x-1 overflow-x-auto custom-scrollbar">
+                        {menuItems.map(item => (
+                            canAccess(item.roles) && (
+                                <button
+                                    key={item.id}
+                                    onClick={() => setActivePage(item.id)}
+                                    className={`
+                                        group flex items-center gap-2 whitespace-nowrap py-3 px-4 border-b-2 text-sm font-medium transition-all duration-200
+                                        ${activePage === item.id 
+                                            ? 'border-blue-600 text-blue-700 bg-white rounded-t-lg shadow-sm' 
+                                            : 'border-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-100/50 rounded-t-lg'
+                                        }
+                                    `}
+                                >
+                                    <span className={activePage === item.id ? 'text-blue-600' : 'text-gray-400'}>
+                                        {item.icon}
+                                    </span>
+                                    {item.label}
+                                </button>
+                            )
+                        ))}
+                    </nav>
+                </div>
+            </header>
+
+            {/* MOBILE MENU (Overlay) */}
+            {isMobileMenuOpen && (
+                <div className="md:hidden bg-white border-b border-gray-200 shadow-lg z-30 p-2 space-y-1">
                     {menuItems.map(item => (
                         canAccess(item.roles) && (
                             <button
                                 key={item.id}
-                                onClick={() => setActivePage(item.id)}
-                                className={`w-full flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 
-                                    ${activePage === item.id 
-                                        ? 'bg-blue-50 text-blue-700 border-r-4 border-blue-600' 
-                                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                                    }`}
+                                onClick={() => { setActivePage(item.id); setIsMobileMenuOpen(false); }}
+                                className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium w-full text-left
+                                    ${activePage === item.id ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'}`}
                             >
-                                <span className={`mr-3 text-lg ${activePage === item.id ? 'text-blue-600' : 'text-gray-400'}`}>
-                                    {item.icon}
-                                </span>
-                                {item.label}
+                                {item.icon} {item.label}
                             </button>
                         )
                     ))}
-                </nav>
-
-                <div className="p-4 border-t bg-gray-50">
-                    <p className="text-xs text-center text-gray-400">
-                        &copy; {new Date().getFullYear()} JF Banten v1.1
-                    </p>
                 </div>
-            </aside>
+            )}
 
-            {/* Main Content Area */}
-            <main className="flex-1 overflow-y-auto bg-gray-50 w-full p-4 md:p-0">
-                {renderPage()}
+            {/* KONTEN HALAMAN */}
+            <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto bg-slate-50/50">
+                <div className="max-w-7xl mx-auto min-h-[500px]">
+                    {renderPage()}
+                </div>
             </main>
+
+            {/* FOOTER */}
+            <footer className="bg-white border-t border-gray-200 py-4 mt-auto">
+                <div className="max-w-7xl mx-auto px-6 text-center text-xs text-gray-400">
+                    &copy; {new Date().getFullYear()} PT. Jannah Firdaus Banten. All rights reserved.
+                </div>
+            </footer>
         </div>
     );
 };

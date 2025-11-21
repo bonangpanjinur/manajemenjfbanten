@@ -1,39 +1,54 @@
-import React, { createContext, useContext, useState } from 'react';
-
-// --- PERBAIKAN: Membaca data dari 'window.umh_wp_data' ---
-const globalSettings = window.umh_wp_data || {};
-
-// PERBAIKAN: Menyesuaikan nama variabel agar cocok dengan yang dikirim PHP
-// 'current_user' diubah menjadi 'user'
-// 'api_nonce' diubah menjadi 'nonce'
-const initialUser = globalSettings.user || null;
-const initialNonce = globalSettings.nonce || null; 
-const initialApiUrl = globalSettings.api_url || '/wp-json/umh/v1';
-// --- AKHIR PERBAIKAN ---
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext();
 
+export const useAuth = () => useContext(AuthContext);
+
 export const AuthProvider = ({ children }) => {
-    const [currentUser, setCurrentUser] = useState(initialUser);
-    
-    // Sediakan juga data global lainnya agar mudah diakses
-    const value = {
-        currentUser,
-        setCurrentUser, // Anda bisa gunakan ini jika ada halaman update profile
-        nonce: initialNonce,
-        apiUrl: initialApiUrl,
-        adminUrl: globalSettings.adminUrl,
-        printUrl: globalSettings.printUrl,
-        isWpAdmin: globalSettings.is_wp_admin || false,
+    // PERBAIKAN: Nama variabel harus sesuai dengan dashboard-react.php (umh_wp_data)
+    const globalSettings = window.umh_wp_data || {};
+
+    const [currentUser, setCurrentUser] = useState(globalSettings.user || null);
+    const [nonce, setNonce] = useState(globalSettings.nonce || '');
+    const [token, setToken] = useState(localStorage.getItem('umh_token') || '');
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (!globalSettings.nonce) {
+            console.warn("⚠️ UMH: Nonce tidak ditemukan. Pastikan plugin aktif.");
+        } else {
+            console.log("✅ UMH: Terhubung sebagai", globalSettings.user?.name);
+        }
+    }, []);
+
+    const login = (userData, authToken) => {
+        setCurrentUser(userData);
+        setToken(authToken);
+        localStorage.setItem('umh_token', authToken);
+    };
+
+    const logout = () => {
+        setCurrentUser(null);
+        setToken('');
+        localStorage.removeItem('umh_token');
     };
 
     return (
-        <AuthContext.Provider value={value}>
+        <AuthContext.Provider value={{ 
+            currentUser, 
+            nonce, // Penting untuk API WordPress
+            token, 
+            login, 
+            logout,
+            loading,
+            // Helper data dari WP
+            isAdmin: globalSettings.is_wp_admin,
+            urls: {
+                admin: globalSettings.adminUrl,
+                print: globalSettings.printUrl
+            }
+        }}>
             {children}
         </AuthContext.Provider>
     );
-};
-
-export const useAuth = () => {
-    return useContext(AuthContext);
 };

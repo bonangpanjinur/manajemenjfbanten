@@ -4,13 +4,14 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 class UMH_API_Print {
     public function __construct() {
         // Hook untuk menangani request cetak via URL admin-post.php
+        // URL: /wp-admin/admin-post.php?action=umh_print_receipt&id=123
         add_action( 'admin_post_umh_print_receipt', array( $this, 'handle_print_receipt' ) );
         add_action( 'admin_post_umh_print_registration', array( $this, 'handle_print_registration' ) );
     }
 
     // --- HANDLER KWITANSI ---
     public function handle_print_receipt() {
-        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
+        if ( ! current_user_can( 'read' ) ) wp_die( 'Anda tidak memiliki izin untuk mencetak.' );
         
         global $wpdb;
         $payment_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
@@ -27,14 +28,14 @@ class UMH_API_Print {
 
         if (!$payment) wp_die('Data pembayaran tidak ditemukan.');
 
-        // Load Template
-        include UMH_PATH . 'admin/print-receipt.php';
+        // PERBAIKAN: Gunakan UMH_PLUGIN_DIR yang benar
+        include UMH_PLUGIN_DIR . 'admin/print-receipt.php';
         exit;
     }
 
     // --- HANDLER FORMULIR PENDAFTARAN ---
     public function handle_print_registration() {
-        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Unauthorized' );
+        if ( ! current_user_can( 'read' ) ) wp_die( 'Anda tidak memiliki izin untuk mencetak.' );
 
         global $wpdb;
         $booking_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
@@ -54,9 +55,9 @@ class UMH_API_Print {
         // Decode JSON address jika ada
         $data->address_details = json_decode($data->address_details, true);
 
-        // Load Template
-        include UMH_PATH . 'admin/print-registration.php';
-        exit;
+        // PERBAIKAN: Gunakan UMH_PLUGIN_DIR yang benar
+        include UMH_PLUGIN_DIR . 'admin/print-registration.php';
+        exit; 
     }
 }
 new UMH_API_Print();
