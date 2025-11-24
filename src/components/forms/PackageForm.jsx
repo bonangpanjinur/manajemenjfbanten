@@ -1,190 +1,208 @@
 import React, { useState, useEffect } from 'react';
+import FormUI from '../common/FormUI';
+import ImageUploader from '../common/ImageUploader';
 import { useApi } from '../../context/ApiContext';
-import { Plus, Trash2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
-const PackageForm = ({ initialData, onSuccess, onCancel }) => {
-  const { api } = useApi();
+const PackageForm = ({ initialData, onClose, onSuccess }) => {
+  const { post, put } = useApi();
+  const [loading, setLoading] = useState(false);
   
-  // State Dasar
-  const [formData, setFormData] = useState(initialData || {
+  const [formData, setFormData] = useState({
     name: '',
-    category_id: '',
-    airline_id: '',
-    departure_date: '',
-    duration_days: 9,
-    quota: 45,
-    itinerary_file: ''
+    price: '',
+    duration: 9,
+    airline: '',
+    description: '',
+    hotel_makkah: '',
+    hotel_madinah: '',
+    facilities: [], 
+    images: [] 
   });
 
-  // State Relasional
-  const [hotels, setHotels] = useState(initialData?.hotels || []);
-  const [prices, setPrices] = useState(initialData?.pricing_variants || [
-    { type: 'Quad', price: 0 },
-    { type: 'Triple', price: 0 },
-    { type: 'Double', price: 0 }
-  ]);
-
-  // Master Data Options
-  const [optHotels, setOptHotels] = useState([]);
-  const [optAirlines, setOptAirlines] = useState([]);
-  const [optCategories, setOptCategories] = useState([]);
-
   useEffect(() => {
-    const loadMasters = async () => {
-      try {
-        const [h, a, c] = await Promise.all([
-          api.get('/hotels'),
-          api.get('/airlines'),
-          api.get('/categories')
-        ]);
-        setOptHotels(h.data || []);
-        setOptAirlines(a.data || []);
-        setOptCategories(c.data || []);
-      } catch (e) {
-        console.error("Failed to load master data", e);
-      }
-    };
-    loadMasters();
-  }, []);
-
-  // Handlers
-  const handleHotelChange = (index, field, value) => {
-    const newHotels = [...hotels];
-    newHotels[index] = { ...newHotels[index], [field]: value };
-    
-    // Auto-fill city jika hotel dipilih
-    if (field === 'id') {
-        const selectedHotel = optHotels.find(h => h.id == value);
-        if(selectedHotel) newHotels[index].city = selectedHotel.city;
+    if (initialData) {
+      setFormData({
+        name: initialData.name || '',
+        price: initialData.price || '',
+        duration: initialData.duration || 9,
+        airline: initialData.airline || '',
+        description: initialData.description || '',
+        hotel_makkah: initialData.hotels?.makkah || initialData.hotel_makkah || '',
+        hotel_madinah: initialData.hotels?.madinah || initialData.hotel_madinah || '',
+        facilities: Array.isArray(initialData.facilities) ? initialData.facilities : [],
+        images: Array.isArray(initialData.images) ? initialData.images : []
+      });
     }
-    setHotels(newHotels);
+  }, [initialData]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const addHotel = () => setHotels([...hotels, { id: '', city: '', nights: 0 }]);
-  const removeHotel = (index) => setHotels(hotels.filter((_, i) => i !== index));
-
-  const handlePriceChange = (index, value) => {
-    const newPrices = [...prices];
-    newPrices[index].price = value;
-    setPrices(newPrices);
+  const toggleFacility = (facility) => {
+    setFormData(prev => {
+      const exists = prev.facilities.includes(facility);
+      if (exists) {
+        return { ...prev, facilities: prev.facilities.filter(f => f !== facility) };
+      }
+      return { ...prev, facilities: [...prev.facilities, facility] };
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const payload = {
-      ...formData,
-      hotels: hotels,
-      pricing_variants: prices
-    };
-
+    setLoading(true);
+    
     try {
-      if (initialData?.id) {
-        await api.put(`/packages/${initialData.id}`, payload);
+      const url = initialData ? `/packages/${initialData.id}` : '/packages';
+      const method = initialData ? put : post;
+      
+      const res = await method(url, formData);
+      
+      if (res.success) {
+        toast.success(initialData ? "Paket diperbarui!" : "Paket berhasil dibuat!");
+        if (onSuccess) onSuccess();
+        if (onClose) onClose();
       } else {
-        await api.post('/packages', payload);
+        toast.error("Gagal menyimpan: " + (res.message || 'Error'));
       }
-      onSuccess();
     } catch (err) {
-      alert('Gagal menyimpan paket: ' + err.message);
+      console.error(err);
+      toast.error("Terjadi kesalahan sistem.");
+    } finally {
+      setLoading(false);
     }
   };
 
+  const FACILITY_OPTIONS = [
+    "Tiket Pesawat PP", "Visa Umrah", "Visa Tambahan", 
+    "Hotel Bintang 5", "Hotel Bintang 4", "Hotel Bintang 3",
+    "Makan 3x Sehari", "Makan 2x Sehari",
+    "Bus AC Eksekutif", "Kereta Cepat Haramain",
+    "Mutawif Berpengalaman", "Air Zamzam 5L", 
+    "Manasik Umrah", "Perlengkapan (Koper/Ihram)",
+    "Handling Bandara", "Asuransi Perjalanan"
+  ];
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Info Dasar */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border">
-        <h3 className="font-semibold mb-4 text-gray-700">Informasi Paket</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Nama Paket</label>
-            <input type="text" required className="w-full border rounded p-2"
-              value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Kategori</label>
-            <select required className="w-full border rounded p-2"
-              value={formData.category_id} onChange={e => setFormData({...formData, category_id: e.target.value})}>
-              <option value="">Pilih Kategori</option>
-              {optCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Maskapai</label>
-            <select required className="w-full border rounded p-2"
-              value={formData.airline_id} onChange={e => setFormData({...formData, airline_id: e.target.value})}>
-              <option value="">Pilih Maskapai</option>
-              {optAirlines.map(a => <option key={a.id} value={a.id}>{a.name} ({a.code})</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Tanggal Keberangkatan</label>
-            <input type="date" required className="w-full border rounded p-2"
-              value={formData.departure_date} onChange={e => setFormData({...formData, departure_date: e.target.value})} />
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-                <label className="block text-sm font-medium mb-1">Durasi (Hari)</label>
-                <input type="number" required className="w-full border rounded p-2"
-                value={formData.duration_days} onChange={e => setFormData({...formData, duration_days: e.target.value})} />
-            </div>
-            <div>
-                <label className="block text-sm font-medium mb-1">Kuota</label>
-                <input type="number" required className="w-full border rounded p-2"
-                value={formData.quota} onChange={e => setFormData({...formData, quota: e.target.value})} />
-            </div>
-          </div>
+      
+      {/* 1. Info Dasar */}
+      <div className="bg-gray-50 p-5 rounded-xl border border-gray-200">
+        <h3 className="font-bold text-gray-800 mb-4 border-b border-gray-200 pb-2">Informasi Dasar</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <FormUI.Input
+            label="Nama Paket"
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            placeholder="Cth: Umrah Ramadhan 2025"
+            required
+          />
+          <FormUI.Input
+            label="Harga (IDR)"
+            name="price"
+            type="number"
+            value={formData.price}
+            onChange={handleChange}
+            required
+          />
+          <FormUI.Input
+            label="Durasi (Hari)"
+            name="duration"
+            type="number"
+            value={formData.duration}
+            onChange={handleChange}
+          />
+           <FormUI.Input
+            label="Maskapai"
+            name="airline"
+            value={formData.airline}
+            onChange={handleChange}
+            placeholder="Cth: Saudia Airlines"
+          />
         </div>
       </div>
 
-      {/* Hotel Configuration */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border">
-        <div className="flex justify-between items-center mb-4">
-            <h3 className="font-semibold text-gray-700">Akomodasi Hotel</h3>
-            <button type="button" onClick={addHotel} className="text-sm text-blue-600 flex items-center gap-1"><Plus size={16}/> Tambah Hotel</button>
-        </div>
-        <div className="space-y-3">
-            {hotels.map((hotel, idx) => (
-                <div key={idx} className="flex gap-3 items-end bg-gray-50 p-3 rounded border">
-                    <div className="flex-1">
-                        <label className="text-xs text-gray-500">Pilih Hotel</label>
-                        <select className="w-full border rounded p-2 text-sm" 
-                            value={hotel.id} onChange={e => handleHotelChange(idx, 'id', e.target.value)}>
-                            <option value="">- Pilih -</option>
-                            {optHotels.map(h => <option key={h.id} value={h.id}>{h.name} ({h.city})</option>)}
-                        </select>
-                    </div>
-                    <div className="w-24">
-                        <label className="text-xs text-gray-500">Durasi (Malam)</label>
-                        <input type="number" className="w-full border rounded p-2 text-sm"
-                            value={hotel.nights} onChange={e => handleHotelChange(idx, 'nights', e.target.value)} />
-                    </div>
-                    <button type="button" onClick={() => removeHotel(idx)} className="text-red-500 p-2 hover:bg-red-50 rounded"><Trash2 size={16}/></button>
-                </div>
-            ))}
-            {hotels.length === 0 && <p className="text-sm text-gray-400 italic text-center">Belum ada hotel dipilih</p>}
+      {/* 2. Galeri Foto */}
+      <div className="bg-gray-50 p-5 rounded-xl border border-gray-200">
+        <h3 className="font-bold text-gray-800 mb-2 border-b border-gray-200 pb-2">Galeri Foto</h3>
+        <p className="text-sm text-gray-500 mb-4">Gambar pertama akan menjadi cover paket.</p>
+        <ImageUploader 
+          images={formData.images} 
+          onChange={(newImages) => setFormData(prev => ({ ...prev, images: newImages }))} 
+          maxImages={8}
+        />
+      </div>
+
+      {/* 3. Hotel */}
+      <div className="bg-gray-50 p-5 rounded-xl border border-gray-200">
+        <h3 className="font-bold text-gray-800 mb-4 border-b border-gray-200 pb-2">Akomodasi Hotel</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <FormUI.Input
+            label="Hotel Makkah"
+            name="hotel_makkah"
+            value={formData.hotel_makkah}
+            onChange={handleChange}
+            placeholder="Cth: Zamzam Tower"
+          />
+          <FormUI.Input
+            label="Hotel Madinah"
+            name="hotel_madinah"
+            value={formData.hotel_madinah}
+            onChange={handleChange}
+            placeholder="Cth: Rawda Royal Inn"
+          />
         </div>
       </div>
 
-      {/* Pricing Variants */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border">
-        <h3 className="font-semibold mb-4 text-gray-700">Varian Harga (Per Jamaah)</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {prices.map((price, idx) => (
-                <div key={idx} className="bg-gray-50 p-3 rounded border">
-                    <label className="block text-sm font-medium text-gray-600 mb-1">Tipe {price.type}</label>
-                    <div className="relative">
-                        <span className="absolute left-3 top-2 text-gray-500">Rp</span>
-                        <input type="number" className="w-full border rounded pl-8 p-2"
-                            value={price.price} onChange={e => handlePriceChange(idx, e.target.value)} />
-                    </div>
-                </div>
-            ))}
+      {/* 4. Fasilitas */}
+      <div className="bg-gray-50 p-5 rounded-xl border border-gray-200">
+        <h3 className="font-bold text-gray-800 mb-4 border-b border-gray-200 pb-2">Fasilitas Termasuk</h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {FACILITY_OPTIONS.map((item) => (
+            <label key={item} className="flex items-start space-x-2 cursor-pointer p-2 rounded hover:bg-white border border-transparent hover:border-gray-200 transition">
+              <input
+                type="checkbox"
+                checked={formData.facilities.includes(item)}
+                onChange={() => toggleFacility(item)}
+                className="mt-1 rounded text-green-600 w-4 h-4"
+              />
+              <span className="text-sm text-gray-700">{item}</span>
+            </label>
+          ))}
         </div>
       </div>
 
-      <div className="flex justify-end gap-3 pt-4">
-        <button type="button" onClick={onCancel} className="px-6 py-2 border rounded-lg hover:bg-gray-50">Batal</button>
-        <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Simpan Paket</button>
+      {/* 5. Deskripsi */}
+      <FormUI.TextArea
+        label="Deskripsi Lengkap"
+        name="description"
+        value={formData.description}
+        onChange={handleChange}
+        rows={5}
+        placeholder="Jelaskan detail keunggulan paket ini..."
+      />
+
+      {/* Buttons */}
+      <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-5 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+          disabled={loading}
+        >
+          Batal
+        </button>
+        <button
+          type="submit"
+          className="px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium shadow-sm"
+          disabled={loading}
+        >
+          {loading ? 'Menyimpan...' : 'Simpan Paket'}
+        </button>
       </div>
     </form>
   );

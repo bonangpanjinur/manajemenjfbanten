@@ -1,154 +1,289 @@
 <?php
-if ( ! defined( 'ABSPATH' ) ) exit;
+defined('ABSPATH') || exit;
 
-class UMH_API_Packages {
-    public function __construct() {
-        add_action( 'rest_api_init', array( $this, 'register_routes' ) );
+/**
+ * ============================================================================
+ * 1. UPDATE SCHEMA DATABASE OTOMATIS
+ * ============================================================================
+ * Menambahkan kolom: images, facilities, hotels, airline, itinerary
+ * Berjalan otomatis saat plugin dimuat.
+ */
+function umh_update_package_schema_complete() {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'umh_packages';
+    
+    // Pastikan tabel ada dulu (dibuat oleh db-schema.php utama)
+    if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") != $table_name) {
+        return; 
     }
 
-    public function register_routes() {
-        register_rest_route( 'umh/v1', '/packages', [
-            ['methods' => 'GET', 'callback' => [$this, 'get_items'], 'permission_callback' => '__return_true'],
-            ['methods' => 'POST', 'callback' => [$this, 'create_item'], 'permission_callback' => '__return_true']
-        ]);
-        register_rest_route( 'umh/v1', '/packages/(?P<id>\d+)', [
-            ['methods' => 'GET', 'callback' => [$this, 'get_item'], 'permission_callback' => '__return_true'],
-            ['methods' => 'PUT', 'callback' => [$this, 'update_item'], 'permission_callback' => '__return_true'],
-            ['methods' => 'DELETE', 'callback' => [$this, 'delete_item'], 'permission_callback' => '__return_true']
-        ]);
-    }
+    // Daftar kolom yang wajib ada untuk fitur lengkap
+    $columns = [
+        'images'     => 'LONGTEXT NULL',      // Menyimpan Array URL Gambar (JSON)
+        'facilities' => 'TEXT NULL',          // Menyimpan Array Fasilitas (JSON)
+        'hotels'     => 'TEXT NULL',          // Menyimpan Object Hotel (JSON)
+        'airline'    => 'VARCHAR(255) NULL',  // Nama Maskapai
+        'itinerary'  => 'LONGTEXT NULL'       // Menyimpan Data Itinerary Builder (JSON)
+    ];
 
-    public function get_items( $request ) {
-        global $wpdb;
-        $status = $request->get_param('status');
-        
-        // Query Utama
-        $sql = "SELECT p.*, a.name as airline_name, c.name as category_name 
-                FROM {$wpdb->prefix}umh_packages p
-                LEFT JOIN {$wpdb->prefix}umh_airlines a ON p.airline_id = a.id
-                LEFT JOIN {$wpdb->prefix}umh_categories c ON p.category_id = c.id
-                WHERE 1=1";
-        
-        if($status && $status !== 'all') $sql .= $wpdb->prepare(" AND p.status = %s", $status);
-        $sql .= " ORDER BY p.departure_date ASC";
-        
-        $packages = $wpdb->get_results($sql);
-
-        // Hydrate Relation Data (Prices & Hotels)
-        // Loop ini bisa dioptimasi dengan JOIN, tapi untuk simplifikasi readability kita loop dulu
-        foreach($packages as $pkg) {
-            $pkg->pricing_variants = $wpdb->get_results($wpdb->prepare("SELECT * FROM {$wpdb->prefix}umh_package_prices WHERE package_id = %d", $pkg->id));
-            $pkg->hotels = $wpdb->get_results($wpdb->prepare("
-                SELECT ph.*, h.name as hotel_name, h.star_rating 
-                FROM {$wpdb->prefix}umh_package_hotels ph
-                JOIN {$wpdb->prefix}umh_hotels h ON ph.hotel_id = h.id
-                WHERE ph.package_id = %d
-            ", $pkg->id));
+    foreach ($columns as $col => $type) {
+        $check = $wpdb->get_results("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = '$table_name' AND column_name = '$col'");
+        if (empty($check)) {
+            $wpdb->query("ALTER TABLE $table_name ADD COLUMN $col $type");
         }
-
-        return rest_ensure_response($packages);
-    }
-
-    public function create_item( $request ) {
-        global $wpdb;
-        $p = $request->get_json_params();
-
-        // 1. Simpan Paket Utama
-        $data_pkg = [
-            'name' => sanitize_text_field($p['name']),
-            'category_id' => intval($p['category_id']),
-            'airline_id' => intval($p['airline_id']),
-            'departure_date' => $p['departure_date'],
-            'duration_days' => intval($p['duration_days']),
-            'quota' => intval($p['quota']),
-            'status' => 'active',
-            'itinerary_file' => esc_url_raw($p['itinerary_file']),
-            'created_at' => current_time('mysql')
-        ];
-        
-        $wpdb->insert($wpdb->prefix . 'umh_packages', $data_pkg);
-        $package_id = $wpdb->insert_id;
-
-        // 2. Simpan Varian Harga (Looping)
-        if (!empty($p['pricing_variants']) && is_array($p['pricing_variants'])) {
-            foreach ($p['pricing_variants'] as $price) {
-                $wpdb->insert($wpdb->prefix . 'umh_package_prices', [
-                    'package_id' => $package_id,
-                    'room_type' => sanitize_text_field($price['type']),
-                    'price' => floatval($price['price']),
-                    'currency' => 'IDR'
-                ]);
-            }
-        }
-
-        // 3. Simpan Hotel (Looping)
-        if (!empty($p['hotels']) && is_array($p['hotels'])) {
-            foreach ($p['hotels'] as $hotel) {
-                $wpdb->insert($wpdb->prefix . 'umh_package_hotels', [
-                    'package_id' => $package_id,
-                    'hotel_id' => intval($hotel['id']), // Asumsi FE kirim object hotel
-                    'city' => sanitize_text_field($hotel['city']), // makkah/madinah
-                    'duration_nights' => intval($hotel['nights'] ?? 0)
-                ]);
-            }
-        }
-
-        return rest_ensure_response(['id' => $package_id, 'message' => 'Paket berhasil dibuat dengan struktur relasional.']);
-    }
-
-    public function update_item( $request ) {
-        global $wpdb;
-        $id = $request['id'];
-        $p = $request->get_json_params();
-
-        // Update Parent
-        $wpdb->update($wpdb->prefix . 'umh_packages', [
-            'name' => $p['name'],
-            'airline_id' => $p['airline_id'],
-            'departure_date' => $p['departure_date'],
-            'status' => $p['status']
-        ], ['id' => $id]);
-
-        // Reset & Re-insert Children (Cara paling aman untuk update one-to-many simple)
-        // Hapus harga lama
-        $wpdb->delete($wpdb->prefix . 'umh_package_prices', ['package_id' => $id]);
-        // Insert harga baru
-        if (!empty($p['pricing_variants'])) {
-            foreach ($p['pricing_variants'] as $price) {
-                $wpdb->insert($wpdb->prefix . 'umh_package_prices', [
-                    'package_id' => $id,
-                    'room_type' => $price['type'],
-                    'price' => $price['price']
-                ]);
-            }
-        }
-
-        // Hapus hotel lama
-        $wpdb->delete($wpdb->prefix . 'umh_package_hotels', ['package_id' => $id]);
-        // Insert hotel baru
-        if (!empty($p['hotels'])) {
-            foreach ($p['hotels'] as $hotel) {
-                $wpdb->insert($wpdb->prefix . 'umh_package_hotels', [
-                    'package_id' => $id,
-                    'hotel_id' => intval($hotel['id']),
-                    'city' => $hotel['city']
-                ]);
-            }
-        }
-
-        return rest_ensure_response(['message' => 'Paket diperbarui']);
-    }
-
-    public function delete_item( $request ) {
-        global $wpdb;
-        $id = $request['id'];
-        
-        // Hapus dependencies dulu (Foreign key manual handling)
-        $wpdb->delete($wpdb->prefix . 'umh_package_prices', ['package_id' => $id]);
-        $wpdb->delete($wpdb->prefix . 'umh_package_hotels', ['package_id' => $id]);
-        $wpdb->delete($wpdb->prefix . 'umh_packages', ['id' => $id]);
-        
-        return rest_ensure_response(['message' => 'Paket dihapus']);
     }
 }
-new UMH_API_Packages();
+add_action('plugins_loaded', 'umh_update_package_schema_complete');
+
+/**
+ * ============================================================================
+ * 2. REGISTER ROUTES API
+ * ============================================================================
+ */
+add_action('rest_api_init', function () {
+    
+    // --- A. ENDPOINT UTAMA PAKET ---
+    register_rest_route('umh/v1', '/packages', [
+        [
+            'methods'  => 'GET',
+            'callback' => 'umh_get_packages',
+            'permission_callback' => function() { return is_user_logged_in(); }
+        ],
+        [
+            'methods'  => 'POST', // Create Baru
+            'callback' => 'umh_create_package',
+            'permission_callback' => function() { return current_user_can('manage_options'); }
+        ]
+    ]);
+
+    // --- B. ENDPOINT DETAIL PAKET (GET, UPDATE, DELETE) ---
+    register_rest_route('umh/v1', '/packages/(?P<id>\d+)', [
+        [
+            'methods'  => 'GET',
+            'callback' => 'umh_get_single_package',
+            'permission_callback' => function() { return is_user_logged_in(); }
+        ],
+        [
+            // Mendukung POST dan PUT untuk update agar fleksibel
+            'methods'  => ['POST', 'PUT', 'PATCH'], 
+            'callback' => 'umh_update_package',
+            'permission_callback' => function() { return current_user_can('manage_options'); }
+        ],
+        [
+            'methods'  => 'DELETE',
+            'callback' => 'umh_delete_package',
+            'permission_callback' => function() { return current_user_can('manage_options'); }
+        ]
+    ]);
+    
+    // --- C. ENDPOINT UPLOAD GAMBAR ---
+    register_rest_route('umh/v1', '/upload', [
+        'methods'  => 'POST',
+        'callback' => 'umh_handle_file_upload',
+        'permission_callback' => function () { return current_user_can('upload_files'); }
+    ]);
+});
+
+/**
+ * ============================================================================
+ * 3. CONTROLLER FUNCTIONS (LOGIKA CRUD)
+ * ============================================================================
+ */
+
+// --- GET ALL PACKAGES ---
+function umh_get_packages() {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'umh_packages';
+    
+    // Ambil data urut dari yang terbaru
+    $results = $wpdb->get_results("SELECT * FROM $table_name ORDER BY created_at DESC");
+    
+    // Decode JSON string kembali ke Array/Object agar bisa dibaca React
+    foreach ($results as $key => $row) {
+        $results[$key]->images     = json_decode($row->images) ?: [];
+        $results[$key]->facilities = json_decode($row->facilities) ?: [];
+        $results[$key]->hotels     = json_decode($row->hotels) ?: (object)[];
+        $results[$key]->itinerary  = json_decode($row->itinerary) ?: [];
+    }
+    
+    return rest_ensure_response(['success' => true, 'data' => $results]);
+}
+
+// --- GET SINGLE PACKAGE ---
+function umh_get_single_package($request) {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'umh_packages';
+    $id = $request['id'];
+    
+    $row = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table_name WHERE id = %d", $id));
+    
+    if (!$row) return new WP_Error('not_found', 'Paket tidak ditemukan', ['status' => 404]);
+
+    // Decode JSON
+    $row->images     = json_decode($row->images) ?: [];
+    $row->facilities = json_decode($row->facilities) ?: [];
+    $row->hotels     = json_decode($row->hotels) ?: (object)['makkah'=>'', 'madinah'=>''];
+    $row->itinerary  = json_decode($row->itinerary) ?: [];
+    
+    return rest_ensure_response(['success' => true, 'data' => $row]);
+}
+
+// --- CREATE PACKAGE ---
+function umh_create_package($request) {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'umh_packages';
+    $params = $request->get_json_params();
+
+    if (empty($params['name'])) {
+        return new WP_Error('validation_error', 'Nama paket wajib diisi', ['status' => 400]);
+    }
+
+    // Sanitasi dan persiapan data
+    $data = [
+        'name'        => sanitize_text_field($params['name']),
+        'price'       => floatval($params['price']),
+        'duration'    => intval($params['duration']),
+        'description' => wp_kses_post($params['description']), // Mengizinkan HTML dasar
+        'airline'     => sanitize_text_field($params['airline'] ?? ''),
+        
+        // Simpan data kompleks sebagai JSON String
+        'images'      => isset($params['images']) ? json_encode($params['images']) : '[]',
+        'facilities'  => isset($params['facilities']) ? json_encode($params['facilities']) : '[]',
+        'hotels'      => isset($params['hotel_makkah']) ? json_encode([
+            'makkah'  => sanitize_text_field($params['hotel_makkah']), 
+            'madinah' => sanitize_text_field($params['hotel_madinah'])
+        ]) : '{}',
+        'created_at'  => current_time('mysql')
+    ];
+
+    // Format %s = string, %d = int, %f = float
+    $format = ['%s', '%f', '%d', '%s', '%s', '%s', '%s', '%s', '%s'];
+
+    $wpdb->insert($table_name, $data, $format);
+    
+    if ($wpdb->last_error) {
+        return new WP_Error('db_error', $wpdb->last_error, ['status' => 500]);
+    }
+
+    return rest_ensure_response(['success' => true, 'id' => $wpdb->insert_id, 'message' => 'Paket berhasil dibuat']);
+}
+
+// --- UPDATE PACKAGE (Mendukung Partial Update & Itinerary) ---
+function umh_update_package($request) {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'umh_packages';
+    $id = $request['id'];
+    $params = $request->get_json_params();
+
+    if (!$params) {
+        return new WP_Error('invalid_data', 'Data tidak valid', ['status' => 400]);
+    }
+
+    $data = [];
+    $format = [];
+
+    // Update Field Standar (Hanya jika dikirim)
+    if (isset($params['name'])) {
+        $data['name'] = sanitize_text_field($params['name']);
+        $format[] = '%s';
+    }
+    if (isset($params['price'])) {
+        $data['price'] = floatval($params['price']);
+        $format[] = '%f';
+    }
+    if (isset($params['duration'])) {
+        $data['duration'] = intval($params['duration']);
+        $format[] = '%d';
+    }
+    if (isset($params['description'])) {
+        $data['description'] = wp_kses_post($params['description']);
+        $format[] = '%s';
+    }
+    if (isset($params['airline'])) {
+        $data['airline'] = sanitize_text_field($params['airline']);
+        $format[] = '%s';
+    }
+    if (isset($params['images'])) {
+        $data['images'] = json_encode($params['images']);
+        $format[] = '%s';
+    }
+    if (isset($params['facilities'])) {
+        $data['facilities'] = json_encode($params['facilities']);
+        $format[] = '%s';
+    }
+    
+    // Update Hotel (Object JSON)
+    if (isset($params['hotel_makkah']) || isset($params['hotel_madinah'])) {
+        // Ambil data lama dulu agar tidak tertimpa kosong
+        $current_json = $wpdb->get_var($wpdb->prepare("SELECT hotels FROM $table_name WHERE id = %d", $id));
+        $hotels_obj = json_decode($current_json, true) ?: [];
+        
+        if (isset($params['hotel_makkah'])) $hotels_obj['makkah'] = sanitize_text_field($params['hotel_makkah']);
+        if (isset($params['hotel_madinah'])) $hotels_obj['madinah'] = sanitize_text_field($params['hotel_madinah']);
+        
+        $data['hotels'] = json_encode($hotels_obj);
+        $format[] = '%s';
+    }
+
+    // --- FITUR ITINERARY BUILDER ---
+    // Jika ada data 'itinerary_data', kita simpan ke kolom 'itinerary'
+    if (isset($params['itinerary_data'])) {
+        $data['itinerary'] = json_encode($params['itinerary_data']);
+        $format[] = '%s';
+    }
+
+    if (empty($data)) {
+        return rest_ensure_response(['success' => true, 'message' => 'Tidak ada data yang berubah']);
+    }
+
+    $data['updated_at'] = current_time('mysql');
+    $format[] = '%s';
+
+    $wpdb->update($table_name, $data, ['id' => $id], $format, ['%d']);
+    
+    return rest_ensure_response(['success' => true, 'message' => 'Paket berhasil diperbarui']);
+}
+
+// --- DELETE PACKAGE ---
+function umh_delete_package($request) {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'umh_packages';
+    $id = $request['id'];
+    
+    $deleted = $wpdb->delete($table_name, ['id' => $id], ['%d']);
+    
+    if ($deleted) {
+        return rest_ensure_response(['success' => true, 'message' => 'Paket dihapus']);
+    } else {
+        return new WP_Error('db_error', 'Gagal menghapus paket (Mungkin ID salah)', ['status' => 500]);
+    }
+}
+
+// --- HANDLE FILE UPLOAD (WordPress Media Library) ---
+function umh_handle_file_upload($request) {
+    require_once(ABSPATH . 'wp-admin/includes/image.php');
+    require_once(ABSPATH . 'wp-admin/includes/file.php');
+    require_once(ABSPATH . 'wp-admin/includes/media.php');
+
+    $files = $request->get_file_params();
+    
+    if (empty($files['file'])) {
+        return new WP_Error('no_file', 'Tidak ada file yang diunggah', ['status' => 400]);
+    }
+
+    // Fungsi 'media_handle_upload' otomatis menyimpan ke wp-content/uploads 
+    // dan membuat record di database WordPress Media
+    $attachment_id = media_handle_upload('file', 0);
+
+    if (is_wp_error($attachment_id)) {
+        return $attachment_id;
+    }
+
+    $url = wp_get_attachment_url($attachment_id);
+
+    return rest_ensure_response([
+        'success' => true,
+        'url' => $url,
+        'id' => $attachment_id
+    ]);
+}
