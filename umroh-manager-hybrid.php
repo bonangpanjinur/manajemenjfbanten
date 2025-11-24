@@ -1,137 +1,119 @@
 <?php
 /**
- * Plugin Name: Manajemen JF Banten (Hybrid)
- * Description: Plugin Manajemen Umroh Hybrid (PHP + React)
+ * Plugin Name: Umroh Manager Hybrid
+ * Plugin URI: https://bonangpanjinur.com
+ * Description: Sistem Manajemen Travel Umroh Hybrid (React + PHP)
  * Version: 1.0.0
  * Author: Bonang Panji Nur
+ * Author URI: https://bonangpanjinur.com
+ * License: GPL v2 or later
+ * Text Domain: umroh-manager-hybrid
  */
 
-if (!defined('ABSPATH')) {
-    exit; // Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
 }
 
-class UmrohManagerHybrid {
-    public function __construct() {
-        add_action('admin_menu', array($this, 'register_menus'));
-        add_action('admin_enqueue_scripts', array($this, 'enqueue_scripts'));
-        
-        // Init API endpoints
-        add_action('rest_api_init', array($this, 'register_rest_routes'));
-    }
+define( 'UMH_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+define( 'UMH_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
-    public function register_menus() {
-        $main_slug = 'umroh-manager-hybrid';
+class Umroh_Manager_Hybrid {
 
-        // 1. Menu Utama (Dashboard)
-        add_menu_page(
-            'Manajemen Umroh',
-            'Manajemen Umroh',
-            'manage_options',
-            $main_slug,
-            array($this, 'render_react_app'),
-            'dashicons-groups', // Ikon
-            6 // Posisi
-        );
+    private static $instance = null;
+    private $page_hook_suffix = null; // Variable untuk menyimpan hook halaman
 
-        // 2. Submenus
-        // Trik: Kita gunakan slug dengan parameter '&view=...' agar WordPress tetap menyorot menu yang benar
-        // di sidebar, tetapi memuat halaman React yang sama.
-        $submenus = [
-            'dashboard' => 'Dashboard',
-            'jamaah'    => 'Data Jamaah',
-            'payments'  => 'Pembayaran',
-            'packages'  => 'Paket Umroh',
-            'inventory' => 'Inventory',
-            'finance'   => 'Keuangan',
-            'hr'        => 'HR & Staff',
-            'marketing' => 'Marketing',
-            'settings'  => 'Pengaturan',
-            'logs'      => 'Log Aktivitas'
-        ];
-
-        foreach ($submenus as $view_key => $title) {
-            // Slug parent harus sama dengan menu utama agar tidak membuat menu duplikat
-            // Jika key adalah dashboard, arahkan ke root slug
-            $menu_slug = ($view_key === 'dashboard') ? $main_slug : $main_slug . '&view=' . $view_key;
-            
-            add_submenu_page(
-                $main_slug,
-                $title,
-                $title,
-                'manage_options',
-                $menu_slug,
-                array($this, 'render_react_app')
-            );
+    public static function get_instance() {
+        if ( null === self::$instance ) {
+            self::$instance = new self();
         }
+        return self::$instance;
     }
 
-    public function enqueue_scripts($hook) {
-        // Hanya load script di halaman plugin kita
-        // Cek apakah hook mengandung slug plugin kita
-        if (strpos($hook, 'umroh-manager-hybrid') === false && strpos($hook, 'page_umroh-manager-hybrid') === false) {
+    public function __construct() {
+        // Hooks
+        add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
+        add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
+        
+        // Initialize API components
+        $this->init_components();
+    }
+
+    public function init_components() {
+        // Load API endpoints
+        require_once UMH_PLUGIN_DIR . 'includes/api/api-users.php';
+        require_once UMH_PLUGIN_DIR . 'includes/api/api-roles.php';
+        // ... load other API files as needed
+    }
+
+    public function add_admin_menu() {
+        // Simpan hook suffix yang dikembalikan oleh add_menu_page
+        $this->page_hook_suffix = add_menu_page(
+            'Manajemen JF Banten', // Page Title
+            'Manajemen JF Banten', // Menu Title
+            'read',               // Capability (Ubah ke 'read' sementara untuk testing, nanti kembalikan ke 'manage_options')
+            'umroh-manager-hybrid', // Menu Slug
+            array( $this, 'display_admin_dashboard' ), // Callback
+            'dashicons-groups',    // Icon
+            6                      // Position
+        );
+    }
+
+    public function display_admin_dashboard() {
+        require_once UMH_PLUGIN_DIR . 'admin/dashboard-react.php';
+    }
+
+    public function enqueue_admin_assets( $hook ) {
+        // Validasi Hook yang lebih ketat dan akurat
+        // Jika hook saat ini TIDAK SAMA dengan hook halaman plugin kita, stop.
+        if ( $this->page_hook_suffix !== $hook ) {
             return;
         }
 
-        $build_dir = plugin_dir_url(__FILE__) . 'build/';
-        // Fallback versi & dependencies jika file asset belum ada (saat dev)
-        $version = '1.0.0';
-        $deps = ['wp-element', 'wp-i18n'];
+        $asset_file_path = UMH_PLUGIN_DIR . 'build/index.asset.php';
 
-        if (file_exists(plugin_dir_path(__FILE__) . 'build/index.asset.php')) {
-            $asset_file = include(plugin_dir_path(__FILE__) . 'build/index.asset.php');
-            $version = $asset_file['version'];
-            $deps = $asset_file['dependencies'];
+        if ( ! file_exists( $asset_file_path ) ) {
+            // Error handling jika build belum dijalankan
+            wp_die( 'File aset React tidak ditemukan. Silakan jalankan `npm run build`.' );
         }
 
-        wp_enqueue_script(
-            'umh-react-app',
-            $build_dir . 'index.js',
-            $deps,
-            $version,
-            true
-        );
+        $asset_file = include( $asset_file_path );
 
-        wp_enqueue_style(
-            'umh-react-style',
-            $build_dir . 'index.css',
-            array(),
-            $version
+        // Enqueue CSS
+        wp_enqueue_style( 
+            'umh-react-style', 
+            UMH_PLUGIN_URL . 'build/index.css', 
+            array(), 
+            $asset_file['version'] 
         );
         
-        // Custom Admin CSS untuk memperbaiki layout WP yang berantakan
-        wp_enqueue_style(
-            'umh-admin-fix',
-            plugin_dir_url(__FILE__) . 'assets/css/admin-style.css',
-            array(),
-            '1.0.0'
+        // Fix untuk konflik CSS WordPress Admin
+        wp_enqueue_style( 
+            'umh-admin-overrides', 
+            UMH_PLUGIN_URL . 'assets/css/admin-style.css', 
+            array(), 
+            '1.0.0' 
         );
 
-        // LOGIKA UTAMA PERBAIKAN:
-        // 1. Ambil parameter 'view' dari URL PHP ($_GET)
-        // 2. Jika tidak ada, default ke 'dashboard'
-        $current_view = isset($_GET['view']) ? sanitize_text_field($_GET['view']) : 'dashboard';
+        // Enqueue JS
+        wp_enqueue_script( 
+            'umh-react-app', 
+            UMH_PLUGIN_URL . 'build/index.js', 
+            array( 'wp-element', 'wp-i18n', 'wp-components', 'wp-api-fetch' ), 
+            $asset_file['version'], 
+            true // Load di footer
+        );
 
-        // 3. Kirim data ini ke React lewat objek global 'umhSettings'
-        wp_localize_script('umh-react-app', 'umhSettings', array(
-            'rootUrl' => get_site_url(),
-            'apiUrl' => get_rest_url(null, 'umh/v1/'),
-            'nonce' => wp_create_nonce('wp_rest'),
-            'currentView' => $current_view, // <--- INI KUNCINYA, React akan membaca ini
-            'adminUrl' => admin_url('admin.php?page=umroh-manager-hybrid')
-        ));
-    }
-
-    public function render_react_app() {
-        // Panggil file container HTML
-        require_once plugin_dir_path(__FILE__) . 'admin/dashboard-react.php';
-    }
-
-    public function register_rest_routes() {
-        // Auto-include semua file API di folder includes/api
-        foreach (glob(plugin_dir_path(__FILE__) . 'includes/api/*.php') as $filename) {
-            require_once $filename;
-        }
+        // Localize Script - Kirim data PHP ke JS
+        wp_localize_script( 'umh-react-app', 'umhSettings', array(
+            'root'      => esc_url_raw( rest_url() ),
+            'nonce'     => wp_create_nonce( 'wp_rest' ),
+            'adminUrl'  => admin_url( 'admin.php?page=umroh-manager-hybrid' ),
+            'assetsUrl' => UMH_PLUGIN_URL . 'assets/',
+            'userId'    => get_current_user_id(),
+            'userRoles' => wp_get_current_user()->roles
+        ) );
     }
 }
 
-new UmrohManagerHybrid();
+// Initialize Plugin
+Umroh_Manager_Hybrid::get_instance();

@@ -1,29 +1,22 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  // Pastikan baris ini mencakup semua file React Anda
   content: [
     "./src/**/*.{js,jsx,ts,tsx}",
   ],
-  // PERBAIKAN DISINI: ID harus sama dengan div wrapper di dashboard-react.php
-  important: '#umroh-manager-hybrid-root', 
   theme: {
     extend: {
-      zIndex: {
-        '100000': '100000',
-      },
       colors: {
-        primary: {
-            50: '#eff6ff',
-            100: '#dbeafe',
-            500: '#3b82f6',
-            600: '#2563eb',
-            700: '#1d4ed8',
-        }
+        primary: '#009688', // Teal default
+        secondary: '#00796b',
       }
     },
   },
   plugins: [],
+  // Penting: Nonaktifkan preflight jika merusak tampilan admin WP lain,
+  // tapi biasanya kita butuh ini untuk React app kita.
+  // Jika tampilan WP Admin jadi aneh, set preflight: false
   corePlugins: {
-    // Matikan preflight bawaan agar tidak merusak menu admin WP lain
-    preflight: false, 
+    preflight: true, 
   }
 }
