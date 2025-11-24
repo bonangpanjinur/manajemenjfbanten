@@ -1,244 +1,168 @@
 import React, { useState, useEffect } from 'react';
 import { useApi } from '../context/ApiContext';
+import { Search, Plus, Filter, MoreVertical, Edit2, Trash2, Phone, FileText } from 'lucide-react';
 import Modal from '../components/common/Modal';
-import Loading from '../components/common/Loading';
 import JamaahForm from '../components/forms/JamaahForm';
-import JamaahPaymentsModal from '../components/modals/JamaahPaymentsModal';
+import Loading from '../components/common/Loading';
 
-export default function Jamaah() {
-    const { api } = useApi();
-    const [jamaahList, setJamaahList] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingJamaah, setEditingJamaah] = useState(null);
-    const [search, setSearch] = useState('');
-    
-    // State untuk Modal Pembayaran
-    const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-    const [selectedJamaahForPayment, setSelectedJamaahForPayment] = useState(null);
+const Jamaah = () => {
+  const { data: jamaahList, loading, error, fetchData, createData, updateData, deleteData } = useApi('jamaah');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedJamaah, setSelectedJamaah] = useState(null);
+  
+  // Fetch data on mount
+  useEffect(() => {
+    fetchData();
+  }, []);
 
-    const fetchJamaah = async () => {
-        try {
-            setLoading(true);
-            // Kirim parameter search jika ada
-            const endpoint = search ? `/jamaah?search=${search}` : '/jamaah';
-            const data = await api.get(endpoint);
-            setJamaahList(data);
-        } catch (error) {
-            console.error('Failed to fetch jamaah', error);
-        } finally {
-            setLoading(false);
-        }
-    };
+  const handleSearch = (e) => setSearchTerm(e.target.value.toLowerCase());
 
-    useEffect(() => {
-        // Debounce search agar tidak request setiap ketik
-        const timeoutId = setTimeout(() => {
-            fetchJamaah();
-        }, 500);
-        return () => clearTimeout(timeoutId);
-    }, [search]);
+  const filteredData = jamaahList?.filter(item => 
+    item.nama_lengkap?.toLowerCase().includes(searchTerm) ||
+    item.no_passport?.toLowerCase().includes(searchTerm)
+  ) || [];
 
-    const handleDelete = async (id) => {
-        if (window.confirm('Apakah Anda yakin ingin menghapus data jamaah ini? Data keuangan terkait mungkin akan diarsipkan.')) {
-            try {
-                await api.delete(`/jamaah/${id}`);
-                fetchJamaah();
-            } catch (error) {
-                console.error('Failed to delete', error);
-                alert('Gagal menghapus data');
-            }
-        }
-    };
+  const handleAdd = () => {
+    setSelectedJamaah(null);
+    setIsModalOpen(true);
+  };
 
-    const handleSave = async (formData) => {
-        try {
-            if (editingJamaah) {
-                await api.put(`/jamaah/${editingJamaah.id}`, formData);
-            } else {
-                await api.post('/jamaah', formData);
-            }
-            setIsModalOpen(false);
-            setEditingJamaah(null);
-            fetchJamaah();
-        } catch (error) {
-            console.error('Failed to save', error);
-            alert('Gagal menyimpan data');
-        }
-    };
+  const handleEdit = (item) => {
+    setSelectedJamaah(item);
+    setIsModalOpen(true);
+  };
 
-    const openPaymentModal = (jamaah) => {
-        setSelectedJamaahForPayment(jamaah);
-        setPaymentModalOpen(true);
-    };
+  const handleSubmit = async (formData) => {
+    if (selectedJamaah) {
+      await updateData(selectedJamaah.id, formData);
+    } else {
+      await createData(formData);
+    }
+    setIsModalOpen(false);
+    fetchData(); // Refresh list
+  };
 
-    // --- FITUR BARU: WHATSAPP GENERATOR ---
-    const handleWhatsApp = (jamaah) => {
-        if (!jamaah.phone_number) {
-            alert('Nomor telepon tidak tersedia');
-            return;
-        }
+  const handleDelete = async (id) => {
+    if(window.confirm("Apakah anda yakin ingin menghapus data jemaah ini?")) {
+      await deleteData(id);
+      fetchData();
+    }
+  };
 
-        // Format nomor HP (ganti 08 jadi 628)
-        let phone = jamaah.phone_number.replace(/[^0-9]/g, '');
-        if (phone.startsWith('0')) {
-            phone = '62' + phone.substring(1);
-        }
+  if (loading && !jamaahList) return <Loading />;
 
-        // Template Pesan Cerdas
-        let message = '';
-        const salam = `Assalamu'alaikum Bpk/Ibu ${jamaah.full_name}, `;
-        
-        if (jamaah.payment_status === 'lunas') {
-            message = `${salam} terima kasih telah melunasi pembayaran Umrah. Berikut kami lampirkan info persiapan keberangkatan...`;
-        } else {
-            // Hitung sisa tagihan (simulasi, idealnya dari DB)
-            const paid = parseFloat(jamaah.amount_paid || 0);
-            const total = parseFloat(jamaah.total_price || 30000000); // Default/Fallback price
-            const sisa = total - paid;
-            
-            message = `${salam} mohon informasinya untuk pelunasan sisa pembayaran sebesar Rp ${sisa.toLocaleString('id-ID')}. Terima kasih.`;
-        }
-
-        const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-        window.open(url, '_blank');
-    };
-
-    if (loading && !search) return <Loading />;
-
-    return (
-        <div className="space-y-6">
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                <h1 className="text-2xl font-bold text-gray-800">Data Jamaah</h1>
-                <div className="flex gap-2 w-full md:w-auto">
-                    <input 
-                        type="text"
-                        placeholder="Cari nama / paspor..."
-                        className="border rounded-lg px-4 py-2 w-full md:w-64 focus:ring-blue-500 focus:border-blue-500"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
-                    <button 
-                        onClick={() => { setEditingJamaah(null); setIsModalOpen(true); }}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 whitespace-nowrap"
-                    >
-                        + Jamaah Baru
-                    </button>
-                </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Lengkap</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dokumen</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status Bayar</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status Data</th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                        {jamaahList.map((jamaah) => (
-                            <tr key={jamaah.id} className="hover:bg-gray-50">
-                                <td className="px-6 py-4">
-                                    <div className="text-sm font-medium text-gray-900">{jamaah.full_name}</div>
-                                    <div className="text-sm text-gray-500">{jamaah.gender === 'L' ? 'Laki-laki' : 'Perempuan'}</div>
-                                    <div className="text-xs text-gray-400 mt-1">{jamaah.phone_number || '-'}</div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="text-sm text-gray-900">{jamaah.passport_number || 'Belum ada paspor'}</div>
-                                    <div className="text-xs text-gray-500">NIK: {jamaah.nik || '-'}</div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                        jamaah.payment_status === 'lunas' ? 'bg-green-100 text-green-800' : 
-                                        jamaah.payment_status === 'cicil' ? 'bg-yellow-100 text-yellow-800' : 
-                                        'bg-red-100 text-red-800'
-                                    }`}>
-                                        {jamaah.payment_status ? jamaah.payment_status.toUpperCase() : 'PENDING'}
-                                    </span>
-                                    <div className="text-xs text-gray-500 mt-1">
-                                        Paid: Rp {parseInt(jamaah.amount_paid || 0).toLocaleString('id-ID')}
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                                        {jamaah.status}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <div className="flex justify-end space-x-2">
-                                        {/* Tombol WhatsApp */}
-                                        <button 
-                                            onClick={() => handleWhatsApp(jamaah)}
-                                            className="text-green-600 hover:text-green-900 border border-green-200 p-1 rounded hover:bg-green-50"
-                                            title="Hubungi via WhatsApp"
-                                        >
-                                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.095 3.2 5.076 4.487.709.306 1.262.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
-                                        </button>
-                                        
-                                        {/* Tombol Bayar */}
-                                        <button 
-                                            onClick={() => openPaymentModal(jamaah)}
-                                            className="text-blue-600 hover:text-blue-900"
-                                            title="Catat Pembayaran"
-                                        >
-                                            Bayar
-                                        </button>
-                                        
-                                        {/* Tombol Edit */}
-                                        <button 
-                                            onClick={() => { setEditingJamaah(jamaah); setIsModalOpen(true); }}
-                                            className="text-indigo-600 hover:text-indigo-900"
-                                            title="Edit Data"
-                                        >
-                                            Edit
-                                        </button>
-                                        
-                                        {/* Tombol Hapus */}
-                                        <button 
-                                            onClick={() => handleDelete(jamaah.id)}
-                                            className="text-red-600 hover:text-red-900"
-                                            title="Hapus Data"
-                                        >
-                                            Hapus
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-                {jamaahList.length === 0 && (
-                    <div className="p-6 text-center text-gray-500">Belum ada data jamaah.</div>
-                )}
-            </div>
-
-            {/* Modal Form Jamaah */}
-            <Modal 
-                isOpen={isModalOpen} 
-                onClose={() => setIsModalOpen(false)} 
-                title={editingJamaah ? "Edit Data Jamaah" : "Registrasi Jamaah Baru"}
-                maxWidth="4xl"
-            >
-                <JamaahForm 
-                    initialData={editingJamaah}
-                    onSubmit={handleSave}
-                    onCancel={() => setIsModalOpen(false)}
-                />
-            </Modal>
-
-            {/* Modal Pembayaran */}
-            <JamaahPaymentsModal 
-                isOpen={paymentModalOpen}
-                onClose={() => setPaymentModalOpen(false)}
-                jamaah={selectedJamaahForPayment}
-                onSuccess={() => {
-                    setPaymentModalOpen(false);
-                    fetchJamaah(); // Refresh data setelah bayar
-                }}
-            />
+  return (
+    <div className="p-6">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Data Jemaah</h1>
+          <p className="text-sm text-gray-500">Kelola data jemaah Umrah & Haji</p>
         </div>
-    );
-}
+        <button 
+          onClick={handleAdd}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow-md transition flex items-center gap-2"
+        >
+          <Plus size={18} /> Tambah Jemaah
+        </button>
+      </div>
+
+      {/* Toolbar */}
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6 flex flex-col sm:flex-row gap-4 justify-between items-center">
+        <div className="relative w-full sm:w-96">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+          <input 
+            type="text" 
+            placeholder="Cari nama, paspor, atau NIK..." 
+            className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
+            onChange={handleSearch}
+          />
+        </div>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 text-sm font-medium">
+            <Filter size={16} /> Filter
+          </button>
+        </div>
+      </div>
+
+      {/* Data Grid / Table */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Jemaah</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Paket</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Kontak</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status Pembayaran</th>
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filteredData.length > 0 ? filteredData.map((item, idx) => (
+                <tr key={idx} className="hover:bg-emerald-50/30 transition-colors group">
+                  <td className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-sm">
+                        {item.nama_lengkap?.charAt(0)}
+                      </div>
+                      <div>
+                        <div className="font-semibold text-gray-900">{item.nama_lengkap}</div>
+                        <div className="text-xs text-gray-500">{item.nik || item.no_passport}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <span className="text-sm text-gray-700">{item.paket_name || 'Belum Pilih Paket'}</span>
+                    <div className="text-xs text-gray-400">{item.tgl_keberangkatan}</div>
+                  </td>
+                  <td className="p-4 hidden md:table-cell">
+                    <div className="flex flex-col text-sm text-gray-600">
+                       <span className="flex items-center gap-1"><Phone size={12}/> {item.no_telp}</span>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium border
+                      ${item.status_pembayaran === 'Lunas' 
+                        ? 'bg-emerald-100 text-emerald-700 border-emerald-200' 
+                        : 'bg-amber-100 text-amber-700 border-amber-200'}`}>
+                      {item.status_pembayaran || 'Belum Bayar'}
+                    </span>
+                  </td>
+                  <td className="p-4 text-right">
+                    <div className="flex justify-end gap-2">
+                       <button onClick={() => handleEdit(item)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit">
+                         <Edit2 size={16} />
+                       </button>
+                       <button onClick={() => handleDelete(item.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition" title="Hapus">
+                         <Trash2 size={16} />
+                       </button>
+                    </div>
+                  </td>
+                </tr>
+              )) : (
+                <tr>
+                  <td colSpan="5" className="p-8 text-center text-gray-400">
+                    Tidak ada data jemaah ditemukan.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* CRUD Modal */}
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={selectedJamaah ? "Edit Data Jemaah" : "Tambah Jemaah Baru"}>
+        <JamaahForm 
+          initialData={selectedJamaah} 
+          onSubmit={handleSubmit} 
+          onCancel={() => setIsModalOpen(false)}
+        />
+      </Modal>
+    </div>
+  );
+};
+
+export default Jamaah;
