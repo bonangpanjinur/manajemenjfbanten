@@ -132,6 +132,17 @@
     max-width: 1536px;
   }
 }
+#umroh-manager-hybrid-root .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
 #umroh-manager-hybrid-root .pointer-events-none {
   pointer-events: none;
 }
@@ -154,17 +165,41 @@
   top: 0px;
   bottom: 0px;
 }
+#umroh-manager-hybrid-root .-bottom-10 {
+  bottom: -2.5rem;
+}
+#umroh-manager-hybrid-root .-right-10 {
+  right: -2.5rem;
+}
+#umroh-manager-hybrid-root .bottom-0 {
+  bottom: 0px;
+}
+#umroh-manager-hybrid-root .left-0 {
+  left: 0px;
+}
 #umroh-manager-hybrid-root .left-3 {
   left: 0.75rem;
 }
 #umroh-manager-hybrid-root .right-0 {
   right: 0px;
 }
+#umroh-manager-hybrid-root .right-1\.5 {
+  right: 0.375rem;
+}
+#umroh-manager-hybrid-root .right-20 {
+  right: 5rem;
+}
 #umroh-manager-hybrid-root .top-0 {
   top: 0px;
 }
-#umroh-manager-hybrid-root .top-2 {
-  top: 0.5rem;
+#umroh-manager-hybrid-root .top-1\.5 {
+  top: 0.375rem;
+}
+#umroh-manager-hybrid-root .top-1\/2 {
+  top: 50%;
+}
+#umroh-manager-hybrid-root .top-10 {
+  top: 2.5rem;
 }
 #umroh-manager-hybrid-root .top-6 {
   top: 1.5rem;
@@ -174,6 +209,12 @@
 }
 #umroh-manager-hybrid-root .z-20 {
   z-index: 20;
+}
+#umroh-manager-hybrid-root .z-30 {
+  z-index: 30;
+}
+#umroh-manager-hybrid-root .z-40 {
+  z-index: 40;
 }
 #umroh-manager-hybrid-root .z-50 {
   z-index: 50;
@@ -193,15 +234,21 @@
   margin-left: auto;
   margin-right: auto;
 }
-#umroh-manager-hybrid-root .my-4 {
-  margin-top: 1rem;
-  margin-bottom: 1rem;
+#umroh-manager-hybrid-root .my-2 {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
 }
 #umroh-manager-hybrid-root .-mb-px {
   margin-bottom: -1px;
 }
 #umroh-manager-hybrid-root .-ml-1 {
   margin-left: -0.25rem;
+}
+#umroh-manager-hybrid-root .-ml-2 {
+  margin-left: -0.5rem;
+}
+#umroh-manager-hybrid-root .-mt-2 {
+  margin-top: -0.5rem;
 }
 #umroh-manager-hybrid-root .mb-1 {
   margin-bottom: 0.25rem;
@@ -224,8 +271,17 @@
 #umroh-manager-hybrid-root .ml-1 {
   margin-left: 0.25rem;
 }
+#umroh-manager-hybrid-root .ml-2 {
+  margin-left: 0.5rem;
+}
+#umroh-manager-hybrid-root .mr-1 {
+  margin-right: 0.25rem;
+}
 #umroh-manager-hybrid-root .mr-2 {
   margin-right: 0.5rem;
+}
+#umroh-manager-hybrid-root .mr-3 {
+  margin-right: 0.75rem;
 }
 #umroh-manager-hybrid-root .mr-4 {
   margin-right: 1rem;
@@ -242,6 +298,9 @@
 #umroh-manager-hybrid-root .mt-2 {
   margin-top: 0.5rem;
 }
+#umroh-manager-hybrid-root .mt-3 {
+  margin-top: 0.75rem;
+}
 #umroh-manager-hybrid-root .mt-4 {
   margin-top: 1rem;
 }
@@ -250,6 +309,9 @@
 }
 #umroh-manager-hybrid-root .block {
   display: block;
+}
+#umroh-manager-hybrid-root .inline-block {
+  display: inline-block;
 }
 #umroh-manager-hybrid-root .flex {
   display: flex;
@@ -266,6 +328,9 @@
 #umroh-manager-hybrid-root .hidden {
   display: none;
 }
+#umroh-manager-hybrid-root .aspect-square {
+  aspect-ratio: 1 / 1;
+}
 #umroh-manager-hybrid-root .aspect-video {
   aspect-ratio: 16 / 9;
 }
@@ -278,14 +343,23 @@
 #umroh-manager-hybrid-root .h-12 {
   height: 3rem;
 }
+#umroh-manager-hybrid-root .h-14 {
+  height: 3.5rem;
+}
 #umroh-manager-hybrid-root .h-16 {
   height: 4rem;
 }
 #umroh-manager-hybrid-root .h-2 {
   height: 0.5rem;
 }
+#umroh-manager-hybrid-root .h-20 {
+  height: 5rem;
+}
 #umroh-manager-hybrid-root .h-4 {
   height: 1rem;
+}
+#umroh-manager-hybrid-root .h-48 {
+  height: 12rem;
 }
 #umroh-manager-hybrid-root .h-5 {
   height: 1.25rem;
@@ -310,6 +384,9 @@
 }
 #umroh-manager-hybrid-root .h-full {
   height: 100%;
+}
+#umroh-manager-hybrid-root .h-screen {
+  height: 100vh;
 }
 #umroh-manager-hybrid-root .max-h-40 {
   max-height: 10rem;
@@ -338,23 +415,32 @@
 #umroh-manager-hybrid-root .w-12 {
   width: 3rem;
 }
+#umroh-manager-hybrid-root .w-14 {
+  width: 3.5rem;
+}
 #umroh-manager-hybrid-root .w-16 {
   width: 4rem;
 }
 #umroh-manager-hybrid-root .w-2 {
   width: 0.5rem;
 }
-#umroh-manager-hybrid-root .w-24 {
-  width: 6rem;
+#umroh-manager-hybrid-root .w-20 {
+  width: 5rem;
 }
 #umroh-manager-hybrid-root .w-4 {
   width: 1rem;
+}
+#umroh-manager-hybrid-root .w-48 {
+  width: 12rem;
 }
 #umroh-manager-hybrid-root .w-5 {
   width: 1.25rem;
 }
 #umroh-manager-hybrid-root .w-6 {
   width: 1.5rem;
+}
+#umroh-manager-hybrid-root .w-64 {
+  width: 16rem;
 }
 #umroh-manager-hybrid-root .w-8 {
   width: 2rem;
@@ -364,6 +450,9 @@
 }
 #umroh-manager-hybrid-root .w-full {
   width: 100%;
+}
+#umroh-manager-hybrid-root .w-px {
+  width: 1px;
 }
 #umroh-manager-hybrid-root .min-w-0 {
   min-width: 0px;
@@ -376,9 +465,6 @@
 }
 #umroh-manager-hybrid-root .max-w-4xl {
   max-width: 56rem;
-}
-#umroh-manager-hybrid-root .max-w-7xl {
-  max-width: 80rem;
 }
 #umroh-manager-hybrid-root .max-w-full {
   max-width: 100%;
@@ -400,6 +486,33 @@
 }
 #umroh-manager-hybrid-root .flex-shrink-0 {
   flex-shrink: 0;
+}
+#umroh-manager-hybrid-root .shrink-0 {
+  flex-shrink: 0;
+}
+#umroh-manager-hybrid-root .border-collapse {
+  border-collapse: collapse;
+}
+#umroh-manager-hybrid-root .-translate-x-full {
+  --tw-translate-x: -100%;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+#umroh-manager-hybrid-root .-translate-y-1\/2 {
+  --tw-translate-y: -50%;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+#umroh-manager-hybrid-root .translate-x-0 {
+  --tw-translate-x: 0px;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+#umroh-manager-hybrid-root .translate-x-1 {
+  --tw-translate-x: 0.25rem;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+#umroh-manager-hybrid-root .scale-75 {
+  --tw-scale-x: .75;
+  --tw-scale-y: .75;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
 #umroh-manager-hybrid-root .scale-\[1\.02\] {
   --tw-scale-x: 1.02;
@@ -431,9 +544,6 @@
 #umroh-manager-hybrid-root .cursor-pointer {
   cursor: pointer;
 }
-#umroh-manager-hybrid-root .resize-none {
-  resize: none;
-}
 #umroh-manager-hybrid-root .resize-y {
   resize: vertical;
 }
@@ -447,6 +557,9 @@
 }
 #umroh-manager-hybrid-root .grid-cols-2 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+#umroh-manager-hybrid-root .grid-cols-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 #umroh-manager-hybrid-root .flex-col {
   flex-direction: column;
@@ -472,6 +585,9 @@
 #umroh-manager-hybrid-root .justify-between {
   justify-content: space-between;
 }
+#umroh-manager-hybrid-root .justify-around {
+  justify-content: space-around;
+}
 #umroh-manager-hybrid-root .gap-1 {
   gap: 0.25rem;
 }
@@ -487,19 +603,11 @@
 #umroh-manager-hybrid-root .gap-4 {
   gap: 1rem;
 }
-#umroh-manager-hybrid-root .gap-5 {
-  gap: 1.25rem;
-}
 #umroh-manager-hybrid-root .gap-6 {
   gap: 1.5rem;
 }
 #umroh-manager-hybrid-root .gap-8 {
   gap: 2rem;
-}
-#umroh-manager-hybrid-root :is(.space-x-1 > :not([hidden]) ~ :not([hidden])) {
-  --tw-space-x-reverse: 0;
-  margin-right: calc(0.25rem * var(--tw-space-x-reverse));
-  margin-left: calc(0.25rem * calc(1 - var(--tw-space-x-reverse)));
 }
 #umroh-manager-hybrid-root :is(.space-x-2 > :not([hidden]) ~ :not([hidden])) {
   --tw-space-x-reverse: 0;
@@ -515,6 +623,11 @@
   --tw-space-x-reverse: 0;
   margin-right: calc(2rem * var(--tw-space-x-reverse));
   margin-left: calc(2rem * calc(1 - var(--tw-space-x-reverse)));
+}
+#umroh-manager-hybrid-root :is(.space-y-1 > :not([hidden]) ~ :not([hidden])) {
+  --tw-space-y-reverse: 0;
+  margin-top: calc(0.25rem * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(0.25rem * var(--tw-space-y-reverse));
 }
 #umroh-manager-hybrid-root :is(.space-y-2 > :not([hidden]) ~ :not([hidden])) {
   --tw-space-y-reverse: 0;
@@ -559,6 +672,10 @@
   --tw-divide-opacity: 1;
   border-color: rgb(229 231 235 / var(--tw-divide-opacity, 1));
 }
+#umroh-manager-hybrid-root :is(.divide-gray-50 > :not([hidden]) ~ :not([hidden])) {
+  --tw-divide-opacity: 1;
+  border-color: rgb(249 250 251 / var(--tw-divide-opacity, 1));
+}
 #umroh-manager-hybrid-root .overflow-hidden {
   overflow: hidden;
 }
@@ -594,13 +711,28 @@
 #umroh-manager-hybrid-root .rounded-xl {
   border-radius: 0.75rem;
 }
+#umroh-manager-hybrid-root .rounded-b-3xl {
+  border-bottom-right-radius: 1.5rem;
+  border-bottom-left-radius: 1.5rem;
+}
 #umroh-manager-hybrid-root .rounded-b-xl {
   border-bottom-right-radius: 0.75rem;
   border-bottom-left-radius: 0.75rem;
 }
+#umroh-manager-hybrid-root .rounded-l-lg {
+  border-top-left-radius: 0.5rem;
+  border-bottom-left-radius: 0.5rem;
+}
+#umroh-manager-hybrid-root .rounded-r-lg {
+  border-top-right-radius: 0.5rem;
+  border-bottom-right-radius: 0.5rem;
+}
 #umroh-manager-hybrid-root .rounded-t-xl {
   border-top-left-radius: 0.75rem;
   border-top-right-radius: 0.75rem;
+}
+#umroh-manager-hybrid-root .rounded-bl-3xl {
+  border-bottom-left-radius: 1.5rem;
 }
 #umroh-manager-hybrid-root .border {
   border-width: 1px;
@@ -608,11 +740,21 @@
 #umroh-manager-hybrid-root .border-2 {
   border-width: 2px;
 }
+#umroh-manager-hybrid-root .border-4 {
+  border-width: 4px;
+}
+#umroh-manager-hybrid-root .border-x {
+  border-left-width: 1px;
+  border-right-width: 1px;
+}
 #umroh-manager-hybrid-root .border-b {
   border-bottom-width: 1px;
 }
 #umroh-manager-hybrid-root .border-b-2 {
   border-bottom-width: 2px;
+}
+#umroh-manager-hybrid-root .border-r {
+  border-right-width: 1px;
 }
 #umroh-manager-hybrid-root .border-t {
   border-top-width: 1px;
@@ -622,6 +764,10 @@
 }
 #umroh-manager-hybrid-root .border-none {
   border-style: none;
+}
+#umroh-manager-hybrid-root .border-amber-200 {
+  --tw-border-opacity: 1;
+  border-color: rgb(253 230 138 / var(--tw-border-opacity, 1));
 }
 #umroh-manager-hybrid-root .border-blue-100 {
   --tw-border-opacity: 1;
@@ -642,6 +788,10 @@
 #umroh-manager-hybrid-root .border-blue-600 {
   --tw-border-opacity: 1;
   border-color: rgb(37 99 235 / var(--tw-border-opacity, 1));
+}
+#umroh-manager-hybrid-root .border-emerald-200 {
+  --tw-border-opacity: 1;
+  border-color: rgb(167 243 208 / var(--tw-border-opacity, 1));
 }
 #umroh-manager-hybrid-root .border-gray-100 {
   --tw-border-opacity: 1;
@@ -687,10 +837,6 @@
   --tw-border-opacity: 1;
   border-color: rgb(252 165 165 / var(--tw-border-opacity, 1));
 }
-#umroh-manager-hybrid-root .border-red-400 {
-  --tw-border-opacity: 1;
-  border-color: rgb(248 113 113 / var(--tw-border-opacity, 1));
-}
 #umroh-manager-hybrid-root .border-red-500 {
   --tw-border-opacity: 1;
   border-color: rgb(239 68 68 / var(--tw-border-opacity, 1));
@@ -698,17 +844,50 @@
 #umroh-manager-hybrid-root .border-transparent {
   border-color: transparent;
 }
+#umroh-manager-hybrid-root .border-white {
+  --tw-border-opacity: 1;
+  border-color: rgb(255 255 255 / var(--tw-border-opacity, 1));
+}
+#umroh-manager-hybrid-root .border-white\/20 {
+  border-color: rgb(255 255 255 / 0.2);
+}
 #umroh-manager-hybrid-root .border-yellow-200 {
   --tw-border-opacity: 1;
   border-color: rgb(254 240 138 / var(--tw-border-opacity, 1));
+}
+#umroh-manager-hybrid-root .border-t-green-600 {
+  --tw-border-opacity: 1;
+  border-top-color: rgb(22 163 74 / var(--tw-border-opacity, 1));
+}
+#umroh-manager-hybrid-root .border-opacity-30 {
+  --tw-border-opacity: 0.3;
+}
+#umroh-manager-hybrid-root .bg-amber-100 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(254 243 199 / var(--tw-bg-opacity, 1));
+}
+#umroh-manager-hybrid-root .bg-amber-400 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(251 191 36 / var(--tw-bg-opacity, 1));
+}
+#umroh-manager-hybrid-root .bg-amber-50 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(255 251 235 / var(--tw-bg-opacity, 1));
 }
 #umroh-manager-hybrid-root .bg-black {
   --tw-bg-opacity: 1;
   background-color: rgb(0 0 0 / var(--tw-bg-opacity, 1));
 }
+#umroh-manager-hybrid-root .bg-black\/50 {
+  background-color: rgb(0 0 0 / 0.5);
+}
 #umroh-manager-hybrid-root .bg-blue-100 {
   --tw-bg-opacity: 1;
   background-color: rgb(219 234 254 / var(--tw-bg-opacity, 1));
+}
+#umroh-manager-hybrid-root .bg-blue-400 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(96 165 250 / var(--tw-bg-opacity, 1));
 }
 #umroh-manager-hybrid-root .bg-blue-50 {
   --tw-bg-opacity: 1;
@@ -722,6 +901,28 @@
   --tw-bg-opacity: 1;
   background-color: rgb(37 99 235 / var(--tw-bg-opacity, 1));
 }
+#umroh-manager-hybrid-root .bg-blue-900 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(30 58 138 / var(--tw-bg-opacity, 1));
+}
+#umroh-manager-hybrid-root .bg-emerald-100 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(209 250 229 / var(--tw-bg-opacity, 1));
+}
+#umroh-manager-hybrid-root .bg-emerald-50 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(236 253 245 / var(--tw-bg-opacity, 1));
+}
+#umroh-manager-hybrid-root .bg-emerald-50\/30 {
+  background-color: rgb(236 253 245 / 0.3);
+}
+#umroh-manager-hybrid-root .bg-emerald-600 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(5 150 105 / var(--tw-bg-opacity, 1));
+}
+#umroh-manager-hybrid-root .bg-emerald-800\/30 {
+  background-color: rgb(6 95 70 / 0.3);
+}
 #umroh-manager-hybrid-root .bg-gray-100 {
   --tw-bg-opacity: 1;
   background-color: rgb(243 244 246 / var(--tw-bg-opacity, 1));
@@ -733,6 +934,9 @@
 #umroh-manager-hybrid-root .bg-gray-50 {
   --tw-bg-opacity: 1;
   background-color: rgb(249 250 251 / var(--tw-bg-opacity, 1));
+}
+#umroh-manager-hybrid-root .bg-gray-50\/50 {
+  background-color: rgb(249 250 251 / 0.5);
 }
 #umroh-manager-hybrid-root .bg-gray-700 {
   --tw-bg-opacity: 1;
@@ -774,6 +978,10 @@
   --tw-bg-opacity: 1;
   background-color: rgb(236 72 153 / var(--tw-bg-opacity, 1));
 }
+#umroh-manager-hybrid-root .bg-purple-500 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(168 85 247 / var(--tw-bg-opacity, 1));
+}
 #umroh-manager-hybrid-root .bg-red-100 {
   --tw-bg-opacity: 1;
   background-color: rgb(254 226 226 / var(--tw-bg-opacity, 1));
@@ -797,6 +1005,15 @@
   --tw-bg-opacity: 1;
   background-color: rgb(255 255 255 / var(--tw-bg-opacity, 1));
 }
+#umroh-manager-hybrid-root .bg-white\/10 {
+  background-color: rgb(255 255 255 / 0.1);
+}
+#umroh-manager-hybrid-root .bg-white\/20 {
+  background-color: rgb(255 255 255 / 0.2);
+}
+#umroh-manager-hybrid-root .bg-white\/90 {
+  background-color: rgb(255 255 255 / 0.9);
+}
 #umroh-manager-hybrid-root .bg-yellow-100 {
   --tw-bg-opacity: 1;
   background-color: rgb(254 249 195 / var(--tw-bg-opacity, 1));
@@ -805,8 +1022,21 @@
   --tw-bg-opacity: 1;
   background-color: rgb(254 252 232 / var(--tw-bg-opacity, 1));
 }
+#umroh-manager-hybrid-root .bg-yellow-500 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(234 179 8 / var(--tw-bg-opacity, 1));
+}
+#umroh-manager-hybrid-root .bg-opacity-0 {
+  --tw-bg-opacity: 0;
+}
+#umroh-manager-hybrid-root .bg-opacity-40 {
+  --tw-bg-opacity: 0.4;
+}
 #umroh-manager-hybrid-root .bg-opacity-50 {
   --tw-bg-opacity: 0.5;
+}
+#umroh-manager-hybrid-root .bg-\[url\(\'https\:\/\/www\.transparenttextures\.com\/patterns\/arabesque\.png\'\)\] {
+  background-image: url('https://www.transparenttextures.com/patterns/arabesque.png');
 }
 #umroh-manager-hybrid-root .bg-gradient-to-br {
   background-image: linear-gradient(to bottom right, var(--tw-gradient-stops));
@@ -822,6 +1052,16 @@
 #umroh-manager-hybrid-root .from-blue-600 {
   --tw-gradient-from: #2563eb var(--tw-gradient-from-position);
   --tw-gradient-to: rgb(37 99 235 / 0) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+#umroh-manager-hybrid-root .from-emerald-500 {
+  --tw-gradient-from: #10b981 var(--tw-gradient-from-position);
+  --tw-gradient-to: rgb(16 185 129 / 0) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+#umroh-manager-hybrid-root .from-emerald-600 {
+  --tw-gradient-from: #059669 var(--tw-gradient-from-position);
+  --tw-gradient-to: rgb(5 150 105 / 0) var(--tw-gradient-to-position);
   --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
 }
 #umroh-manager-hybrid-root .from-gray-500 {
@@ -849,11 +1089,17 @@
   --tw-gradient-to: rgb(250 204 21 / 0) var(--tw-gradient-to-position);
   --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
 }
+#umroh-manager-hybrid-root .to-amber-500 {
+  --tw-gradient-to: #f59e0b var(--tw-gradient-to-position);
+}
 #umroh-manager-hybrid-root .to-blue-600 {
   --tw-gradient-to: #2563eb var(--tw-gradient-to-position);
 }
-#umroh-manager-hybrid-root .to-blue-700 {
-  --tw-gradient-to: #1d4ed8 var(--tw-gradient-to-position);
+#umroh-manager-hybrid-root .to-blue-800 {
+  --tw-gradient-to: #1e40af var(--tw-gradient-to-position);
+}
+#umroh-manager-hybrid-root .to-emerald-700 {
+  --tw-gradient-to: #047857 var(--tw-gradient-to-position);
 }
 #umroh-manager-hybrid-root .to-gray-600 {
   --tw-gradient-to: #4b5563 var(--tw-gradient-to-position);
@@ -867,8 +1113,19 @@
 #umroh-manager-hybrid-root .to-red-600 {
   --tw-gradient-to: #dc2626 var(--tw-gradient-to-position);
 }
+#umroh-manager-hybrid-root .to-teal-600 {
+  --tw-gradient-to: #0d9488 var(--tw-gradient-to-position);
+}
 #umroh-manager-hybrid-root .to-yellow-500 {
   --tw-gradient-to: #eab308 var(--tw-gradient-to-position);
+}
+#umroh-manager-hybrid-root .bg-clip-text {
+  -webkit-background-clip: text;
+          background-clip: text;
+}
+#umroh-manager-hybrid-root .object-cover {
+  -o-object-fit: cover;
+     object-fit: cover;
 }
 #umroh-manager-hybrid-root .p-1 {
   padding: 0.25rem;
@@ -935,10 +1192,6 @@
   padding-left: 1.5rem;
   padding-right: 1.5rem;
 }
-#umroh-manager-hybrid-root .py-0 {
-  padding-top: 0px;
-  padding-bottom: 0px;
-}
 #umroh-manager-hybrid-root .py-0\.5 {
   padding-top: 0.125rem;
   padding-bottom: 0.125rem;
@@ -989,14 +1242,32 @@
 #umroh-manager-hybrid-root .pb-2 {
   padding-bottom: 0.5rem;
 }
-#umroh-manager-hybrid-root .pl-8 {
-  padding-left: 2rem;
+#umroh-manager-hybrid-root .pb-20 {
+  padding-bottom: 5rem;
+}
+#umroh-manager-hybrid-root .pb-3 {
+  padding-bottom: 0.75rem;
+}
+#umroh-manager-hybrid-root .pl-10 {
+  padding-left: 2.5rem;
+}
+#umroh-manager-hybrid-root .pl-2 {
+  padding-left: 0.5rem;
+}
+#umroh-manager-hybrid-root .pl-3 {
+  padding-left: 0.75rem;
 }
 #umroh-manager-hybrid-root .pr-10 {
   padding-right: 2.5rem;
 }
+#umroh-manager-hybrid-root .pr-2 {
+  padding-right: 0.5rem;
+}
 #umroh-manager-hybrid-root .pr-3 {
   padding-right: 0.75rem;
+}
+#umroh-manager-hybrid-root .pr-4 {
+  padding-right: 1rem;
 }
 #umroh-manager-hybrid-root .pt-2 {
   padding-top: 0.5rem;
@@ -1088,6 +1359,9 @@
 #umroh-manager-hybrid-root .leading-5 {
   line-height: 1.25rem;
 }
+#umroh-manager-hybrid-root .leading-none {
+  line-height: 1;
+}
 #umroh-manager-hybrid-root .tracking-tight {
   letter-spacing: -0.025em;
 }
@@ -1096,6 +1370,18 @@
 }
 #umroh-manager-hybrid-root .tracking-wider {
   letter-spacing: 0.05em;
+}
+#umroh-manager-hybrid-root .text-amber-700 {
+  --tw-text-opacity: 1;
+  color: rgb(180 83 9 / var(--tw-text-opacity, 1));
+}
+#umroh-manager-hybrid-root .text-amber-800 {
+  --tw-text-opacity: 1;
+  color: rgb(146 64 14 / var(--tw-text-opacity, 1));
+}
+#umroh-manager-hybrid-root .text-amber-900 {
+  --tw-text-opacity: 1;
+  color: rgb(120 53 15 / var(--tw-text-opacity, 1));
 }
 #umroh-manager-hybrid-root .text-black {
   --tw-text-opacity: 1;
@@ -1128,6 +1414,22 @@
 #umroh-manager-hybrid-root .text-current {
   color: currentColor;
 }
+#umroh-manager-hybrid-root .text-emerald-100 {
+  --tw-text-opacity: 1;
+  color: rgb(209 250 229 / var(--tw-text-opacity, 1));
+}
+#umroh-manager-hybrid-root .text-emerald-600 {
+  --tw-text-opacity: 1;
+  color: rgb(5 150 105 / var(--tw-text-opacity, 1));
+}
+#umroh-manager-hybrid-root .text-emerald-700 {
+  --tw-text-opacity: 1;
+  color: rgb(4 120 87 / var(--tw-text-opacity, 1));
+}
+#umroh-manager-hybrid-root .text-emerald-800 {
+  --tw-text-opacity: 1;
+  color: rgb(6 95 70 / var(--tw-text-opacity, 1));
+}
 #umroh-manager-hybrid-root .text-gray-200 {
   --tw-text-opacity: 1;
   color: rgb(229 231 235 / var(--tw-text-opacity, 1));
@@ -1159,6 +1461,10 @@
 #umroh-manager-hybrid-root .text-gray-900 {
   --tw-text-opacity: 1;
   color: rgb(17 24 39 / var(--tw-text-opacity, 1));
+}
+#umroh-manager-hybrid-root .text-green-100 {
+  --tw-text-opacity: 1;
+  color: rgb(220 252 231 / var(--tw-text-opacity, 1));
 }
 #umroh-manager-hybrid-root .text-green-400 {
   --tw-text-opacity: 1;
@@ -1216,6 +1522,9 @@
   --tw-text-opacity: 1;
   color: rgb(127 29 29 / var(--tw-text-opacity, 1));
 }
+#umroh-manager-hybrid-root .text-transparent {
+  color: transparent;
+}
 #umroh-manager-hybrid-root .text-white {
   --tw-text-opacity: 1;
   color: rgb(255 255 255 / var(--tw-text-opacity, 1));
@@ -1232,20 +1541,40 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+#umroh-manager-hybrid-root .placeholder-gray-400::-moz-placeholder {
+  --tw-placeholder-opacity: 1;
+  color: rgb(156 163 175 / var(--tw-placeholder-opacity, 1));
+}
+#umroh-manager-hybrid-root .placeholder-gray-400::placeholder {
+  --tw-placeholder-opacity: 1;
+  color: rgb(156 163 175 / var(--tw-placeholder-opacity, 1));
+}
 #umroh-manager-hybrid-root .opacity-0 {
   opacity: 0;
+}
+#umroh-manager-hybrid-root .opacity-10 {
+  opacity: 0.1;
 }
 #umroh-manager-hybrid-root .opacity-100 {
   opacity: 1;
 }
+#umroh-manager-hybrid-root .opacity-20 {
+  opacity: 0.2;
+}
 #umroh-manager-hybrid-root .opacity-25 {
   opacity: 0.25;
+}
+#umroh-manager-hybrid-root .opacity-50 {
+  opacity: 0.5;
 }
 #umroh-manager-hybrid-root .opacity-70 {
   opacity: 0.7;
 }
 #umroh-manager-hybrid-root .opacity-75 {
   opacity: 0.75;
+}
+#umroh-manager-hybrid-root .opacity-80 {
+  opacity: 0.8;
 }
 #umroh-manager-hybrid-root .opacity-90 {
   opacity: 0.9;
@@ -1258,6 +1587,11 @@
 #umroh-manager-hybrid-root .shadow-2xl {
   --tw-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
   --tw-shadow-colored: 0 25px 50px -12px var(--tw-shadow-color);
+  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+}
+#umroh-manager-hybrid-root .shadow-\[0_-5px_15px_rgba\(0\2c 0\2c 0\2c 0\.05\)\] {
+  --tw-shadow: 0 -5px 15px rgba(0,0,0,0.05);
+  --tw-shadow-colored: 0 -5px 15px var(--tw-shadow-color);
   box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
 }
 #umroh-manager-hybrid-root .shadow-lg {
@@ -1288,6 +1622,10 @@
   --tw-shadow-color: rgb(59 130 246 / 0.2);
   --tw-shadow: var(--tw-shadow-colored);
 }
+#umroh-manager-hybrid-root .shadow-emerald-200 {
+  --tw-shadow-color: #a7f3d0;
+  --tw-shadow: var(--tw-shadow-colored);
+}
 #umroh-manager-hybrid-root .shadow-red-500\/20 {
   --tw-shadow-color: rgb(239 68 68 / 0.2);
   --tw-shadow: var(--tw-shadow-colored);
@@ -1296,12 +1634,24 @@
   outline: 2px solid transparent;
   outline-offset: 2px;
 }
+#umroh-manager-hybrid-root .blur-2xl {
+  --tw-blur: blur(40px);
+  filter: var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow);
+}
+#umroh-manager-hybrid-root .blur-xl {
+  --tw-blur: blur(24px);
+  filter: var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow);
+}
 #umroh-manager-hybrid-root .grayscale {
   --tw-grayscale: grayscale(100%);
   filter: var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow);
 }
 #umroh-manager-hybrid-root .filter {
   filter: var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow);
+}
+#umroh-manager-hybrid-root .backdrop-blur-md {
+  --tw-backdrop-blur: blur(12px);
+  backdrop-filter: var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);
 }
 #umroh-manager-hybrid-root .backdrop-blur-sm {
   --tw-backdrop-blur: blur(4px);
@@ -1339,6 +1689,9 @@
 }
 #umroh-manager-hybrid-root .duration-200 {
   transition-duration: 200ms;
+}
+#umroh-manager-hybrid-root .duration-300 {
+  transition-duration: 300ms;
 }
 
 /* =========================================
@@ -1473,6 +1826,10 @@
 #umroh-manager-hybrid-root .last\:pb-0:last-child {
   padding-bottom: 0px;
 }
+#umroh-manager-hybrid-root .hover\:-translate-y-0\.5:hover {
+  --tw-translate-y: -0.125rem;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
 #umroh-manager-hybrid-root .hover\:scale-105:hover {
   --tw-scale-x: 1.05;
   --tw-scale-y: 1.05;
@@ -1486,6 +1843,14 @@
   --tw-border-opacity: 1;
   border-color: rgb(209 213 219 / var(--tw-border-opacity, 1));
 }
+#umroh-manager-hybrid-root .hover\:border-green-500:hover {
+  --tw-border-opacity: 1;
+  border-color: rgb(34 197 94 / var(--tw-border-opacity, 1));
+}
+#umroh-manager-hybrid-root .hover\:border-red-200:hover {
+  --tw-border-opacity: 1;
+  border-color: rgb(254 202 202 / var(--tw-border-opacity, 1));
+}
 #umroh-manager-hybrid-root .hover\:bg-black:hover {
   --tw-bg-opacity: 1;
   background-color: rgb(0 0 0 / var(--tw-bg-opacity, 1));
@@ -1497,6 +1862,17 @@
 #umroh-manager-hybrid-root .hover\:bg-blue-700:hover {
   --tw-bg-opacity: 1;
   background-color: rgb(29 78 216 / var(--tw-bg-opacity, 1));
+}
+#umroh-manager-hybrid-root .hover\:bg-emerald-50:hover {
+  --tw-bg-opacity: 1;
+  background-color: rgb(236 253 245 / var(--tw-bg-opacity, 1));
+}
+#umroh-manager-hybrid-root .hover\:bg-emerald-50\/30:hover {
+  background-color: rgb(236 253 245 / 0.3);
+}
+#umroh-manager-hybrid-root .hover\:bg-emerald-700:hover {
+  --tw-bg-opacity: 1;
+  background-color: rgb(4 120 87 / var(--tw-bg-opacity, 1));
 }
 #umroh-manager-hybrid-root .hover\:bg-gray-100:hover {
   --tw-bg-opacity: 1;
@@ -1513,6 +1889,10 @@
 #umroh-manager-hybrid-root .hover\:bg-gray-700:hover {
   --tw-bg-opacity: 1;
   background-color: rgb(55 65 81 / var(--tw-bg-opacity, 1));
+}
+#umroh-manager-hybrid-root .hover\:bg-green-100:hover {
+  --tw-bg-opacity: 1;
+  background-color: rgb(220 252 231 / var(--tw-bg-opacity, 1));
 }
 #umroh-manager-hybrid-root .hover\:bg-green-50:hover {
   --tw-bg-opacity: 1;
@@ -1534,13 +1914,23 @@
   --tw-bg-opacity: 1;
   background-color: rgb(185 28 28 / var(--tw-bg-opacity, 1));
 }
+#umroh-manager-hybrid-root .hover\:bg-white\/30:hover {
+  background-color: rgb(255 255 255 / 0.3);
+}
+#umroh-manager-hybrid-root .hover\:bg-opacity-60:hover {
+  --tw-bg-opacity: 0.6;
+}
+#umroh-manager-hybrid-root .hover\:text-blue-600:hover {
+  --tw-text-opacity: 1;
+  color: rgb(37 99 235 / var(--tw-text-opacity, 1));
+}
 #umroh-manager-hybrid-root .hover\:text-blue-800:hover {
   --tw-text-opacity: 1;
   color: rgb(30 64 175 / var(--tw-text-opacity, 1));
 }
-#umroh-manager-hybrid-root .hover\:text-blue-900:hover {
+#umroh-manager-hybrid-root .hover\:text-emerald-600:hover {
   --tw-text-opacity: 1;
-  color: rgb(30 58 138 / var(--tw-text-opacity, 1));
+  color: rgb(5 150 105 / var(--tw-text-opacity, 1));
 }
 #umroh-manager-hybrid-root .hover\:text-gray-600:hover {
   --tw-text-opacity: 1;
@@ -1554,9 +1944,9 @@
   --tw-text-opacity: 1;
   color: rgb(17 24 39 / var(--tw-text-opacity, 1));
 }
-#umroh-manager-hybrid-root .hover\:text-green-900:hover {
+#umroh-manager-hybrid-root .hover\:text-green-600:hover {
   --tw-text-opacity: 1;
-  color: rgb(20 83 45 / var(--tw-text-opacity, 1));
+  color: rgb(22 163 74 / var(--tw-text-opacity, 1));
 }
 #umroh-manager-hybrid-root .hover\:text-indigo-900:hover {
   --tw-text-opacity: 1;
@@ -1578,6 +1968,9 @@
   --tw-text-opacity: 1;
   color: rgb(127 29 29 / var(--tw-text-opacity, 1));
 }
+#umroh-manager-hybrid-root .hover\:underline:hover {
+  text-decoration-line: underline;
+}
 #umroh-manager-hybrid-root .hover\:shadow-lg:hover {
   --tw-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   --tw-shadow-colored: 0 10px 15px -3px var(--tw-shadow-color), 0 4px 6px -4px var(--tw-shadow-color);
@@ -1592,9 +1985,24 @@
   --tw-border-opacity: 1;
   border-color: rgb(59 130 246 / var(--tw-border-opacity, 1));
 }
+#umroh-manager-hybrid-root .focus\:border-emerald-500:focus {
+  --tw-border-opacity: 1;
+  border-color: rgb(16 185 129 / var(--tw-border-opacity, 1));
+}
+#umroh-manager-hybrid-root .focus\:border-green-500:focus {
+  --tw-border-opacity: 1;
+  border-color: rgb(34 197 94 / var(--tw-border-opacity, 1));
+}
 #umroh-manager-hybrid-root .focus\:border-red-500:focus {
   --tw-border-opacity: 1;
   border-color: rgb(239 68 68 / var(--tw-border-opacity, 1));
+}
+#umroh-manager-hybrid-root .focus\:border-transparent:focus {
+  border-color: transparent;
+}
+#umroh-manager-hybrid-root .focus\:bg-white:focus {
+  --tw-bg-opacity: 1;
+  background-color: rgb(255 255 255 / var(--tw-bg-opacity, 1));
 }
 #umroh-manager-hybrid-root .focus\:outline-none:focus {
   outline: 2px solid transparent;
@@ -1603,6 +2011,11 @@
 #umroh-manager-hybrid-root .focus\:ring-0:focus {
   --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
   --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(0px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+  box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+}
+#umroh-manager-hybrid-root .focus\:ring-1:focus {
+  --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+  --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color);
   box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
 }
 #umroh-manager-hybrid-root .focus\:ring-2:focus {
@@ -1623,9 +2036,17 @@
   --tw-ring-opacity: 1;
   --tw-ring-color: rgb(59 130 246 / var(--tw-ring-opacity, 1));
 }
+#umroh-manager-hybrid-root .focus\:ring-emerald-500:focus {
+  --tw-ring-opacity: 1;
+  --tw-ring-color: rgb(16 185 129 / var(--tw-ring-opacity, 1));
+}
 #umroh-manager-hybrid-root .focus\:ring-gray-100:focus {
   --tw-ring-opacity: 1;
   --tw-ring-color: rgb(243 244 246 / var(--tw-ring-opacity, 1));
+}
+#umroh-manager-hybrid-root .focus\:ring-green-500:focus {
+  --tw-ring-opacity: 1;
+  --tw-ring-color: rgb(34 197 94 / var(--tw-ring-opacity, 1));
 }
 #umroh-manager-hybrid-root .focus\:ring-red-100:focus {
   --tw-ring-opacity: 1;
@@ -1648,10 +2069,6 @@
 #umroh-manager-hybrid-root .disabled\:cursor-not-allowed:disabled {
   cursor: not-allowed;
 }
-#umroh-manager-hybrid-root .disabled\:bg-gray-400:disabled {
-  --tw-bg-opacity: 1;
-  background-color: rgb(156 163 175 / var(--tw-bg-opacity, 1));
-}
 #umroh-manager-hybrid-root .disabled\:bg-gray-50:disabled {
   --tw-bg-opacity: 1;
   background-color: rgb(249 250 251 / var(--tw-bg-opacity, 1));
@@ -1663,15 +2080,73 @@
 #umroh-manager-hybrid-root .disabled\:opacity-70:disabled {
   opacity: 0.7;
 }
+#umroh-manager-hybrid-root :is(.group:hover .group-hover\:scale-100) {
+  --tw-scale-x: 1;
+  --tw-scale-y: 1;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+#umroh-manager-hybrid-root :is(.group:hover .group-hover\:border-green-200) {
+  --tw-border-opacity: 1;
+  border-color: rgb(187 247 208 / var(--tw-border-opacity, 1));
+}
+#umroh-manager-hybrid-root :is(.group:hover .group-hover\:bg-green-600) {
+  --tw-bg-opacity: 1;
+  background-color: rgb(22 163 74 / var(--tw-bg-opacity, 1));
+}
+#umroh-manager-hybrid-root :is(.group:hover .group-hover\:bg-opacity-30) {
+  --tw-bg-opacity: 0.3;
+}
+#umroh-manager-hybrid-root :is(.group:hover .group-hover\:text-gray-600) {
+  --tw-text-opacity: 1;
+  color: rgb(75 85 99 / var(--tw-text-opacity, 1));
+}
+#umroh-manager-hybrid-root :is(.group:hover .group-hover\:text-green-500) {
+  --tw-text-opacity: 1;
+  color: rgb(34 197 94 / var(--tw-text-opacity, 1));
+}
+#umroh-manager-hybrid-root :is(.group:hover .group-hover\:text-green-600) {
+  --tw-text-opacity: 1;
+  color: rgb(22 163 74 / var(--tw-text-opacity, 1));
+}
+#umroh-manager-hybrid-root :is(.group:hover .group-hover\:text-white) {
+  --tw-text-opacity: 1;
+  color: rgb(255 255 255 / var(--tw-text-opacity, 1));
+}
 #umroh-manager-hybrid-root :is(.group:hover .group-hover\:opacity-100) {
   opacity: 1;
 }
+#umroh-manager-hybrid-root :is(.group:hover .group-hover\:opacity-20) {
+  opacity: 0.2;
+}
+#umroh-manager-hybrid-root :is(.group:active .group-active\:scale-95) {
+  --tw-scale-x: .95;
+  --tw-scale-y: .95;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
 @media (min-width: 640px) {
-  #umroh-manager-hybrid-root .sm\:inline {
-    display: inline;
+  #umroh-manager-hybrid-root .sm\:block {
+    display: block;
+  }
+  #umroh-manager-hybrid-root .sm\:flex {
+    display: flex;
+  }
+  #umroh-manager-hybrid-root .sm\:w-96 {
+    width: 24rem;
+  }
+  #umroh-manager-hybrid-root .sm\:w-auto {
+    width: auto;
+  }
+  #umroh-manager-hybrid-root .sm\:flex-none {
+    flex: none;
   }
   #umroh-manager-hybrid-root .sm\:grid-cols-2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  #umroh-manager-hybrid-root .sm\:flex-row {
+    flex-direction: row;
+  }
+  #umroh-manager-hybrid-root .sm\:items-center {
+    align-items: center;
   }
   #umroh-manager-hybrid-root .sm\:text-sm {
     font-size: 0.875rem;
@@ -1682,11 +2157,29 @@
   }
 }
 @media (min-width: 768px) {
-  #umroh-manager-hybrid-root .md\:w-64 {
-    width: 16rem;
+  #umroh-manager-hybrid-root .md\:col-span-1 {
+    grid-column: span 1 / span 1;
+  }
+  #umroh-manager-hybrid-root .md\:col-span-2 {
+    grid-column: span 2 / span 2;
+  }
+  #umroh-manager-hybrid-root .md\:col-span-3 {
+    grid-column: span 3 / span 3;
+  }
+  #umroh-manager-hybrid-root .md\:col-span-6 {
+    grid-column: span 6 / span 6;
+  }
+  #umroh-manager-hybrid-root .md\:flex {
+    display: flex;
+  }
+  #umroh-manager-hybrid-root .md\:table-cell {
+    display: table-cell;
   }
   #umroh-manager-hybrid-root .md\:w-auto {
     width: auto;
+  }
+  #umroh-manager-hybrid-root .md\:grid-cols-12 {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
   }
   #umroh-manager-hybrid-root .md\:grid-cols-2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1694,11 +2187,17 @@
   #umroh-manager-hybrid-root .md\:grid-cols-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+  #umroh-manager-hybrid-root .md\:grid-cols-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
   #umroh-manager-hybrid-root .md\:flex-row {
     flex-direction: row;
   }
   #umroh-manager-hybrid-root .md\:items-center {
     align-items: center;
+  }
+  #umroh-manager-hybrid-root .md\:p-6 {
+    padding: 1.5rem;
   }
 }
 @media (min-width: 1024px) {
@@ -1708,11 +2207,27 @@
   #umroh-manager-hybrid-root .lg\:col-span-2 {
     grid-column: span 2 / span 2;
   }
+  #umroh-manager-hybrid-root .lg\:ml-64 {
+    margin-left: 16rem;
+  }
+  #umroh-manager-hybrid-root .lg\:hidden {
+    display: none;
+  }
+  #umroh-manager-hybrid-root .lg\:translate-x-0 {
+    --tw-translate-x: 0px;
+    transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+  }
   #umroh-manager-hybrid-root .lg\:grid-cols-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   #umroh-manager-hybrid-root .lg\:grid-cols-4 {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  #umroh-manager-hybrid-root .lg\:grid-cols-5 {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+  #umroh-manager-hybrid-root .lg\:justify-end {
+    justify-content: flex-end;
   }
 }
 @media print {
@@ -1746,9 +2261,6 @@
   #umroh-manager-hybrid-root .print\:bg-white {
     --tw-bg-opacity: 1;
     background-color: rgb(255 255 255 / var(--tw-bg-opacity, 1));
-  }
-  #umroh-manager-hybrid-root .print\:p-0 {
-    padding: 0px;
   }
   #umroh-manager-hybrid-root .print\:text-xs {
     font-size: 0.75rem;
