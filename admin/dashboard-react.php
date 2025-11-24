@@ -1,20 +1,66 @@
 <?php
-if (!defined('ABSPATH')) {
+
+if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
-?>
-<!-- Wrapper WordPress Default -->
-<div class="wrap" id="umh-wrap-fix">
-    <!-- Judul disembunyikan lewat CSS agar tidak duplikat dengan React -->
-    <h1 class="wp-heading-inline" style="display:none;">Manajemen Umroh</h1>
-    
-    <!-- React Mount Point -->
-    <!-- ID ini harus SAMA PERSIS dengan document.getElementById di src/index.jsx -->
-    <div id="umroh-manager-hybrid-root">
-        <!-- Loading State Awal (Pure CSS/HTML) sebelum React load -->
-        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 400px; background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-            <span class="dashicons dashicons-update spin" style="font-size: 40px; width: 40px; height: 40px; color: #2271b1;"></span>
-            <p style="margin-top: 20px; font-size: 16px; color: #50575e;">Memuat Aplikasi Manajemen Umroh...</p>
-        </div>
-    </div>
-</div>
+
+/**
+ * Enqueue scripts and styles for the React Dashboard
+ */
+function umroh_manager_enqueue_scripts($hook) {
+    // Hanya load di halaman plugin umroh manager
+    if (strpos($hook, 'umroh-manager') === false && strpos($hook, 'umroh_manager') === false) {
+        return;
+    }
+
+    $script_path = plugin_dir_path( __DIR__ ) . 'build/index.js';
+    $script_url = plugin_dir_url( __DIR__ ) . 'build/index.js';
+    $style_path = plugin_dir_path( __DIR__ ) . 'build/index.css';
+    $style_url = plugin_dir_url( __DIR__ ) . 'build/index.css';
+
+    if ( file_exists( $script_path ) ) {
+        $asset_file = include( plugin_dir_path( __DIR__ ) . 'build/index.asset.php');
+        
+        // Enqueue Script utama
+        wp_enqueue_script(
+            'umroh-manager-app',
+            $script_url,
+            $asset_file['dependencies'],
+            $asset_file['version'],
+            true
+        );
+
+        // BAGIAN PENTING: Mengirim data dan URL Plugin ke Javascript
+        // 'pluginUrl' sangat krusial untuk Lazy Loading di Webpack
+        wp_localize_script( 'umroh-manager-app', 'umrohManagerSettings', array(
+            'root' => esc_url_raw( rest_url() ),
+            'nonce' => wp_create_nonce( 'wp_rest' ),
+            'pluginUrl' => plugin_dir_url( __DIR__ ), 
+            'assetsUrl' => plugin_dir_url( __DIR__ ) . 'assets/',
+            'currentUser' => wp_get_current_user(),
+            'siteName' => get_bloginfo( 'name' ),
+            'siteUrl' => get_site_url(),
+            'dateFormat' => get_option( 'date_format' ),
+            'timeFormat' => get_option( 'time_format' )
+        ) );
+
+        // Enqueue Style utama
+        wp_enqueue_style(
+            'umroh-manager-style',
+            $style_url,
+            array( 'wp-components' ),
+            $asset_file['version']
+        );
+        
+        // Enqueue Font/Style tambahan jika diperlukan (misal Roboto atau Tailwind utilities standar)
+        // wp_enqueue_style('umroh-manager-fonts', 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap', array(), null);
+    }
+}
+add_action( 'admin_enqueue_scripts', 'umroh_manager_enqueue_scripts' );
+
+/**
+ * Render the div container for React App
+ */
+function umroh_manager_render_dashboard() {
+    echo '<div id="umroh-manager-app"></div>';
+}

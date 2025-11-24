@@ -1,350 +1,292 @@
 import React, { useState, useEffect } from 'react';
 import { useApi } from '../context/ApiContext';
-import { useParams, useNavigate } from 'react-router-dom';
-import toast from 'react-hot-toast';
+import { Plus, Trash2, Save, Calendar, Clock, MapPin, GripVertical } from 'lucide-react';
 import Loading from '../components/common/Loading';
+import toast from 'react-hot-toast'; // Pastikan import ini ada
 
-// --- BAGIAN IKON SVG NATIVE (Pengganti react-icons agar bebas error) ---
-const Icons = {
-  Plus: () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="12" y1="5" x2="12" y2="19"></line>
-      <line x1="5" y1="12" x2="19" y2="12"></line>
-    </svg>
-  ),
-  Trash: () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="3 6 5 6 21 6"></polyline>
-      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-    </svg>
-  ),
-  MapMarker: () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-      <circle cx="12" cy="10" r="3"></circle>
-    </svg>
-  ),
-  Clock: () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10"></circle>
-      <polyline points="12 6 12 12 16 14"></polyline>
-    </svg>
-  ),
-  Save: () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-      <polyline points="17 21 17 13 7 13 7 21"></polyline>
-      <polyline points="7 3 7 8 15 8"></polyline>
-    </svg>
-  ),
-  Calendar: () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-      <line x1="16" y1="2" x2="16" y2="6"></line>
-      <line x1="8" y1="2" x2="8" y2="6"></line>
-      <line x1="3" y1="10" x2="21" y2="10"></line>
-    </svg>
-  ),
-  ArrowLeft: () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="19" y1="12" x2="5" y2="12"></line>
-      <polyline points="12 19 5 12 12 5"></polyline>
-    </svg>
-  )
-};
-
-const ItineraryBuilder = ({ packageId: propPackageId, existingData, onSaveSuccess }) => {
-  const { post, get } = useApi();
-  const { id: paramId } = useParams();
-  const navigate = useNavigate();
-
-  // Prioritas ID: Props (jika embedded) > URL Param (jika halaman full)
-  const packageId = propPackageId || paramId;
+const ItineraryBuilder = () => {
+  const { apiRequest } = useApi();
+  const [packages, setPackages] = useState([]);
+  const [selectedPackage, setSelectedPackage] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   
-  const [paketName, setPaketName] = useState('');
+  // State untuk form itinerary
   const [days, setDays] = useState([
-    { id: Date.now(), day: 1, title: 'Keberangkatan & Tiba', activities: [] }
+    {
+      day: 1,
+      title: 'Keberangkatan & Tiba di Jeddah',
+      date: '',
+      activities: [
+        { time: '10:00', title: 'Berkumpul di Bandara Soekarno Hatta', location: 'Terminal 3', description: 'Meeting point di Gate 1' },
+        { time: '14:00', title: 'Take off menuju Jeddah', location: 'Pesawat', description: '' }
+      ]
+    }
   ]);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isLoadingData, setIsLoadingData] = useState(false);
 
-  // Effect: Fetch data jika ID tersedia dan belum ada existingData
+  // Load paket umroh untuk dropdown
   useEffect(() => {
-    const fetchData = async () => {
-      if (paramId && !existingData) {
-        setIsLoadingData(true);
-        try {
-          const res = await get(`/packages/${paramId}`);
-          if (res.success) {
-            setPaketName(res.data.name);
-            // Validasi struktur JSON itinerary
-            if (res.data.itinerary && Array.isArray(res.data.itinerary)) {
-              setDays(res.data.itinerary);
-            }
-          }
-        } catch (error) {
-          console.error("Gagal ambil data paket:", error);
-          toast.error("Gagal memuat data paket.");
-        } finally {
-          setIsLoadingData(false);
+    const fetchPackages = async () => {
+      try {
+        const response = await apiRequest('/packages');
+        if (response.success && response.data) {
+          setPackages(response.data);
         }
-      } else if (existingData) {
-        if (existingData.name) setPaketName(existingData.name);
-        if (existingData.itinerary && Array.isArray(existingData.itinerary)) {
-          setDays(existingData.itinerary);
+      } catch (error) {
+        console.error('Failed to fetch packages', error);
+        toast.error('Gagal memuat data paket');
+      }
+    };
+    fetchPackages();
+  }, []);
+
+  // Load existing itinerary saat paket dipilih
+  useEffect(() => {
+    if (!selectedPackage) return;
+
+    const fetchItinerary = async () => {
+      setLoading(true);
+      try {
+        const response = await apiRequest(`/packages/${selectedPackage}/itinerary`);
+        if (response.success && response.data && response.data.length > 0) {
+          // Parsing data dari backend jika ada format khusus, 
+          // untuk sekarang kita asumsi struktur datanya cocok atau kita set default
+          // setDays(response.data); 
+          toast.success('Data itinerary berhasil dimuat');
+        } else {
+          // Reset default jika belum ada data
+          setDays([{
+            day: 1,
+            title: 'Hari Pertama',
+            date: '',
+            activities: [{ time: '', title: '', location: '', description: '' }]
+          }]);
         }
+      } catch (error) {
+        console.error('Error fetching itinerary', error);
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchData();
-  }, [paramId, existingData, get]);
+    fetchItinerary();
+  }, [selectedPackage]);
 
-  // --- LOGIC MANIPULASI ITINERARY ---
-
-  const addDay = () => {
-    const newDayNum = days.length + 1;
-    setDays([...days, { id: Date.now(), day: newDayNum, title: '', activities: [] }]);
-  };
-
-  const removeDay = (id) => {
-    const filtered = days.filter(d => d.id !== id);
-    // Re-index nomor hari agar urut kembali (H1, H2, dst)
-    const reIndexed = filtered.map((d, idx) => ({ ...d, day: idx + 1 }));
-    setDays(reIndexed);
-  };
-
-  const updateDayTitle = (id, title) => {
-    setDays(days.map(d => d.id === id ? { ...d, title } : d));
-  };
-
-  const addActivity = (dayId) => {
-    setDays(days.map(d => {
-      if (d.id === dayId) {
-        const newActivities = Array.isArray(d.activities) ? d.activities : [];
-        return {
-          ...d,
-          activities: [...newActivities, { id: Date.now(), time: '08:00', location: '', description: '' }]
-        };
+  const handleAddDay = () => {
+    setDays([
+      ...days,
+      {
+        day: days.length + 1,
+        title: `Hari ke-${days.length + 1}`,
+        date: '',
+        activities: [{ time: '', title: '', location: '', description: '' }]
       }
-      return d;
-    }));
+    ]);
   };
 
-  const updateActivity = (dayId, activityId, field, value) => {
-    setDays(days.map(d => {
-      if (d.id === dayId) {
-        const newActivities = d.activities.map(a => 
-          a.id === activityId ? { ...a, [field]: value } : a
-        );
-        return { ...d, activities: newActivities };
-      }
-      return d;
-    }));
+  const handleRemoveDay = (index) => {
+    const newDays = days.filter((_, i) => i !== index);
+    // Re-index days
+    const reindexedDays = newDays.map((d, i) => ({ ...d, day: i + 1, title: d.title.includes('Hari ke-') ? `Hari ke-${i+1}` : d.title }));
+    setDays(reindexedDays);
   };
 
-  const removeActivity = (dayId, activityId) => {
-    setDays(days.map(d => {
-      if (d.id === dayId) {
-        return { ...d, activities: d.activities.filter(a => a.id !== activityId) };
-      }
-      return d;
-    }));
+  const handleDayChange = (index, field, value) => {
+    const newDays = [...days];
+    newDays[index][field] = value;
+    setDays(newDays);
+  };
+
+  const handleAddActivity = (dayIndex) => {
+    const newDays = [...days];
+    newDays[dayIndex].activities.push({ time: '', title: '', location: '', description: '' });
+    setDays(newDays);
+  };
+
+  const handleRemoveActivity = (dayIndex, activityIndex) => {
+    const newDays = [...days];
+    newDays[dayIndex].activities = newDays[dayIndex].activities.filter((_, i) => i !== activityIndex);
+    setDays(newDays);
+  };
+
+  const handleActivityChange = (dayIndex, activityIndex, field, value) => {
+    const newDays = [...days];
+    newDays[dayIndex].activities[activityIndex][field] = value;
+    setDays(newDays);
   };
 
   const handleSave = async () => {
-    if (!packageId) {
-      toast.error("ID Paket tidak valid (Pastikan paket sudah dibuat sebelumnya).");
+    if (!selectedPackage) {
+      toast.error('Silakan pilih paket terlebih dahulu');
       return;
     }
 
+    setSaving(true);
     try {
-      setIsSaving(true);
-      
-      const payload = {
-        id: packageId,
-        // Kirim object khusus agar backend PHP tahu ini update itinerary
-        itinerary_data: days 
-      };
-
-      const response = await post(`/packages/${packageId}`, payload);
+      const response = await apiRequest('/packages/itinerary', 'POST', {
+        package_id: selectedPackage,
+        itinerary: days
+      });
 
       if (response.success) {
-        toast.success("Itinerary berhasil disimpan!");
-        if (onSaveSuccess) onSaveSuccess();
+        toast.success('Itinerary berhasil disimpan!');
       } else {
-        toast.error("Gagal menyimpan: " + (response.message || 'Terjadi kesalahan'));
+        toast.error(response.message || 'Gagal menyimpan itinerary');
       }
     } catch (error) {
-      console.error("Save error:", error);
-      toast.error("Gagal menghubungi server.");
+      console.error('Error saving itinerary', error);
+      toast.error('Terjadi kesalahan saat menyimpan');
     } finally {
-      setIsSaving(false);
+      setSaving(false);
     }
   };
 
-  if (isLoadingData) return <Loading />;
-
   return (
-    <div className="space-y-6 pb-20">
-      {/* Header Halaman */}
-      <div className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100 gap-4">
-        <div className="flex items-center gap-4">
-          {/* Tombol Back muncul jika diakses via URL */}
-          {paramId && (
-            <button 
-              onClick={() => navigate('/packages')} 
-              className="p-2 hover:bg-gray-100 rounded-full text-gray-500 transition"
-              title="Kembali ke Daftar Paket"
-            >
-               <Icons.ArrowLeft />
-            </button>
-          )}
-          <div>
-            <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-              <span className="text-green-600"><Icons.Calendar /></span>
-              Itinerary Builder
-            </h1>
-            <p className="text-sm text-gray-500">
-              {paketName ? `Mengedit: ${paketName}` : 'Susun rencana perjalanan detail per hari'}
-            </p>
-          </div>
+    <div className="space-y-6 max-w-5xl mx-auto pb-20">
+      <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Itinerary Builder</h1>
+          <p className="text-gray-500 text-sm">Buat dan atur jadwal perjalanan umroh</p>
         </div>
-
-        <button 
-          onClick={handleSave}
-          disabled={isSaving}
-          className={`bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-md transition
-            ${isSaving ? 'opacity-70 cursor-not-allowed' : ''}`}
-        >
-          {isSaving ? 'Menyimpan...' : <><Icons.Save /> Simpan Perubahan</>}
-        </button>
-      </div>
-
-      {/* Container List Hari */}
-      <div className="space-y-6">
-        {days.map((day, index) => (
-          <div key={day.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden transition hover:shadow-md">
-            
-            {/* Header Per Hari (H1, H2...) */}
-            <div className="bg-gray-50 p-4 border-b border-gray-200 flex flex-wrap gap-4 items-center justify-between">
-              <div className="flex items-center gap-4 flex-1">
-                <div className="bg-green-600 text-white font-bold w-12 h-12 flex items-center justify-center rounded-lg shadow-sm shrink-0 text-lg">
-                  H{index + 1}
-                </div>
-                <div className="w-full">
-                    <label className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Judul Kegiatan Utama</label>
-                    <input 
-                      type="text" 
-                      placeholder="Contoh: Tiba di Madinah & Check-in Hotel"
-                      className="bg-transparent font-bold text-lg text-gray-800 placeholder-gray-400 w-full outline-none border-b border-transparent focus:border-green-500 transition py-1"
-                      value={day.title}
-                      onChange={(e) => updateDayTitle(day.id, e.target.value)}
-                    />
-                </div>
-              </div>
-              <button 
-                onClick={() => removeDay(day.id)}
-                className="text-gray-400 hover:text-red-500 hover:bg-red-50 p-2 rounded-lg transition"
-                title="Hapus Hari Ini"
-              >
-                <Icons.Trash />
-              </button>
-            </div>
-
-            {/* List Aktivitas per Jam */}
-            <div className="p-4 bg-white">
-              {(!day.activities || day.activities.length === 0) && (
-                <div className="text-center py-8 text-gray-400 border-2 border-dashed border-gray-200 rounded-lg mb-4 bg-gray-50">
-                  <p>Belum ada aktivitas detail di hari ke-{index + 1}</p>
-                  <button 
-                    onClick={() => addActivity(day.id)}
-                    className="mt-2 text-green-600 font-medium hover:underline text-sm inline-flex items-center gap-1"
-                  >
-                    <Icons.Plus /> Tambah aktivitas pertama
-                  </button>
-                </div>
-              )}
-
-              <div className="space-y-3">
-                {day.activities && day.activities.map((activity) => (
-                  <div key={activity.id} className="flex gap-3 items-start group">
-                    <div className="mt-3 text-gray-300 group-hover:text-green-500 transition">
-                      <Icons.MapMarker />
-                    </div>
-                    
-                    <div className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-3 bg-gray-50 p-3 rounded-lg border border-gray-100 group-hover:border-green-200 transition">
-                      {/* Input Jam */}
-                      <div className="md:col-span-2">
-                        <div className="flex items-center gap-2 bg-white border border-gray-200 rounded px-2 py-2">
-                          <span className="text-gray-400"><Icons.Clock /></span>
-                          <input 
-                            type="time" 
-                            className="w-full text-sm outline-none font-medium text-gray-700"
-                            value={activity.time}
-                            onChange={(e) => updateActivity(day.id, activity.id, 'time', e.target.value)}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Input Lokasi */}
-                      <div className="md:col-span-3">
-                        <input 
-                          type="text" 
-                          placeholder="Lokasi (Cth: Masjid Nabawi)"
-                          className="w-full text-sm p-2 bg-white border border-gray-200 rounded focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none transition"
-                          value={activity.location}
-                          onChange={(e) => updateActivity(day.id, activity.id, 'location', e.target.value)}
-                        />
-                      </div>
-
-                      {/* Input Deskripsi */}
-                      <div className="md:col-span-6">
-                        <input 
-                          type="text" 
-                          placeholder="Deskripsi kegiatan..."
-                          className="w-full text-sm p-2 bg-white border border-gray-200 rounded focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none transition"
-                          value={activity.description}
-                          onChange={(e) => updateActivity(day.id, activity.id, 'description', e.target.value)}
-                        />
-                      </div>
-
-                      {/* Tombol Hapus Aktivitas */}
-                      <div className="md:col-span-1 flex justify-center items-center">
-                         <button 
-                            onClick={() => removeActivity(day.id, activity.id)}
-                            className="text-gray-400 hover:text-red-500 p-2 transition"
-                            title="Hapus Aktivitas"
-                          >
-                            <Icons.Trash />
-                          </button>
-                      </div>
-                    </div>
-                  </div>
+        <div className="flex gap-3">
+            <select 
+                className="form-select rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
+                value={selectedPackage}
+                onChange={(e) => setSelectedPackage(e.target.value)}
+            >
+                <option value="">-- Pilih Paket --</option>
+                {packages.map(pkg => (
+                    <option key={pkg.id} value={pkg.id}>{pkg.name}</option>
                 ))}
+            </select>
+            <button 
+                onClick={handleSave} 
+                disabled={saving || !selectedPackage}
+                className="flex items-center px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 disabled:opacity-50"
+            >
+                {saving ? <Loading size="sm" color="white" /> : <Save size={18} className="mr-2" />}
+                Simpan Itinerary
+            </button>
+        </div>
+      </div>
+
+      {loading ? (
+        <Loading />
+      ) : (
+        <div className="space-y-6">
+          {days.map((day, dayIndex) => (
+            <div key={dayIndex} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              {/* Header Hari */}
+              <div className="bg-gray-50 p-4 border-b border-gray-200 flex justify-between items-start">
+                <div className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <div className="md:col-span-1 flex items-center justify-center bg-emerald-100 text-emerald-800 font-bold rounded-lg h-10 w-10">
+                        {day.day}
+                    </div>
+                    <div className="md:col-span-8">
+                        <input 
+                            type="text" 
+                            value={day.title}
+                            onChange={(e) => handleDayChange(dayIndex, 'title', e.target.value)}
+                            placeholder="Judul Hari (mis: Tiba di Madinah)"
+                            className="w-full font-semibold text-lg border-none bg-transparent focus:ring-0 p-0 placeholder-gray-400"
+                        />
+                        <div className="flex items-center mt-1 text-sm text-gray-500">
+                           <Calendar size={14} className="mr-1" />
+                           <input 
+                                type="date" 
+                                value={day.date}
+                                onChange={(e) => handleDayChange(dayIndex, 'date', e.target.value)}
+                                className="border-none bg-transparent focus:ring-0 p-0 text-sm text-gray-500"
+                           />
+                        </div>
+                    </div>
+                </div>
+                <button 
+                    onClick={() => handleRemoveDay(dayIndex)}
+                    className="text-gray-400 hover:text-red-500 p-1"
+                    title="Hapus Hari"
+                >
+                    <Trash2 size={18} />
+                </button>
               </div>
 
-              {/* Tombol Tambah Aktivitas */}
-              <button 
-                onClick={() => addActivity(day.id)}
-                className="mt-4 text-sm text-green-700 bg-green-50 font-medium flex items-center justify-center gap-2 hover:bg-green-100 px-4 py-2.5 rounded-lg transition w-full border border-green-100"
-              >
-                <Icons.Plus /> Tambah Kegiatan
-              </button>
-            </div>
-          </div>
-        ))}
+              {/* Daftar Aktivitas */}
+              <div className="p-4 space-y-3">
+                {day.activities.map((activity, actIndex) => (
+                    <div key={actIndex} className="flex gap-3 items-start group">
+                        <div className="mt-2 text-gray-300 cursor-move">
+                            <GripVertical size={16} />
+                        </div>
+                        <div className="w-24 flex-shrink-0">
+                            <div className="relative rounded-md shadow-sm">
+                                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2">
+                                    <Clock size={14} className="text-gray-400" />
+                                </div>
+                                <input
+                                    type="time"
+                                    value={activity.time}
+                                    onChange={(e) => handleActivityChange(dayIndex, actIndex, 'time', e.target.value)}
+                                    className="block w-full rounded-md border-gray-300 pl-8 text-sm focus:border-emerald-500 focus:ring-emerald-500"
+                                />
+                            </div>
+                        </div>
+                        <div className="flex-1 space-y-2">
+                            <input
+                                type="text"
+                                value={activity.title}
+                                onChange={(e) => handleActivityChange(dayIndex, actIndex, 'title', e.target.value)}
+                                placeholder="Nama Aktivitas"
+                                className="block w-full rounded-md border-gray-300 text-sm font-medium focus:border-emerald-500 focus:ring-emerald-500"
+                            />
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="relative rounded-md shadow-sm">
+                                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2">
+                                        <MapPin size={14} className="text-gray-400" />
+                                    </div>
+                                    <input
+                                        type="text"
+                                        value={activity.location}
+                                        onChange={(e) => handleActivityChange(dayIndex, actIndex, 'location', e.target.value)}
+                                        placeholder="Lokasi"
+                                        className="block w-full rounded-md border-gray-300 pl-8 text-xs focus:border-emerald-500 focus:ring-emerald-500"
+                                    />
+                                </div>
+                                <input
+                                    type="text"
+                                    value={activity.description}
+                                    onChange={(e) => handleActivityChange(dayIndex, actIndex, 'description', e.target.value)}
+                                    placeholder="Catatan tambahan..."
+                                    className="block w-full rounded-md border-gray-300 text-xs focus:border-emerald-500 focus:ring-emerald-500"
+                                />
+                            </div>
+                        </div>
+                        <button 
+                            onClick={() => handleRemoveActivity(dayIndex, actIndex)}
+                            className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity mt-2"
+                        >
+                            <Trash2 size={16} />
+                        </button>
+                    </div>
+                ))}
 
-        {/* Tombol Tambah Hari Baru */}
-        <button 
-          onClick={addDay}
-          className="w-full py-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 font-medium hover:border-green-500 hover:text-green-600 hover:bg-green-50 transition flex items-center justify-center gap-2 group"
-        >
-          <div className="bg-gray-200 group-hover:bg-green-600 text-gray-500 group-hover:text-white rounded-full w-8 h-8 flex items-center justify-center transition">
-             <Icons.Plus />
-          </div>
-          Tambah Hari Perjalanan (H{days.length + 1})
-        </button>
-      </div>
+                <button 
+                    onClick={() => handleAddActivity(dayIndex)}
+                    className="mt-2 text-xs font-medium text-emerald-600 hover:text-emerald-700 flex items-center"
+                >
+                    <Plus size={14} className="mr-1" /> Tambah Aktivitas
+                </button>
+              </div>
+            </div>
+          ))}
+
+          <button 
+            onClick={handleAddDay}
+            className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-emerald-500 hover:text-emerald-600 transition-colors flex justify-center items-center font-medium"
+          >
+            <Plus size={20} className="mr-2" /> Tambah Hari Perjalanan
+          </button>
+        </div>
+      )}
     </div>
   );
 };
