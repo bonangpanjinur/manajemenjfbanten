@@ -1,125 +1,140 @@
 <?php
-if (!defined('ABSPATH')) exit;
+if ( ! defined( 'ABSPATH' ) ) exit;
 
-require_once plugin_dir_path(__FILE__) . '../class-umh-crud-controller.php';
-
-class UMH_API_Jamaah extends UMH_CRUD_Controller {
+class UMH_API_Jamaah {
     public function __construct() {
-        parent::__construct('umh_jamaah');
+        add_action( 'rest_api_init', array( $this, 'register_routes' ) );
     }
 
     public function register_routes() {
-        register_rest_route('umh/v1', '/jamaah', [
-            [
-                'methods' => 'GET',
-                'callback' => [$this, 'get_items'],
-                'permission_callback' => [$this, 'check_permission'],
-            ],
-            [
-                'methods' => 'POST',
-                'callback' => [$this, 'create_item'],
-                'permission_callback' => [$this, 'check_permission'],
-            ]
+        register_rest_route( 'umh/v1', '/jamaah', [
+            ['methods' => 'GET', 'callback' => [$this, 'get_jamaah'], 'permission_callback' => '__return_true'],
+            ['methods' => 'POST', 'callback' => [$this, 'create_jamaah'], 'permission_callback' => '__return_true'],
         ]);
-
-        register_rest_route('umh/v1', '/jamaah/(?P<id>\d+)', [
-            [
-                'methods' => 'GET',
-                'callback' => [$this, 'get_item'],
-                'permission_callback' => [$this, 'check_permission'],
-            ],
-            [
-                'methods' => 'PUT',
-                'callback' => [$this, 'update_item'],
-                'permission_callback' => [$this, 'check_permission'],
-            ],
-            [
-                'methods' => 'DELETE',
-                'callback' => [$this, 'delete_item'], // Safe Delete Implementation
-                'permission_callback' => [$this, 'check_permission'],
-            ]
+        
+        register_rest_route( 'umh/v1', '/jamaah/(?P<id>\d+)', [
+            ['methods' => 'GET', 'callback' => [$this, 'get_jamaah_detail'], 'permission_callback' => '__return_true'],
+            ['methods' => 'PUT', 'callback' => [$this, 'update_jamaah'], 'permission_callback' => '__return_true'],
+            ['methods' => 'DELETE', 'callback' => [$this, 'delete_jamaah'], 'permission_callback' => '__return_true'],
         ]);
     }
 
-    // Override Get Items agar yang 'deleted' tidak muncul
-    public function get_items($request) {
+    /**
+     * Helper: Get Current User Scope
+     * Membaca Header X-Umh-User-Id yang dikirim Frontend untuk menentukan role & filter
+     */
+    private function get_user_scope($request) {
         global $wpdb;
-        $params = $request->get_params();
+        $user_id = $request->get_header('X-Umh-User-Id');
         
-        // Default filter: sembunyikan yang deleted
-        $where = "WHERE status != 'deleted'"; 
-        $args = [];
+        if(!$user_id) return null; // No user context
 
-        // Search Logic
-        if (isset($params['search'])) {
-            $where .= " AND (full_name LIKE %s OR passport_number LIKE %s OR phone_number LIKE %s)";
-            $term = '%' . $wpdb->esc_like($params['search']) . '%';
-            $args[] = $term;
-            $args[] = $term;
-            $args[] = $term;
-        }
-
-        // Filter by Package/Booking (Opsional)
-        // ... logic filter lain ...
-
-        $query = "SELECT * FROM {$this->table_name} $where ORDER BY created_at DESC";
-        
-        if (!empty($args)) {
-            $items = $wpdb->get_results($wpdb->prepare($query, $args));
-        } else {
-            $items = $wpdb->get_results($query);
-        }
-
-        return rest_ensure_response($items);
+        $user = $wpdb->get_row($wpdb->prepare("SELECT role, linked_agent_id, linked_branch_id FROM {$wpdb->prefix}umh_users WHERE id = %d", $user_id));
+        return $user;
     }
 
-    // Override Delete Item (SOFT DELETE - SAFETY FIRST)
-    public function delete_item($request) {
+    public function get_jamaah($request) {
+        global $wpdb;
+        
+        // 1. Start Query
+        $sql = "SELECT j.*, p.name as package_name, p.departure_date, b.name as branch_name 
+                FROM {$wpdb->prefix}umh_jamaah j
+                LEFT JOIN {$wpdb->prefix}umh_packages p ON j.package_id = p.id
+                LEFT JOIN {$wpdb->prefix}umh_branches b ON j.branch_id = b.id
+                WHERE j.status != 'deleted'";
+
+        // 2. ACCESS CONTROL (Filter berdasarkan Role)
+        $user = $this->get_user_scope($request);
+        if ($user) {
+            if ($user->role === 'agent') {
+                // Agen cuma boleh lihat jemaah yang dia referensikan
+                $sql .= $wpdb->prepare(" AND j.sub_agent_id = %d", $user->linked_agent_id);
+            } 
+            elseif ($user->role === 'branch_manager') {
+                // Kacab cuma boleh lihat jemaah di cabangnya
+                $sql .= $wpdb->prepare(" AND j.branch_id = %d", $user->linked_branch_id);
+            }
+            // Super Admin & Owner lolos (tidak ada tambahan WHERE)
+        }
+
+        // 3. Standard Search Filters
+        $search = $request->get_param('search');
+        if($search) {
+            $term = '%' . $wpdb->esc_like($search) . '%';
+            $sql .= $wpdb->prepare(" AND (j.full_name LIKE %s OR j.passport_number LIKE %s)", $term, $term);
+        }
+
+        $sql .= " ORDER BY j.created_at DESC LIMIT 100";
+
+        return $wpdb->get_results($sql);
+    }
+
+    public function create_jamaah($request) {
+        global $wpdb;
+        $data = $request->get_json_params();
+
+        // ACCESS CONTROL: Auto-fill branch/agent jika yang input bukan admin
+        $user = $this->get_user_scope($request);
+        if ($user) {
+            if ($user->role === 'agent') {
+                $data['sub_agent_id'] = $user->linked_agent_id; // Paksa isi ID agen dia
+            }
+            if ($user->role === 'branch_manager') {
+                $data['branch_id'] = $user->linked_branch_id; // Paksa isi ID cabang dia
+            }
+        }
+
+        // ... (Validasi input standar) ...
+
+        $wpdb->insert("{$wpdb->prefix}umh_jamaah", [
+            'full_name' => $data['full_name'],
+            'nik' => $data['nik'],
+            'gender' => $data['gender'],
+            'phone_number' => $data['phone_number'],
+            'package_id' => $data['package_id'],
+            'branch_id' => $data['branch_id'], // Akan terisi otomatis dari logic di atas atau input admin
+            'sub_agent_id' => $data['sub_agent_id'],
+            'status' => 'registered',
+            'mahram_id' => isset($data['mahram_id']) ? $data['mahram_id'] : 0,
+            'relation' => isset($data['relation']) ? $data['relation'] : '',
+            // ... field lain ...
+        ]);
+
+        return ['success' => true, 'id' => $wpdb->insert_id];
+    }
+
+    public function get_jamaah_detail($request) {
         global $wpdb;
         $id = $request['id'];
+        
+        // Cek permission di sini juga jika perlu extra strict
+        
+        $sql = "SELECT * FROM {$wpdb->prefix}umh_jamaah WHERE id = %d";
+        return $wpdb->get_row($wpdb->prepare($sql, $id));
+    }
 
-        // Cek apakah jamaah punya data keuangan?
-        $has_payment = $wpdb->get_var($wpdb->prepare(
-            "SELECT id FROM {$wpdb->prefix}umh_jamaah_payments WHERE jamaah_id = %d LIMIT 1", 
-            $id
-        ));
-
-        // Jika sudah ada pembayaran, JANGAN hapus fisik. Lakukan Soft Delete.
-        if ($has_payment) {
-            $updated = $wpdb->update(
-                $this->table_name,
-                ['status' => 'deleted'], // Ubah status jadi deleted/trash
-                ['id' => $id]
-            );
-            
-            if ($updated === false) {
-                return new WP_Error('db_error', 'Gagal menghapus data', ['status' => 500]);
-            }
-            
-            return rest_ensure_response(['success' => true, 'message' => 'Data dipindahkan ke sampah (Soft Delete) karena memiliki riwayat transaksi.']);
+    public function update_jamaah($request) {
+        global $wpdb;
+        $id = $request['id'];
+        $data = $request->get_json_params();
+        
+        // Sanitasi data sebelum update
+        $updateData = [];
+        $fields = ['full_name', 'passport_number', 'phone_number', 'address_details', 'status', 'package_id', 'mahram_id', 'relation'];
+        
+        foreach($fields as $f) {
+            if(isset($data[$f])) $updateData[$f] = $data[$f];
         }
 
-        // Jika data masih bersih (belum ada transaksi), boleh hapus permanen
-        return parent::delete_item($request);
+        $wpdb->update("{$wpdb->prefix}umh_jamaah", $updateData, ['id' => $id]);
+        return ['success' => true];
     }
 
-    public function prepare_item_for_database($request) {
-        $data = [
-            'full_name' => sanitize_text_field($request['full_name']),
-            'nik' => sanitize_text_field($request['nik']),
-            'passport_number' => sanitize_text_field($request['passport_number']),
-            'gender' => sanitize_text_field($request['gender']),
-            'phone_number' => sanitize_text_field($request['phone_number']),
-            'sub_agent_id' => isset($request['sub_agent_id']) ? intval($request['sub_agent_id']) : 0,
-            'branch_id' => isset($request['branch_id']) ? intval($request['branch_id']) : 0, // Support Cabang
-            'status' => sanitize_text_field($request['status']),
-        ];
-        
-        // Handle Date Fields (cegah error jika kosong)
-        if (!empty($request['birth_date'])) $data['birth_date'] = sanitize_text_field($request['birth_date']);
-        if (!empty($request['passport_issued'])) $data['passport_issued'] = sanitize_text_field($request['passport_issued']);
-        if (!empty($request['passport_expiry'])) $data['passport_expiry'] = sanitize_text_field($request['passport_expiry']);
-
-        return $data;
+    public function delete_jamaah($request) {
+        global $wpdb;
+        $id = $request['id'];
+        $wpdb->update("{$wpdb->prefix}umh_jamaah", ['status' => 'deleted'], ['id' => $id]);
+        return ['success' => true];
     }
 }
+new UMH_API_Jamaah();

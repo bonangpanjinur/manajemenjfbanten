@@ -19,10 +19,10 @@ import HR from './pages/HR';
 import Marketing from './pages/Marketing';
 import MasterData from './pages/MasterData';
 import Logs from './pages/Logs';
+import Manifest from './pages/Manifest'; // Import Halaman Manifest
 
 /**
  * Komponen Navigasi Atas (Top Menu)
- * Menampilkan tab menu horizontal di atas konten
  */
 const TopNavigation = () => {
   const location = useLocation();
@@ -32,6 +32,7 @@ const TopNavigation = () => {
     { path: '/', label: 'Dashboard', icon: 'dashicons-dashboard' },
     { path: '/jamaah', label: 'Jamaah', icon: 'dashicons-groups' },
     { path: '/packages', label: 'Paket', icon: 'dashicons-tickets-alt' },
+    { path: '/manifest', label: 'Manifest', icon: 'dashicons-list-view' }, // Menu Baru
     { path: '/finance', label: 'Keuangan', icon: 'dashicons-money' },
     { path: '/inventory', label: 'Inventory', icon: 'dashicons-products' },
     { path: '/hr', label: 'HR & Staff', icon: 'dashicons-businessman' },
@@ -40,7 +41,8 @@ const TopNavigation = () => {
   ];
 
   return (
-    <div className="bg-white shadow-sm border-b border-gray-200 px-4 py-0 mb-6 sticky top-0 z-10">
+    // Class print:hidden agar menu tidak muncul saat cetak manifest
+    <div className="bg-white shadow-sm border-b border-gray-200 px-4 py-0 mb-6 sticky top-0 z-10 print:hidden">
       <div className="flex space-x-1 overflow-x-auto no-scrollbar">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
@@ -56,7 +58,6 @@ const TopNavigation = () => {
                 }
               `}
             >
-              {/* Render icon dashicons jika diperlukan, atau cukup text */}
               <span className={`dashicons ${item.icon} mr-2 text-lg`}></span>
               {item.label}
             </Link>
@@ -80,9 +81,9 @@ const WPSyncRouter = () => {
       const routeMap = {
         'dashboard': '/',
         'jamaah': '/jamaah',
-        'payments': '/finance',
         'finance': '/finance',
         'packages': '/packages',
+        'manifest': '/manifest',
         'inventory': '/inventory',
         'hr': '/hr',
         'marketing': '/marketing',
@@ -91,8 +92,6 @@ const WPSyncRouter = () => {
       };
       const targetPath = routeMap[targetView] || '/';
       
-      // Kita hanya force navigate jika User baru masuk (pathname masih root atau berbeda jauh)
-      // Ini agar navigasi manual user via TopNav tidak dipaksa balik oleh logic ini
       if (location.pathname === '/' && targetPath !== '/') {
          navigate(targetPath, { replace: true });
       }
@@ -105,10 +104,8 @@ const WPSyncRouter = () => {
 const AppLayout = ({ children }) => {
   return (
     <div className="umh-app min-h-screen bg-gray-50 font-sans">
-       {/* Tampilkan Navigasi Atas */}
        <TopNavigation />
-       
-      <main className="p-6 max-w-7xl mx-auto">
+      <main className="p-6 max-w-7xl mx-auto print:p-0 print:w-full">
         {children}
       </main>
     </div>
@@ -127,6 +124,7 @@ const App = () => {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/jamaah" element={<Jamaah />} />
               <Route path="/jamaah/add" element={<Jamaah />} />
+              <Route path="/manifest" element={<Manifest />} /> {/* Rute Baru */}
               <Route path="/finance" element={<Finance />} />
               <Route path="/packages" element={<Packages />} />
               <Route path="/inventory" element={<Inventory />} />

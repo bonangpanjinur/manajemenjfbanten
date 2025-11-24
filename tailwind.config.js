@@ -3,9 +3,8 @@ module.exports = {
   content: [
     "./src/**/*.{js,jsx,ts,tsx}",
   ],
-  // PENTING: Menambahkan selector ID ini membuat semua class Tailwind 
-  // memiliki prioritas lebih tinggi daripada style bawaan WP Admin.
-  important: '#umh-admin-app',
+  // PERBAIKAN DISINI: ID harus sama dengan div wrapper di dashboard-react.php
+  important: '#umroh-manager-hybrid-root', 
   theme: {
     extend: {
       zIndex: {
@@ -24,8 +23,7 @@ module.exports = {
   },
   plugins: [],
   corePlugins: {
-    // Kita tetap matikan preflight global agar tidak merusak WP Admin bar,
-    // tapi kita akan buat preflight manual di index.css
+    // Matikan preflight bawaan agar tidak merusak menu admin WP lain
     preflight: false, 
   }
 }

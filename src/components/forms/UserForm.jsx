@@ -1,136 +1,118 @@
-import React, { useState, useEffect } from 'react';
-import { useApi } from '../../context/ApiContext.jsx';
-import { Input, Select } from '../common/FormUI.jsx';
-import { ErrorMessage } from '../common/ErrorMessage.jsx';
+import React, { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { useApi } from '../../context/ApiContext';
+import FormUI from '../common/FormUI';
 
-const UserForm = ({ data, onSuccess }) => {
-    const api = useApi();
-    const { data: apiData, loading: apiLoading } = api;
+export default function UserForm({ initialData, onSubmit, onCancel }) {
+    const { api } = useApi();
+    const { register, handleSubmit, watch, setValue, formState: { errors }, reset } = useForm();
     
-    const [formData, setFormData] = useState({
-        full_name: '',
-        email: '',
-        password: '',
-        role: 'marketing_staff',
-    });
-    
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [error, setError] = useState(null);
+    const selectedRole = watch('role'); // Pantau perubahan Role
 
-    const isEditMode = Boolean(data && data.id);
+    const [branches, setBranches] = useState([]);
+    const [agents, setAgents] = useState([]);
 
     useEffect(() => {
-        if (isEditMode && data) {
-            setFormData({
-                full_name: data.full_name || '',
-                email: data.email || '',
-                role: data.role || 'marketing_staff',
-                password: '', 
-            });
+        // Load Data Cabang & Agen untuk dropdown
+        api.get('/branches').then(res => setBranches(res || []));
+        api.get('/sub-agents').then(res => setAgents(res || []));
+    }, []);
+
+    useEffect(() => {
+        if (initialData) {
+            reset(initialData);
+        } else {
+            reset({ role: 'staff', status: 'active' });
         }
-    }, [data, isEditMode]);
-
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError(null);
-        setIsSubmitting(true);
-
-        const payload = { ...formData };
-        // PERBAIKAN: Menyesuaikan nama field dengan API Users (full_name, email, password)
-        
-        if (isEditMode) {
-            payload.id = data.id;
-            if (!payload.password) delete payload.password;
-        }
-
-        try {
-            // PERBAIKAN: Menggunakan endpoint 'users' (jamak)
-            await api.createOrUpdate('users', payload, isEditMode ? data.id : null);
-            onSuccess();
-        } catch (err) {
-            setError(err.message || 'Gagal menyimpan data.');
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    // Ambil roles dari API atau hardcode sebagai fallback
-    const roleOptions = apiData.roles && apiData.roles.length > 0 
-        ? apiData.roles 
-        : [
-            { role_key: 'marketing_staff', display_name: 'Marketing Staff' },
-            { role_key: 'finance_staff', display_name: 'Finance Staff' },
-            { role_key: 'hr_staff', display_name: 'HR Staff' },
-            { role_key: 'admin_staff', display_name: 'Admin Staff' }
-        ];
+    }, [initialData, reset]);
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-            {error && <ErrorMessage message={error} />}
-            
-            <Input
-                label="Nama Lengkap"
-                id="full_name"
-                name="full_name"
-                type="text"
-                value={formData.full_name}
-                onChange={handleChange}
-                required
-            />
-            
-            <Input
-                label="Email"
-                id="email"
-                name="email"
-                type="email"
-                value={formData.email}
-                onChange={handleChange}
-                required
-                disabled={isEditMode}
-            />
-            
-            <Input
-                label={isEditMode ? "Password (Kosongkan jika tidak diubah)" : "Password"}
-                id="password"
-                name="password"
-                type="password"
-                value={formData.password}
-                onChange={handleChange}
-                required={!isEditMode}
-            />
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+            <div className="bg-yellow-50 p-4 rounded border border-yellow-200 mb-4">
+                <h3 className="font-bold text-yellow-800 text-sm mb-1">Hak Akses & Peran</h3>
+                <p className="text-xs text-yellow-700">
+                    Tentukan peran pengguna. Jika Anda memilih <strong>Agen</strong> atau <strong>Kepala Cabang</strong>, 
+                    Anda wajib menghubungkannya dengan data Agen/Cabang yang sesuai agar data mereka terfilter otomatis.
+                </p>
+            </div>
 
-            <Select
-                label="Role / Jabatan"
-                id="role"
-                name="role"
-                value={formData.role}
-                onChange={handleChange}
-                required
-            >
-                <option value="" disabled>Pilih Role</option>
-                {roleOptions.map(role => (
-                    <option key={role.role_key || role.id} value={role.role_key || role.name}>
-                        {role.display_name || role.name}
-                    </option>
-                ))}
-            </Select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormUI.Input
+                    label="Nama Lengkap"
+                    {...register('full_name', { required: 'Nama wajib diisi' })}
+                    error={errors.full_name}
+                />
+                <FormUI.Input
+                    label="Email (Untuk Login)"
+                    type="email"
+                    {...register('email', { required: 'Email wajib diisi' })}
+                    error={errors.email}
+                />
+                <FormUI.Input
+                    label="Password"
+                    type="password"
+                    {...register('password', { required: !initialData && 'Password wajib diisi' })}
+                    placeholder={initialData ? 'Kosongkan jika tidak ubah' : ''}
+                    error={errors.password}
+                />
+                <FormUI.Input
+                    label="No. Telepon"
+                    {...register('phone')}
+                />
+            </div>
 
-            <div className="pt-2 flex justify-end">
-                 <button 
-                    type="submit" 
-                    disabled={isSubmitting || apiLoading}
-                    className="px-4 py-2 font-semibold text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                >
-                    {isSubmitting ? 'Menyimpan...' : (isEditMode ? 'Update Staff' : 'Tambah Staff')}
-                </button>
+            <div className="border-t pt-4 mt-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormUI.Select
+                        label="Role / Peran"
+                        {...register('role', { required: true })}
+                        options={[
+                            { value: 'super_admin', label: 'Super Admin (Akses Penuh)' },
+                            { value: 'owner', label: 'Owner (Pemilik)' },
+                            { value: 'staff', label: 'Staff Admin Pusat' },
+                            { value: 'branch_manager', label: 'Kepala Cabang' },
+                            { value: 'agent', label: 'Agen Travel' },
+                        ]}
+                    />
+
+                    {/* Input Kondisional berdasarkan Role */}
+                    
+                    {selectedRole === 'branch_manager' && (
+                        <div className="animate-fade-in">
+                            <FormUI.Select
+                                label="Pilih Cabang yang Dikelola"
+                                {...register('linked_branch_id', { required: 'Pilih cabang' })}
+                                options={[
+                                    { value: '', label: '-- Pilih Cabang --' },
+                                    ...branches.map(b => ({ value: b.id, label: b.name }))
+                                ]}
+                                error={errors.linked_branch_id}
+                            />
+                            <p className="text-xs text-gray-500 mt-1">User ini hanya akan melihat data di cabang ini.</p>
+                        </div>
+                    )}
+
+                    {selectedRole === 'agent' && (
+                        <div className="animate-fade-in">
+                            <FormUI.Select
+                                label="Hubungkan dengan Data Agen"
+                                {...register('linked_agent_id', { required: 'Pilih agen' })}
+                                options={[
+                                    { value: '', label: '-- Pilih Nama Agen --' },
+                                    ...agents.map(a => ({ value: a.id, label: a.name }))
+                                ]}
+                                error={errors.linked_agent_id}
+                            />
+                            <p className="text-xs text-gray-500 mt-1">User ini hanya akan melihat jemaah yang dia daftarkan.</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            <div className="flex justify-end space-x-2 pt-4">
+                <FormUI.Button variant="secondary" onClick={onCancel} type="button">Batal</FormUI.Button>
+                <FormUI.Button type="submit">Simpan Pengguna</FormUI.Button>
             </div>
         </form>
     );
-};
-
-export default UserForm;
+}

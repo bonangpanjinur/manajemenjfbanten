@@ -2,92 +2,119 @@
 @tailwind components;
 @tailwind utilities;
 
-/* SCOPED PREFLIGHT */
-#umh-admin-app {
+/* =========================================
+   ISOLASI STYLE WORDPRESS (SCOPED RESET)
+   ========================================= */
+
+/* Gunakan ID yang BENAR sesuai dashboard-react.php */
+#umroh-manager-hybrid-root {
+  /* Set font family modern, menimpa font WP */
   font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  color: #1f2937;
+  
+  /* Reset box model agar layout tidak berantakan */
   box-sizing: border-box;
-  background-color: #f3f4f6; 
-  min-height: calc(100vh - 32px); 
+  
+  /* Warna dasar aplikasi */
+  color: #1f2937; /* gray-800 */
+  background-color: #f3f4f6; /* gray-100 */
+  
+  /* Layout fix agar tidak ketutup Admin Bar WP */
+  position: relative;
+  z-index: 1; 
+  width: 100%;
+  min-height: calc(100vh - 50px);
+  
+  /* Counter margin default WP .wrap */
   margin-left: -20px; 
-  padding: 20px;
+  padding: 24px;
   font-size: 14px;
 }
 
-#umh-admin-app *, 
-#umh-admin-app ::before, 
-#umh-admin-app ::after {
+/* Reset Box Sizing untuk semua anak elemen */
+#umroh-manager-hybrid-root *, 
+#umroh-manager-hybrid-root ::before, 
+#umroh-manager-hybrid-root ::after {
   box-sizing: border-box;
   border-width: 0;
   border-style: solid;
-  border-color: #e5e7eb;
+  border-color: #e5e7eb; /* gray-200 */
 }
 
-#umh-admin-app h1 { font-size: 2.25rem; line-height: 2.5rem; font-weight: 700; margin: 0; }
-#umh-admin-app h2 { font-size: 1.5rem; line-height: 2rem; font-weight: 700; margin: 0; }
-#umh-admin-app h3 { font-size: 1.25rem; line-height: 1.75rem; font-weight: 600; margin: 0; }
-#umh-admin-app p { margin: 0; }
+/* =========================================
+   RESET FORM ELEMENT (Melawan wp-admin.css)
+   ========================================= */
 
-#umh-admin-app input, 
-#umh-admin-app select, 
-#umh-admin-app textarea {
-  background-color: #fff;
-  border: 1px solid #d1d5db;
-  border-radius: 0.5rem; /* Lebih rounded */
-  padding: 0.6rem 0.85rem; /* Sedikit lebih lega */
-  font-size: 0.875rem;
-  line-height: 1.25rem;
-  width: 100%;
-  display: block;
+/* Paksa input/select/textarea di dalam plugin untuk me-reset gaya WP */
+#umroh-manager-hybrid-root input[type="text"],
+#umroh-manager-hybrid-root input[type="email"],
+#umroh-manager-hybrid-root input[type="password"],
+#umroh-manager-hybrid-root input[type="number"],
+#umroh-manager-hybrid-root input[type="search"],
+#umroh-manager-hybrid-root input[type="tel"],
+#umroh-manager-hybrid-root input[type="url"],
+#umroh-manager-hybrid-root input[type="date"],
+#umroh-manager-hybrid-root select,
+#umroh-manager-hybrid-root textarea {
+    background-color: #fff !important;
+    box-shadow: none !important;
+    border: 1px solid #d1d5db !important; /* gray-300 */
+    border-radius: 0.5rem !important; /* rounded-lg */
+    padding: 0.625rem 0.875rem !important; /* py-2.5 px-3.5 */
+    min-height: auto !important;
+    margin: 0 !important;
+    font-size: 0.875rem !important; /* text-sm */
+    line-height: 1.25rem !important;
+    color: #111827 !important; /* gray-900 */
+    transition: all 0.15s ease-in-out !important;
+    outline: 2px solid transparent !important;
+    outline-offset: 2px !important;
+    width: 100%;
+    display: block;
+}
+
+/* Style Fokus Modern (Ring Biru) */
+#umroh-manager-hybrid-root input:focus,
+#umroh-manager-hybrid-root select:focus,
+#umroh-manager-hybrid-root textarea:focus {
+    border-color: #3b82f6 !important; /* blue-500 */
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important; /* Ring halus */
+    outline: none !important;
+}
+
+/* Fix untuk Select Dropdown agar panahnya tidak double dengan WP */
+#umroh-manager-hybrid-root select {
+   -webkit-appearance: none !important;
+   -moz-appearance: none !important;
+   appearance: none !important;
+   background-image: none !important;
+   padding-right: 2.5rem !important;
+}
+
+/* Typography Reset */
+#umroh-manager-hybrid-root h1, 
+#umroh-manager-hybrid-root h2, 
+#umroh-manager-hybrid-root h3 {
   margin: 0;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  transition: all 0.2s ease-in-out;
+  font-weight: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
 }
 
-#umh-admin-app input:focus, 
-#umh-admin-app select:focus, 
-#umh-admin-app textarea:focus {
-  outline: 2px solid transparent;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); /* Shadow lebih halus */
+#umroh-manager-hybrid-root p {
+    margin-bottom: 0;
 }
 
-#umh-admin-app table {
-  width: 100%;
-  border-collapse: collapse;
-}
-#umh-admin-app th {
-  text-align: left;
+#umroh-manager-hybrid-root button {
+    cursor: pointer;
 }
 
-#umh-admin-app button {
-  cursor: pointer;
-  background-color: transparent;
-  background-image: none;
-}
-
-/* Custom Scrollbar */
-.custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-    background: #f1f1f1;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 3px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
-}
-
-/* Simple Fade In Animation */
+/* Animations */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(5px); }
+  from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
 .animate-fade-in {

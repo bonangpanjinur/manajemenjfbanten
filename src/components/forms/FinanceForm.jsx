@@ -1,92 +1,70 @@
-// File Location: src/components/forms/FinanceForm.jsx
+import React, { useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import FormUI from '../common/FormUI';
 
-import React, { useState, useEffect } from 'react';
-import { useApi } from '../../context/ApiContext';
-import { Input, Select, Button, Textarea } from '../common/FormUI';
-
-const FinanceForm = ({ mode = 'operational', onSuccess, onCancel }) => {
-    const { createCashTransaction, createPayment, getJamaahList } = useApi();
-    const [loading, setLoading] = useState(false);
-    const [jamaahList, setJamaahList] = useState([]);
-    
-    const [formData, setFormData] = useState({
-        type: mode === 'operational' ? 'out' : 'in',
-        category: '',
-        amount: '',
-        transaction_date: new Date().toISOString().split('T')[0],
-        description: '',
-        proof_file: '',
-        jamaah_id: '',
-        payment_method: 'Transfer'
-    });
+export default function FinanceForm({ initialData, onSubmit, onCancel }) {
+    const { register, handleSubmit, formState: { errors }, reset } = useForm();
 
     useEffect(() => {
-        if (mode === 'payment') {
-            getJamaahList({ payment_status: 'unpaid_partial' })
-                .then(res => setJamaahList(Array.isArray(res) ? res : []))
-                .catch(console.error);
+        if (initialData) {
+            const formatted = { 
+                ...initialData,
+                transaction_date: initialData.transaction_date ? initialData.transaction_date.split('T')[0] : ''
+            };
+            reset(formatted);
+        } else {
+            reset({
+                type: 'out',
+                transaction_date: new Date().toISOString().split('T')[0],
+                category: 'Operasional'
+            });
         }
-    }, [mode]);
-
-    const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-        try {
-            if (mode === 'operational') {
-                await createCashTransaction(formData);
-            } else {
-                if (!formData.jamaah_id) throw new Error("Pilih Jamaah");
-                await createPayment({
-                    jamaah_id: formData.jamaah_id,
-                    amount: formData.amount,
-                    payment_date: formData.transaction_date,
-                    payment_method: formData.payment_method,
-                    description: formData.description,
-                    proof_file: formData.proof_file
-                });
-            }
-            onSuccess();
-        } catch (err) { alert(err.message); } 
-        finally { setLoading(false); }
-    };
+    }, [initialData, reset]);
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-            {mode === 'payment' && (
-                <div className="bg-blue-50 p-3 rounded">
-                    <label className="block text-sm font-bold mb-1">Pilih Jamaah</label>
-                    <select name="jamaah_id" value={formData.jamaah_id} onChange={handleChange} className="w-full border p-2 rounded" required>
-                        <option value="">-- Cari Jamaah --</option>
-                        {jamaahList.map(j => (
-                            <option key={j.id} value={j.id}>{j.full_name} (Sisa: {parseInt(j.remaining_payment).toLocaleString()})</option>
-                        ))}
-                    </select>
-                </div>
-            )}
-
-            {mode === 'operational' && (
-                <div className="flex gap-4">
-                    <label><input type="radio" name="type" value="out" checked={formData.type==='out'} onChange={handleChange} /> Pengeluaran</label>
-                    <label><input type="radio" name="type" value="in" checked={formData.type==='in'} onChange={handleChange} /> Pemasukan Lain</label>
-                </div>
-            )}
-
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-                <Input label="Tanggal" type="date" name="transaction_date" value={formData.transaction_date} onChange={handleChange} required />
-                <Input label="Nominal" type="number" name="amount" value={formData.amount} onChange={handleChange} required />
+                <FormUI.Select
+                    label="Jenis Transaksi"
+                    {...register('type', { required: true })}
+                    options={[
+                        { value: 'in', label: 'Pemasukan (In)' },
+                        { value: 'out', label: 'Pengeluaran (Out)' }
+                    ]}
+                />
+                <FormUI.Input
+                    label="Tanggal"
+                    type="date"
+                    {...register('transaction_date', { required: true })}
+                />
             </div>
-
-            {mode === 'operational' && <Input label="Kategori" name="category" value={formData.category} onChange={handleChange} required />}
-            <Textarea label="Keterangan" name="description" value={formData.description} onChange={handleChange} />
             
-            <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="secondary" onClick={onCancel}>Batal</Button>
-                <Button type="submit" disabled={loading}>Simpan</Button>
+            <FormUI.Input
+                label="Kategori"
+                placeholder="Contoh: Listrik, Gaji, Perlengkapan"
+                {...register('category', { required: 'Kategori wajib diisi' })}
+                error={errors.category}
+            />
+
+            <FormUI.Input
+                label="Jumlah (Rp)"
+                type="number"
+                {...register('amount', { required: 'Nominal wajib diisi', min: 1 })}
+                error={errors.amount}
+            />
+
+            {/* Perbaikan: Menggunakan TextArea dengan huruf kapital A yang benar */}
+            <FormUI.TextArea
+                label="Keterangan / Deskripsi"
+                rows={3}
+                {...register('description', { required: 'Deskripsi wajib diisi' })}
+                error={errors.description}
+            />
+
+            <div className="flex justify-end space-x-2 pt-2">
+                <FormUI.Button variant="secondary" onClick={onCancel} type="button">Batal</FormUI.Button>
+                <FormUI.Button type="submit">Simpan Transaksi</FormUI.Button>
             </div>
         </form>
     );
-};
-
-export default FinanceForm;
+}
